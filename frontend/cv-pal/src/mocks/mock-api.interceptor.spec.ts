@@ -96,16 +96,14 @@ describe('mockApiInterceptor', () => {
     expect(drafted.summary.length).toBeGreaterThan(0);
     // The guarantee, mirrored in mock mode because it is the guarantee: the draft is a
     // proposal, so the profile is unchanged until the user saves it.
-    const profile = await firstValueFrom(
-      http.get<{ summary: string | null }>(`${API}/profile`),
-    );
+    const profile = await firstValueFrom(http.get<{ summary: string | null }>(`${API}/profile`));
     expect(profile.summary).not.toBe(drafted.summary);
   });
 
   it('returns 404 for a route with no fixture, rather than hitting the network', async () => {
-    await expect(
-      firstValueFrom(http.get(`${API}/does-not-exist`)),
-    ).rejects.toMatchObject({ status: 404 });
+    await expect(firstValueFrom(http.get(`${API}/does-not-exist`))).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it('persists mutations within a session', async () => {

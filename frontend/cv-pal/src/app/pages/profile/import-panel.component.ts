@@ -4,10 +4,7 @@ import { Observable, forkJoin } from 'rxjs';
 
 import { AnalysisService } from '../../core/services/analysis.service';
 import { CareerProfileService } from '../../core/services/career-profile.service';
-import {
-  CvExtractionResponse,
-  ExtractedEntryResponse,
-} from '../../shared/models/api.model';
+import { CvExtractionResponse, ExtractedEntryResponse } from '../../shared/models/api.model';
 
 /** A value read from the CV that the profile does not have yet. */
 interface ProposedField {
@@ -63,14 +60,14 @@ interface ProposedField {
       @if (proposal(); as found) {
         @if (isEmpty(found)) {
           <p class="muted body">
-            Nothing could be read from that file. That usually means a scanned image, or a
-            layout that does not survive text extraction — the analysis screen's
-            parseability check will say which.
+            Nothing could be read from that file. That usually means a scanned image, or a layout
+            that does not survive text extraction — the analysis screen's parseability check will
+            say which.
           </p>
         } @else {
           <p class="muted body">
-            Read from the file, not yet saved. Add what is right; edit anything that is
-            close but wrong after adding.
+            Read from the file, not yet saved. Add what is right; edit anything that is close but
+            wrong after adding.
           </p>
         }
 
@@ -93,7 +90,12 @@ interface ProposedField {
               }
               @if (fields.length > 1) {
                 <div class="bulk">
-                  <button type="button" class="add" [disabled]="busy()" (click)="addAllFields(fields)">
+                  <button
+                    type="button"
+                    class="add"
+                    [disabled]="busy()"
+                    (click)="addAllFields(fields)"
+                  >
                     Add all {{ fields.length }}
                   </button>
                 </div>
@@ -107,7 +109,12 @@ interface ProposedField {
             <h4>
               Roles
               @if (found.experiences.length > 1) {
-                <button type="button" class="add" [disabled]="busy()" (click)="addAllRoles(found.experiences)">
+                <button
+                  type="button"
+                  class="add"
+                  [disabled]="busy()"
+                  (click)="addAllRoles(found.experiences)"
+                >
                   Add all {{ found.experiences.length }}
                 </button>
               }
@@ -118,7 +125,9 @@ interface ProposedField {
                   <span class="row-title">{{ entry.title }}</span>
                   <span class="row-meta">
                     {{ entry.organisation }}
-                    @if (entry.location) { &middot; {{ entry.location }} }
+                    @if (entry.location) {
+                      &middot; {{ entry.location }}
+                    }
                     @if (entry.start_date) {
                       &middot; {{ entry.start_date }} &ndash; {{ entry.end_date ?? 'present' }}
                     } @else {
@@ -139,7 +148,12 @@ interface ProposedField {
             <h4>
               Education
               @if (found.educations.length > 1) {
-                <button type="button" class="add" [disabled]="busy()" (click)="addAllCourses(found.educations)">
+                <button
+                  type="button"
+                  class="add"
+                  [disabled]="busy()"
+                  (click)="addAllCourses(found.educations)"
+                >
                   Add all {{ found.educations.length }}
                 </button>
               }
@@ -163,14 +177,19 @@ interface ProposedField {
             <h4>
               Skills
               @if (found.skills.length > 1) {
-                <button type="button" class="add" [disabled]="busy()" (click)="addAllSkills(found.skills)">
+                <button
+                  type="button"
+                  class="add"
+                  [disabled]="busy()"
+                  (click)="addAllSkills(found.skills)"
+                >
                   Add all {{ found.skills.length }}
                 </button>
               }
             </h4>
             <p class="group-note">
-              Added without evidence. Link each one to a role afterwards, or a generated CV
-              will not claim it.
+              Added without evidence. Link each one to a role afterwards, or a generated CV will not
+              claim it.
             </p>
             <div class="chips">
               @for (name of found.skills; track name) {
@@ -186,47 +205,137 @@ interface ProposedField {
   `,
   styles: [
     `
-      .picker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 18px 4px; }
+      .picker {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 18px 4px;
+      }
       select {
-        padding: 8px 10px; border: 1px solid var(--border-light); border-radius: var(--radius);
-        background: var(--bg-primary); color: var(--text-primary); font-size: 13px; min-width: 220px;
+        padding: 8px 10px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 13px;
+        min-width: 220px;
       }
       .primary {
-        padding: 8px 16px; border-radius: var(--radius); background: var(--accent);
-        color: #fff; font-size: 13px; font-weight: 600;
+        padding: 8px 16px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
       }
-      .primary:disabled { opacity: .5; }
+      .primary:disabled {
+        opacity: 0.5;
+      }
 
-      .body { padding: 6px 18px 0; }
-      .muted { font-size: 13px; color: var(--text-tertiary); margin: 0; }
-      .error { margin: 0; padding: 6px 18px; font-size: 13px; color: var(--danger, #dc2626); }
+      .body {
+        padding: 6px 18px 0;
+      }
+      .muted {
+        font-size: 13px;
+        color: var(--text-tertiary);
+        margin: 0;
+      }
+      .error {
+        margin: 0;
+        padding: 6px 18px;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
 
-      .group { padding: 10px 18px 4px; }
+      .group {
+        padding: 10px 18px 4px;
+      }
       .group h4 {
-        display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-        font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-        color: var(--text-tertiary); margin: 10px 0 6px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+        margin: 10px 0 6px;
       }
-      .group h4 .add { text-transform: none; letter-spacing: 0; font-size: 12px; padding: 2px 0; }
-      .bulk { display: flex; justify-content: flex-end; padding-top: 6px; }
-      .group-note { margin: 0 0 8px; font-size: 12px; color: var(--text-tertiary); }
+      .group h4 .add {
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 12px;
+        padding: 2px 0;
+      }
+      .bulk {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 6px;
+      }
+      .group-note {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
-      .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0; }
-      .row + .row { border-top: 1px solid var(--border-light); }
-      .row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-      .row-title { font-size: 14px; font-weight: 600; }
-      .row-meta { font-size: 12px; color: var(--text-tertiary); }
-      .warn { color: #d97706; }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 0;
+      }
+      .row + .row {
+        border-top: 1px solid var(--border-light);
+      }
+      .row-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .row-title {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .row-meta {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .warn {
+        color: #d97706;
+      }
 
-      .add { flex: none; font-size: 13px; font-weight: 600; color: var(--accent); padding: 6px 10px; }
-      .add:disabled { opacity: .5; }
+      .add {
+        flex: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        padding: 6px 10px;
+      }
+      .add:disabled {
+        opacity: 0.5;
+      }
 
-      .chips { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 6px; }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-bottom: 6px;
+      }
       .chip {
-        font-size: 12px; padding: 4px 10px; border-radius: 999px;
-        border: 1px solid var(--border-light); color: var(--text-secondary);
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border-light);
+        color: var(--text-secondary);
       }
-      .chip:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+      .chip:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
     `,
   ],
 })
@@ -314,17 +423,12 @@ export class ImportPanelComponent {
 
   addField(proposed: ProposedField): void {
     // Nothing to drop: proposedFields() filters out whatever the reloaded profile holds.
-    this.run(
-      this.career.updateProfile({ [proposed.field]: proposed.value }),
-      () => undefined,
-    );
+    this.run(this.career.updateProfile({ [proposed.field]: proposed.value }), () => undefined);
   }
 
   /** One request, because these are all fields of the same PATCH. */
   addAllFields(fields: ProposedField[]): void {
-    const changes = Object.fromEntries(
-      fields.map((proposed) => [proposed.field, proposed.value]),
-    );
+    const changes = Object.fromEntries(fields.map((proposed) => [proposed.field, proposed.value]));
     this.run(this.career.updateProfile(changes), () => undefined);
   }
 
@@ -355,7 +459,9 @@ export class ImportPanelComponent {
       datable.map((entry) => this.roleRequest(entry)).filter((request) => request !== null),
       () => {
         this.proposal.update((found) =>
-          found ? { ...found, experiences: found.experiences.filter((e) => !datable.includes(e)) } : found,
+          found
+            ? { ...found, experiences: found.experiences.filter((e) => !datable.includes(e)) }
+            : found,
         );
         if (undated > 0) {
           this.error.set(
@@ -447,10 +553,7 @@ export class ImportPanelComponent {
   }
 
   /** Added rows leave the proposal, so what remains is what is still outstanding. */
-  private drop(
-    key: 'experiences' | 'educations',
-    entry: ExtractedEntryResponse,
-  ): void {
+  private drop(key: 'experiences' | 'educations', entry: ExtractedEntryResponse): void {
     const found = this.proposal();
     if (found) {
       this.proposal.set({ ...found, [key]: found[key].filter((e) => e !== entry) });

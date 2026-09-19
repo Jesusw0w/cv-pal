@@ -137,8 +137,12 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
         <div class="card-header">
           <h3>Add a posting</h3>
           <div class="tabs">
-            <button type="button" [class.on]="mode() === 'url'" (click)="mode.set('url')">Link</button>
-            <button type="button" [class.on]="mode() === 'paste'" (click)="mode.set('paste')">Paste</button>
+            <button type="button" [class.on]="mode() === 'url'" (click)="mode.set('url')">
+              Link
+            </button>
+            <button type="button" [class.on]="mode() === 'paste'" (click)="mode.set('paste')">
+              Paste
+            </button>
           </div>
         </div>
 
@@ -151,9 +155,9 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
               aria-label="Job posting link"
             />
             <p class="hint">
-              Remotive, Greenhouse and Lever links are read through their own APIs.
-              Anything else — LinkedIn, a company careers page — needs the Paste tab:
-              CV Pal does not fetch arbitrary pages.
+              Remotive, Greenhouse and Lever links are read through their own APIs. Anything else —
+              LinkedIn, a company careers page — needs the Paste tab: CV Pal does not fetch
+              arbitrary pages.
             </p>
             <button type="submit" class="primary" [disabled]="busy() || !url.trim()">
               {{ busy() ? 'Reading…' : 'Add from link' }}
@@ -162,9 +166,24 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
         } @else {
           <form class="body" (ngSubmit)="paste()">
             <div class="row">
-              <input [(ngModel)]="draft.title" name="title" placeholder="Job title" aria-label="Job title" />
-              <input [(ngModel)]="draft.company" name="company" placeholder="Company" aria-label="Company" />
-              <input [(ngModel)]="draft.location" name="location" placeholder="Location" aria-label="Location" />
+              <input
+                [(ngModel)]="draft.title"
+                name="title"
+                placeholder="Job title"
+                aria-label="Job title"
+              />
+              <input
+                [(ngModel)]="draft.company"
+                name="company"
+                placeholder="Company"
+                aria-label="Company"
+              />
+              <input
+                [(ngModel)]="draft.location"
+                name="location"
+                placeholder="Location"
+                aria-label="Location"
+              />
             </div>
             <textarea
               rows="7"
@@ -225,7 +244,9 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
               aria-label="Company slug"
             />
           }
-          <button type="submit" class="primary" [disabled]="busy() || !watchId.trim()">Watch</button>
+          <button type="submit" class="primary" [disabled]="busy() || !watchId.trim()">
+            Watch
+          </button>
           <!-- Opt-in. A company board is every open role it has, and for most searches
                that is mostly noise — but a sync that silently drops postings is worse,
                so this is asked for rather than assumed. -->
@@ -255,8 +276,8 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
           </div>
         </dl>
         <p class="hint watch-hint">
-          {{ source().hint }} Syncing saves everything new and nothing you already have,
-          so a cron entry hitting it nightly is safe.
+          {{ source().hint }} Syncing saves everything new and nothing you already have, so a cron
+          entry hitting it nightly is safe.
         </p>
         @for (source of jobs.sources(); track source.id) {
           <div class="blocked">
@@ -264,14 +285,22 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
               <span class="blocked-title">{{ source.label }}</span>
               <span class="blocked-why">
                 {{ source.source }}
-                @if (source.filter_by_goals) { &middot; target roles only }
-                @if (source.last_error) { &middot; last sync failed }
-                @else if (source.last_synced_at) { &middot; synced {{ source.last_synced_at | date: 'd MMM HH:mm' }} }
-                @else { &middot; never synced }
+                @if (source.filter_by_goals) {
+                  &middot; target roles only
+                }
+                @if (source.last_error) {
+                  &middot; last sync failed
+                } @else if (source.last_synced_at) {
+                  &middot; synced {{ source.last_synced_at | date: 'd MMM HH:mm' }}
+                } @else {
+                  &middot; never synced
+                }
               </span>
             </div>
             <div class="job-actions">
-              <button type="button" class="link" [disabled]="busy()" (click)="sync(source.id)">Sync now</button>
+              <button type="button" class="link" [disabled]="busy()" (click)="sync(source.id)">
+                Sync now
+              </button>
               <button type="button" class="remove" (click)="unwatch(source.id)">Remove</button>
             </div>
           </div>
@@ -297,9 +326,13 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
               <h3>{{ entry.posting.title }}</h3>
               <p class="job-meta">
                 {{ entry.posting.company ?? 'Unknown company' }}
-                @if (entry.posting.location) { &middot; {{ entry.posting.location }} }
+                @if (entry.posting.location) {
+                  &middot; {{ entry.posting.location }}
+                }
                 &middot; saved {{ entry.posting.created_at | date: 'd MMM' }}
-                @if (entry.posting.source !== 'manual') { &middot; via {{ entry.posting.source }} }
+                @if (entry.posting.source !== 'manual') {
+                  &middot; via {{ entry.posting.source }}
+                }
               </p>
               <!-- Absent when the source did not say. Nothing is shown then, because
                    "full time" is a guess and this is the field people filter on. -->
@@ -314,7 +347,9 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
 
           <ul class="reasons">
             @for (reason of entry.match.reasons; track reason.label) {
-              <li><strong>{{ reason.label }}</strong> &mdash; {{ reason.detail }}</li>
+              <li>
+                <strong>{{ reason.label }}</strong> &mdash; {{ reason.detail }}
+              </li>
             }
           </ul>
 
@@ -329,7 +364,9 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
 
           <div class="job-actions">
             @if (entry.posting.source_url; as link) {
-              <a [href]="link" target="_blank" rel="noopener noreferrer" class="link">Open posting</a>
+              <a [href]="link" target="_blank" rel="noopener noreferrer" class="link"
+                >Open posting</a
+              >
             }
             <button
               type="button"
@@ -345,8 +382,14 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
             @if (applications.appliedPostingIds().has(entry.posting.id)) {
               <a routerLink="/applications" class="applied-note">Applied &middot; track it</a>
             } @else {
-              <button type="button" class="link" [disabled]="busy()"
-                      (click)="markApplied(entry.posting.id)">I applied</button>
+              <button
+                type="button"
+                class="link"
+                [disabled]="busy()"
+                (click)="markApplied(entry.posting.id)"
+              >
+                I applied
+              </button>
             }
             <button type="button" class="remove" (click)="remove(entry)">Remove</button>
           </div>
@@ -364,18 +407,20 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
                     @for (item of cv.surfaced; track item.term) {
                       <li>
                         <strong>{{ item.skill }}</strong>
-                        @if (item.required) { <span class="req">required</span> }
+                        @if (item.required) {
+                          <span class="req">required</span>
+                        }
                         <span class="why">
-                          &mdash; the posting asks for &ldquo;{{ item.term }}&rdquo;;
-                          evidenced by {{ item.evidence.join('; ') }}
+                          &mdash; the posting asks for &ldquo;{{ item.term }}&rdquo;; evidenced by
+                          {{ item.evidence.join('; ') }}
                         </span>
                       </li>
                     }
                   </ul>
                 } @else {
                   <p class="none">
-                    Nothing on your profile matched what this posting asks for. The CV
-                    below is your profile in full &mdash; nothing was added to fit it.
+                    Nothing on your profile matched what this posting asks for. The CV below is your
+                    profile in full &mdash; nothing was added to fit it.
                   </p>
                 }
 
@@ -387,8 +432,8 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
                     }
                   </p>
                   <p class="note">
-                    Named, never written in. Adding a skill you cannot evidence is the
-                    thing you would have to defend in the interview.
+                    Named, never written in. Adding a skill you cannot evidence is the thing you
+                    would have to defend in the interview.
                   </p>
                 }
 
@@ -414,9 +459,9 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
                     }
                   </ul>
                   <p class="note">
-                    The only text here that is not literally yours. It happens only where
-                    the alias map states two spellings mean one thing, which is why it
-                    never fires on terms outside software.
+                    The only text here that is not literally yours. It happens only where the alias
+                    map states two spellings mean one thing, which is why it never fires on terms
+                    outside software.
                   </p>
                 }
 
@@ -424,7 +469,9 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
                   The CV
                   <span class="parse">
                     parses {{ cv.parseability.score }}/100
-                    @if (cv.parseability.blocking.length === 0) { &middot; nothing blocking }
+                    @if (cv.parseability.blocking.length === 0) {
+                      &middot; nothing blocking
+                    }
                   </span>
                   <button type="button" class="link copy" (click)="copy(cv.markdown)">
                     {{ copied() ? 'Copied' : 'Copy' }}
@@ -466,17 +513,16 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
                   @if (letter()!.draft; as draft) {
                     @if (draft.needs_writing) {
                       <p class="note warn-note">
-                        This is a <strong>scaffold, not a letter</strong>. Every fact in it
-                        is yours and verified; the paragraph in brackets is the part
-                        nothing can assemble for you, and a reader can tell when it is
-                        missing.
+                        This is a <strong>scaffold, not a letter</strong>. Every fact in it is yours
+                        and verified; the paragraph in brackets is the part nothing can assemble for
+                        you, and a reader can tell when it is missing.
                       </p>
                     }
                     <p class="note" [class.warn-note]="draft.similarity_warning">
                       Repeats your other letters: <strong>{{ draft.similarity }}%</strong>.
                       @if (draft.similarity_warning) {
-                        Close enough to read as the same letter sent twice. Nothing here
-                        lowers that except writing something true about this job.
+                        Close enough to read as the same letter sent twice. Nothing here lowers that
+                        except writing something true about this job.
                       } @else if (draft.similarity === 0) {
                         Nothing to compare against yet.
                       }
@@ -542,139 +588,391 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
   `,
   styles: [
     `
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; max-width: 860px; }
-      .intro h1 { font-size: 22px; margin: 0 0 6px; }
-      .intro p { margin: 0; font-size: 14px; color: var(--text-secondary); }
-      .intro a, .link { color: var(--accent); font-weight: 600; }
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 860px;
+      }
+      .intro h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .intro p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      .intro a,
+      .link {
+        color: var(--accent);
+        font-weight: 600;
+      }
 
-      .tabs { display: flex; gap: 4px; }
+      .tabs {
+        display: flex;
+        gap: 4px;
+      }
       .tabs button {
-        font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
-        color: var(--text-tertiary); border: 1px solid transparent;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+        color: var(--text-tertiary);
+        border: 1px solid transparent;
       }
-      .tabs button.on { color: var(--accent); border-color: var(--accent); }
+      .tabs button.on {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
 
-      .body { display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 18px; }
-      .row { display: flex; flex-wrap: wrap; gap: 8px; }
-      .row input { flex: 1 1 160px; }
-      input, textarea {
-        padding: 9px 11px; border: 1px solid var(--border-light); border-radius: var(--radius);
-        background: var(--bg-primary); color: var(--text-primary);
-        font-size: 13px; font-family: inherit;
+      .body {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 18px 18px;
       }
-      textarea { resize: vertical; }
-      .hint { margin: 0; font-size: 12px; color: var(--text-tertiary); max-width: 70ch; }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .row input {
+        flex: 1 1 160px;
+      }
+      input,
+      textarea {
+        padding: 9px 11px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: inherit;
+      }
+      textarea {
+        resize: vertical;
+      }
+      .hint {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        max-width: 70ch;
+      }
       .primary {
-        align-self: flex-start; padding: 9px 18px; border-radius: var(--radius);
-        background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+        align-self: flex-start;
+        padding: 9px 18px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
       }
-      .primary:disabled { opacity: .5; }
-      .error { margin: 0; padding: 0 18px 14px; font-size: 13px; color: var(--danger, #dc2626); }
-      .notice { margin: 0; padding: 16px 18px; font-size: 13px; color: var(--text-secondary); }
-      .card-note { font-size: 12px; color: var(--text-tertiary); }
+      .primary:disabled {
+        opacity: 0.5;
+      }
+      .error {
+        margin: 0;
+        padding: 0 18px 14px;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
+      .notice {
+        margin: 0;
+        padding: 16px 18px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .card-note {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
-      .job { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
-      .job-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-      .job-head h3 { margin: 0; font-size: 16px; }
-      .job-meta { margin: 3px 0 0; font-size: 12px; color: var(--text-tertiary); }
-      .score { font-size: 24px; font-weight: 700; flex: none; }
-      .score small { font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
-      .score.good { color: #16a34a; }
-      .score.fair { color: #d97706; }
-      .score.poor { color: var(--danger, #dc2626); }
+      .job {
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .job-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .job-head h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .job-meta {
+        margin: 3px 0 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .score {
+        font-size: 24px;
+        font-weight: 700;
+        flex: none;
+      }
+      .score small {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-tertiary);
+      }
+      .score.good {
+        color: #16a34a;
+      }
+      .score.fair {
+        color: #d97706;
+      }
+      .score.poor {
+        color: var(--danger, #dc2626);
+      }
 
-      .reasons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-      .reasons li { font-size: 12px; color: var(--text-secondary); }
-      .reasons strong { color: var(--text-primary); font-weight: 600; }
+      .reasons {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .reasons li {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .reasons strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
 
-      .missing { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-      .missing-label { font-size: 12px; color: var(--text-tertiary); }
+      .missing {
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+      }
+      .missing-label {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
       .term {
-        font-size: 12px; padding: 2px 8px; border-radius: 999px;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 999px;
         border: 1px solid color-mix(in srgb, var(--danger, #dc2626) 45%, transparent);
         color: var(--danger, #dc2626);
       }
 
       .contract {
-        display: inline-block; margin-top: 6px;
-        font-size: 11px; font-weight: 600; letter-spacing: .02em;
-        padding: 2px 8px; border-radius: 999px;
-        border: 1px solid var(--border-light); color: var(--text-secondary);
+        display: inline-block;
+        margin-top: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border-light);
+        color: var(--text-secondary);
       }
 
-      .source-facts { margin: 0; padding: 0 18px 4px; display: grid; gap: 6px; }
-      .source-facts > div { display: flex; gap: 8px; font-size: 12px; }
-      .source-facts dt {
-        flex: 0 0 96px; font-weight: 600; color: var(--text-secondary);
+      .source-facts {
+        margin: 0;
+        padding: 0 18px 4px;
+        display: grid;
+        gap: 6px;
       }
-      .source-facts dd { margin: 0; color: var(--text-tertiary); max-width: 60ch; }
+      .source-facts > div {
+        display: flex;
+        gap: 8px;
+        font-size: 12px;
+      }
+      .source-facts dt {
+        flex: 0 0 96px;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+      .source-facts dd {
+        margin: 0;
+        color: var(--text-tertiary);
+        max-width: 60ch;
+      }
 
       .tailored {
-        margin-top: 4px; padding-top: 14px;
+        margin-top: 4px;
+        padding-top: 14px;
         border-top: 1px solid var(--border-light);
-        display: flex; flex-direction: column; gap: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
       .tailored h4 {
-        margin: 6px 0 0; font-size: 13px;
-        display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+        margin: 6px 0 0;
+        font-size: 13px;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
       }
-      .parse { font-size: 12px; font-weight: 400; color: var(--text-tertiary); }
-      .copy { margin-left: auto; font-size: 12px; }
+      .parse {
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--text-tertiary);
+      }
+      .copy {
+        margin-left: auto;
+        font-size: 12px;
+      }
 
-      .surfaced { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-      .surfaced li { font-size: 12px; color: var(--text-secondary); }
-      .surfaced strong { color: var(--text-primary); }
-      .why { color: var(--text-tertiary); }
-      .req {
-        font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-        padding: 1px 6px; border-radius: 999px; margin-left: 4px;
-        border: 1px solid var(--border-light); color: var(--text-tertiary);
+      .surfaced {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
       }
-      .none, .note { margin: 0; font-size: 12px; color: var(--text-tertiary); max-width: 70ch; }
-      .gaps { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-      .gaps .term { border-color: var(--border-light); color: var(--text-tertiary); }
+      .surfaced li {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .surfaced strong {
+        color: var(--text-primary);
+      }
+      .why {
+        color: var(--text-tertiary);
+      }
+      .req {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 999px;
+        margin-left: 4px;
+        border: 1px solid var(--border-light);
+        color: var(--text-tertiary);
+      }
+      .none,
+      .note {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        max-width: 70ch;
+      }
+      .gaps {
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .gaps .term {
+        border-color: var(--border-light);
+        color: var(--text-tertiary);
+      }
       .gaps .req-term {
         border-color: color-mix(in srgb, var(--danger, #dc2626) 45%, transparent);
         color: var(--danger, #dc2626);
       }
 
       .letter {
-        width: 100%; min-height: 220px; resize: vertical;
-        font-size: 12px; line-height: 1.5;
+        width: 100%;
+        min-height: 220px;
+        resize: vertical;
+        font-size: 12px;
+        line-height: 1.5;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
-      .warn-note { color: #d97706; }
+      .warn-note {
+        color: #d97706;
+      }
 
       .doc {
-        margin: 0; padding: 14px; border-radius: var(--radius);
-        background: var(--bg-hover); border: 1px solid var(--border-light);
-        font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-x: auto;
+        margin: 0;
+        padding: 14px;
+        border-radius: var(--radius);
+        background: var(--bg-hover);
+        border: 1px solid var(--border-light);
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        overflow-x: auto;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
 
-      .job-actions { display: flex; align-items: center; gap: 14px; }
-      .remove { font-size: 12px; color: var(--text-tertiary); }
-      .remove:hover { color: var(--danger, #dc2626); }
+      .job-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .remove {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .remove:hover {
+        color: var(--danger, #dc2626);
+      }
 
       .blocked {
-        display: flex; justify-content: space-between; align-items: center; gap: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
         padding: 10px 18px;
       }
-      .blocked + .blocked { border-top: 1px solid var(--border-light); }
-      .blocked-title { font-size: 14px; font-weight: 500; margin-right: 8px; }
-      .blocked-why { font-size: 12px; color: var(--text-tertiary); }
-      .watch { flex-direction: row; flex-wrap: wrap; align-items: center; }
-      .watch select, .watch input { flex: 0 1 auto; }
-      .watch-hint { padding: 0 18px 14px; }
-      .watch-filter {
-        flex: 1 0 100%; display: flex; align-items: baseline; gap: 8px;
-        font-size: 12px; color: var(--text-secondary);
+      .blocked + .blocked {
+        border-top: 1px solid var(--border-light);
       }
-      .watch-filter input { flex: none; }
-      .watch-filter em { color: var(--text-tertiary); font-style: normal; }
-      .applied-note { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+      .blocked-title {
+        font-size: 14px;
+        font-weight: 500;
+        margin-right: 8px;
+      }
+      .blocked-why {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .watch {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .watch select,
+      .watch input {
+        flex: 0 1 auto;
+      }
+      .watch-hint {
+        padding: 0 18px 14px;
+      }
+      .watch-filter {
+        flex: 1 0 100%;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .watch-filter input {
+        flex: none;
+      }
+      .watch-filter em {
+        color: var(--text-tertiary);
+        font-style: normal;
+      }
+      .applied-note {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        text-decoration: none;
+      }
 
-      @media (max-width: 768px) { .page { padding: 16px; } }
+      @media (max-width: 768px) {
+        .page {
+          padding: 16px;
+        }
+      }
     `,
   ],
 })
@@ -726,9 +1024,7 @@ export class JobSearchComponent {
 
   /** Mirrors the API's own minimum, so the button explains itself instead of 422-ing. */
   canPaste(): boolean {
-    return (
-      this.draft.title.trim().length > 0 && this.draft.description.trim().length >= 50
-    );
+    return this.draft.title.trim().length > 0 && this.draft.description.trim().length >= 50;
   }
 
   tone(score: number): string {
@@ -754,11 +1050,7 @@ export class JobSearchComponent {
 
   watch(): void {
     this.run(
-      this.jobs.watchBoard(
-        this.watchSource(),
-        this.watchId.trim(),
-        this.watchFilterByGoals,
-      ),
+      this.jobs.watchBoard(this.watchSource(), this.watchId.trim(), this.watchFilterByGoals),
       () => {
         this.watchId = '';
       },
@@ -824,9 +1116,7 @@ export class JobSearchComponent {
     this.downloading.set(format);
     this.error.set(null);
     const request =
-      format === 'docx'
-        ? this.jobs.tailorDocx(postingId)
-        : this.jobs.tailorPdf(postingId);
+      format === 'docx' ? this.jobs.tailorDocx(postingId) : this.jobs.tailorPdf(postingId);
     request.subscribe({
       next: (response) => {
         this.downloading.set(null);

@@ -44,9 +44,7 @@ export class LinkedInService {
 
   readonly profile = this.snapshot.value;
   readonly review = this.reviewResource.value;
-  readonly isLoading = computed(
-    () => this.snapshot.isLoading() || this.reviewResource.isLoading(),
-  );
+  readonly isLoading = computed(() => this.snapshot.isLoading() || this.reviewResource.isLoading());
 
   readonly hasProfile = computed(() => this.profile() !== undefined);
 
@@ -57,9 +55,7 @@ export class LinkedInService {
    * imported one is told what they are still missing rather than left to wonder why the
    * review is thin.
    */
-  readonly wouldBenefitFromExport = computed(() =>
-    needsDataExport(this.profile()?.field_sources),
-  );
+  readonly wouldBenefitFromExport = computed(() => needsDataExport(this.profile()?.field_sources));
 
   reload(): void {
     this.snapshot.reload();
@@ -70,20 +66,14 @@ export class LinkedInService {
   upload(file: File): Observable<LinkedInProfileResponse> {
     const body = new FormData();
     body.append('file', file);
-    return this.http.post<LinkedInProfileResponse>(
-      `${environment.apiUrl}/linkedin/import`,
-      body,
-    );
+    return this.http.post<LinkedInProfileResponse>(`${environment.apiUrl}/linkedin/import`, body);
   }
 
   /** Import a profile the user copied out of the page. */
   paste(text: string): Observable<LinkedInProfileResponse> {
     const body = new FormData();
     body.append('text', text);
-    return this.http.post<LinkedInProfileResponse>(
-      `${environment.apiUrl}/linkedin/import`,
-      body,
-    );
+    return this.http.post<LinkedInProfileResponse>(`${environment.apiUrl}/linkedin/import`, body);
   }
 
   delete(): Observable<void> {
@@ -96,9 +86,7 @@ export class LinkedInService {
  * rule can be tested without standing up a resource. Undefined means nothing has been
  * imported yet, which is not a gap worth reporting.
  */
-export function needsDataExport(
-  fieldSources: Record<string, LinkedInSource> | undefined,
-): boolean {
+export function needsDataExport(fieldSources: Record<string, LinkedInSource> | undefined): boolean {
   if (fieldSources === undefined) {
     return false;
   }
@@ -113,9 +101,7 @@ export function needsDataExport(
 export function rejectLinkedInFile(file: File): string | null {
   const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
   if (
-    !ALLOWED_LINKEDIN_EXTENSIONS.includes(
-      extension as (typeof ALLOWED_LINKEDIN_EXTENSIONS)[number],
-    )
+    !ALLOWED_LINKEDIN_EXTENSIONS.includes(extension as (typeof ALLOWED_LINKEDIN_EXTENSIONS)[number])
   ) {
     return 'Upload the profile PDF, or the ZIP from a LinkedIn data export.';
   }

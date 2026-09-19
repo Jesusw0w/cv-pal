@@ -43,17 +43,14 @@ export class ApplicationService {
   );
 
   private readonly statsResource = httpResource<ApplicationStatsResponse>(
-    () =>
-      this.auth.isAuthenticated() ? `${environment.apiUrl}/applications/stats` : undefined,
+    () => (this.auth.isAuthenticated() ? `${environment.apiUrl}/applications/stats` : undefined),
     { defaultValue: EMPTY_STATS },
   );
 
   /** Saved postings with no application against them — what there is left to do. */
   private readonly unappliedResource = httpResource<JobPostingResponse[]>(
     () =>
-      this.auth.isAuthenticated()
-        ? `${environment.apiUrl}/applications/unapplied`
-        : undefined,
+      this.auth.isAuthenticated() ? `${environment.apiUrl}/applications/unapplied` : undefined,
     { defaultValue: [] },
   );
 

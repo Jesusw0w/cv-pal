@@ -31,8 +31,8 @@ import {
       <header class="intro">
         <h1>CV analysis</h1>
         <p>
-          Check whether a CV survives automated screening, and how well it answers a
-          specific posting. Runs entirely on your machine — no language model needed.
+          Check whether a CV survives automated screening, and how well it answers a specific
+          posting. Runs entirely on your machine — no language model needed.
         </p>
       </header>
 
@@ -124,10 +124,13 @@ import {
         <section class="card">
           <div class="card-header">
             <h3>ATS parseability</h3>
-            <span class="score" [class]="scoreTone(report.score)">{{ report.score }}<small>/100</small></span>
+            <span class="score" [class]="scoreTone(report.score)"
+              >{{ report.score }}<small>/100</small></span
+            >
           </div>
           <p class="muted detail">
-            Whether an applicant tracking system can read this file at all. {{ report.word_count }} words extracted.
+            Whether an applicant tracking system can read this file at all.
+            {{ report.word_count }} words extracted.
           </p>
           <ul class="findings">
             @for (finding of report.findings; track finding.code) {
@@ -136,7 +139,9 @@ import {
                 <span>{{ finding.message }}</span>
               </li>
             } @empty {
-              <li class="finding sev-info"><span>Nothing to fix — this file parses cleanly.</span></li>
+              <li class="finding sev-info">
+                <span>Nothing to fix — this file parses cleanly.</span>
+              </li>
             }
           </ul>
         </section>
@@ -146,11 +151,13 @@ import {
         <section class="card">
           <div class="card-header">
             <h3>Keyword coverage</h3>
-            <span class="score" [class]="scoreTone(report.score)">{{ report.score }}<small>/100</small></span>
+            <span class="score" [class]="scoreTone(report.score)"
+              >{{ report.score }}<small>/100</small></span
+            >
           </div>
           <p class="muted detail">
-            How much of what this posting asks for the CV actually says. Weighted towards
-            hard requirements.
+            How much of what this posting asks for the CV actually says. Weighted towards hard
+            requirements.
           </p>
 
           @if (report.missing_required.length > 0) {
@@ -188,8 +195,8 @@ import {
           </div>
 
           <p class="grounding">
-            A missing term is only worth adding if it is true of you. CV Pal will not
-            write in experience you do not have.
+            A missing term is only worth adding if it is true of you. CV Pal will not write in
+            experience you do not have.
           </p>
         </section>
       }
@@ -198,71 +205,237 @@ import {
   styles: [
     `
       /* .card, .card-header come from styles.css. Only layout here. */
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; max-width: 900px; }
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 900px;
+      }
 
-      .intro h1 { font-size: 22px; margin: 0 0 6px; }
-      .intro p { margin: 0; font-size: 14px; color: var(--text-secondary); max-width: 70ch; }
+      .intro h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .intro p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+        max-width: 70ch;
+      }
 
-      .upload { font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; }
-      .upload input { display: none; }
+      .upload {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .upload input {
+        display: none;
+      }
 
-      .cv-list { list-style: none; margin: 0; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-      .cv { display: flex; align-items: center; gap: 8px; border-radius: var(--radius); padding: 4px 8px; }
-      .cv:hover { background: var(--bg-hover); }
-      .cv.selected { background: var(--bg-hover); box-shadow: inset 2px 0 0 var(--accent); }
-      .cv-pick { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 4px; text-align: left; }
-      .cv-name { font-size: 14px; font-weight: 500; }
-      .cv-meta { font-size: 12px; color: var(--text-tertiary); }
-      .cv-delete { font-size: 12px; color: var(--text-tertiary); padding: 6px; }
-      .cv-delete:hover { color: var(--danger, #dc2626); }
-      .empty { padding: 12px; font-size: 13px; color: var(--text-tertiary); }
+      .cv-list {
+        list-style: none;
+        margin: 0;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .cv {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: var(--radius);
+        padding: 4px 8px;
+      }
+      .cv:hover {
+        background: var(--bg-hover);
+      }
+      .cv.selected {
+        background: var(--bg-hover);
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+      .cv-pick {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        padding: 8px 4px;
+        text-align: left;
+      }
+      .cv-name {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .cv-meta {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .cv-delete {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        padding: 6px;
+      }
+      .cv-delete:hover {
+        color: var(--danger, #dc2626);
+      }
+      .empty {
+        padding: 12px;
+        font-size: 13px;
+        color: var(--text-tertiary);
+      }
 
       textarea {
-        width: 100%; padding: 12px; border: 1px solid var(--border-light);
-        border-radius: var(--radius); background: var(--bg-primary);
-        color: var(--text-primary); font-size: 13px; font-family: inherit; resize: vertical;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: inherit;
+        resize: vertical;
       }
-      .actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+      }
       .primary {
-        padding: 9px 18px; border-radius: var(--radius); background: var(--accent);
-        color: #fff; font-size: 14px; font-weight: 600;
+        padding: 9px 18px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
       }
-      .primary:disabled { opacity: .5; }
+      .primary:disabled {
+        opacity: 0.5;
+      }
 
-      .score { font-size: 24px; font-weight: 700; }
-      .score small { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
-      .score.good { color: #16a34a; }
-      .score.fair { color: #d97706; }
-      .score.poor { color: var(--danger, #dc2626); }
+      .score {
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .score small {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-tertiary);
+      }
+      .score.good {
+        color: #16a34a;
+      }
+      .score.fair {
+        color: #d97706;
+      }
+      .score.poor {
+        color: var(--danger, #dc2626);
+      }
 
-      .detail { margin: 0 18px 4px; }
-      .muted { font-size: 13px; color: var(--text-tertiary); margin: 0; }
-      .error { margin: 0 18px 8px; font-size: 13px; color: var(--danger, #dc2626); }
-      .link { color: var(--accent); font-weight: 600; }
+      .detail {
+        margin: 0 18px 4px;
+      }
+      .muted {
+        font-size: 13px;
+        color: var(--text-tertiary);
+        margin: 0;
+      }
+      .error {
+        margin: 0 18px 8px;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
+      .link {
+        color: var(--accent);
+        font-weight: 600;
+      }
 
-      .findings { list-style: none; margin: 0; padding: 8px 18px 18px; display: flex; flex-direction: column; gap: 8px; }
-      .finding { display: flex; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+      .findings {
+        list-style: none;
+        margin: 0;
+        padding: 8px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .finding {
+        display: flex;
+        gap: 10px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
       .sev-label {
-        flex: none; min-width: 60px; font-size: 11px; font-weight: 700;
-        text-transform: uppercase; letter-spacing: .06em; padding-top: 2px;
+        flex: none;
+        min-width: 60px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding-top: 2px;
       }
-      .sev-error .sev-label { color: var(--danger, #dc2626); }
-      .sev-warning .sev-label { color: #d97706; }
-      .sev-info .sev-label { color: var(--text-tertiary); }
+      .sev-error .sev-label {
+        color: var(--danger, #dc2626);
+      }
+      .sev-warning .sev-label {
+        color: #d97706;
+      }
+      .sev-info .sev-label {
+        color: var(--text-tertiary);
+      }
 
-      .group { padding: 0 18px 14px; }
-      .group h4 { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); margin: 10px 0 6px; }
-      .group-note { margin: 0 0 8px; font-size: 12px; color: var(--text-tertiary); }
-      .terms { display: flex; flex-wrap: wrap; gap: 6px; }
-      .term { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-light); }
-      .term.missing-required { border-color: color-mix(in srgb, var(--danger, #dc2626) 45%, transparent); color: var(--danger, #dc2626); }
-      .term.missing { color: var(--text-secondary); }
-      .term.matched { border-color: color-mix(in srgb, #16a34a 40%, transparent); color: #16a34a; }
+      .group {
+        padding: 0 18px 14px;
+      }
+      .group h4 {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+        margin: 10px 0 6px;
+      }
+      .group-note {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .terms {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .term {
+        font-size: 12px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--border-light);
+      }
+      .term.missing-required {
+        border-color: color-mix(in srgb, var(--danger, #dc2626) 45%, transparent);
+        color: var(--danger, #dc2626);
+      }
+      .term.missing {
+        color: var(--text-secondary);
+      }
+      .term.matched {
+        border-color: color-mix(in srgb, #16a34a 40%, transparent);
+        color: #16a34a;
+      }
 
-      .grounding { margin: 0; padding: 0 18px 18px; font-size: 12px; color: var(--text-tertiary); }
+      .grounding {
+        margin: 0;
+        padding: 0 18px 18px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
       @media (max-width: 768px) {
-        .page { padding: 16px; }
+        .page {
+          padding: 16px;
+        }
       }
     `,
   ],

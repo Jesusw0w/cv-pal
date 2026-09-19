@@ -3,11 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import {
-  CoverageResponse,
-  CvResponse,
-  ParseabilityResponse,
-} from '../../shared/models/api.model';
+import { CoverageResponse, CvResponse, ParseabilityResponse } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
 
 /** Matches the API's own upload rules, so a doomed upload is refused before it is sent. */
@@ -63,10 +59,9 @@ export class AnalysisService {
   }
 
   checkCoverage(cvId: number, jobDescription: string): Observable<CoverageResponse> {
-    return this.http.post<CoverageResponse>(
-      `${environment.apiUrl}/analysis/cvs/${cvId}/coverage`,
-      { job_description: jobDescription },
-    );
+    return this.http.post<CoverageResponse>(`${environment.apiUrl}/analysis/cvs/${cvId}/coverage`, {
+      job_description: jobDescription,
+    });
   }
 }
 

@@ -6,10 +6,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApplicationService } from '../../core/services/application.service';
 import { AnalysisService } from '../../core/services/analysis.service';
-import {
-  ApplicationResponse,
-  ApplicationStatus,
-} from '../../shared/models/api.model';
+import { ApplicationResponse, ApplicationStatus } from '../../shared/models/api.model';
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   applied: 'Applied',
@@ -20,13 +17,7 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
 };
 
 /** The order a status list should read in: open first, closed last. */
-const STATUSES: ApplicationStatus[] = [
-  'applied',
-  'interviewing',
-  'offer',
-  'rejected',
-  'withdrawn',
-];
+const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'rejected', 'withdrawn'];
 
 /**
  * What was sent, and what came back.
@@ -43,8 +34,8 @@ const STATUSES: ApplicationStatus[] = [
       <header class="intro">
         <h1>Applications</h1>
         <p>
-          What you sent and what came back. Nothing here is submitted for you — this is
-          the record of applications you made yourself.
+          What you sent and what came back. Nothing here is submitted for you — this is the record
+          of applications you made yourself.
         </p>
       </header>
 
@@ -63,7 +54,9 @@ const STATUSES: ApplicationStatus[] = [
             <span class="funnel-count">{{ applications.stats().by_status[status] }}</span>
             <span class="funnel-label">{{ label(status) }}</span>
           </div>
-          @if (!last) { <span class="funnel-arrow" aria-hidden="true">&rsaquo;</span> }
+          @if (!last) {
+            <span class="funnel-arrow" aria-hidden="true">&rsaquo;</span>
+          }
         }
         <div class="funnel-stage muted">
           <span class="funnel-count">{{ applications.stats().by_status['rejected'] }}</span>
@@ -84,12 +77,11 @@ const STATUSES: ApplicationStatus[] = [
         </div>
         <p class="rate-note">
           @if (applications.stats().answerable === 0) {
-            Nothing has been out long enough to expect an answer yet. A rate before then
-            would only be measuring how recently you applied.
+            Nothing has been out long enough to expect an answer yet. A rate before then would only
+            be measuring how recently you applied.
           } @else {
-            {{ applications.stats().replied }} of
-            {{ applications.stats().answerable }} applications old enough to have been
-            answered got a reply.
+            {{ applications.stats().replied }} of {{ applications.stats().answerable }} applications
+            old enough to have been answered got a reply.
           }
         </p>
       </section>
@@ -104,7 +96,9 @@ const STATUSES: ApplicationStatus[] = [
             @for (application of applications.needsChasing(); track application.id) {
               <div class="chase-row">
                 <span class="chase-title">{{ application.posting.title }}</span>
-                <span class="chase-org">{{ application.posting.company ?? 'Unknown company' }}</span>
+                <span class="chase-org">{{
+                  application.posting.company ?? 'Unknown company'
+                }}</span>
                 <span class="chase-age">{{ application.days_since_applied }} days</span>
               </div>
             }
@@ -117,7 +111,9 @@ const STATUSES: ApplicationStatus[] = [
       <section class="card">
         <div class="card-header">
           <h3>Record an application</h3>
-          <span class="card-note">{{ applications.unapplied().length }} saved posting(s) not applied for</span>
+          <span class="card-note"
+            >{{ applications.unapplied().length }} saved posting(s) not applied for</span
+          >
         </div>
         @if (applications.unapplied().length === 0) {
           <p class="body muted">
@@ -148,8 +144,8 @@ const STATUSES: ApplicationStatus[] = [
         </div>
         @if (applications.applications().length === 0) {
           <p class="body muted">
-            Nothing recorded yet. Every number above is computed from this list, so it
-            stays empty until you record the first one.
+            Nothing recorded yet. Every number above is computed from this list, so it stays empty
+            until you record the first one.
           </p>
         }
         <div class="rows">
@@ -166,7 +162,8 @@ const STATUSES: ApplicationStatus[] = [
                     &middot; <span class="muted">no CV recorded</span>
                   }
                   @if (application.needs_chasing) {
-                    &middot; <span class="warn">quiet {{ application.days_since_applied }} days</span>
+                    &middot;
+                    <span class="warn">quiet {{ application.days_since_applied }} days</span>
                   }
                 </span>
               </div>
@@ -180,9 +177,15 @@ const STATUSES: ApplicationStatus[] = [
                   <option [value]="status">{{ label(status) }}</option>
                 }
               </select>
-              <button type="button" class="remove" [disabled]="busy()"
-                      [attr.aria-label]="'Remove the record of applying to ' + application.posting.title"
-                      (click)="remove(application.id)">Remove</button>
+              <button
+                type="button"
+                class="remove"
+                [disabled]="busy()"
+                [attr.aria-label]="'Remove the record of applying to ' + application.posting.title"
+                (click)="remove(application.id)"
+              >
+                Remove
+              </button>
             </div>
           }
         </div>
@@ -192,59 +195,191 @@ const STATUSES: ApplicationStatus[] = [
   styles: [
     `
       /* .card, .card-header and .badge come from styles.css. */
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
-      .intro h1 { margin: 0 0 4px; font-size: 22px; }
-      .intro p { margin: 0; font-size: 14px; color: var(--text-tertiary); max-width: 70ch; }
-
-      .funnel { display: flex; gap: 4px; padding: 12px 8px; overflow-x: auto; }
-      .funnel-stage {
-        flex: 1 1 0; min-width: 88px; padding: 10px 8px;
-        display: flex; flex-direction: column; align-items: center; gap: 2px;
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
       }
-      .funnel-stage.muted .funnel-count { color: var(--text-tertiary); }
-      .funnel-count { font-size: 22px; font-weight: 700; line-height: 1; }
-      .funnel-label { font-size: 12px; color: var(--text-tertiary); }
-      .funnel-arrow { align-self: center; font-size: 18px; color: var(--text-tertiary); }
+      .intro h1 {
+        margin: 0 0 4px;
+        font-size: 22px;
+      }
+      .intro p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-tertiary);
+        max-width: 70ch;
+      }
 
-      .rate { display: flex; align-items: center; gap: 20px; padding: 16px 20px; }
-      .rate-figure { display: flex; flex-direction: column; align-items: center; min-width: 90px; }
-      .rate-value { font-size: 28px; font-weight: 700; line-height: 1; }
-      .rate-value small { font-size: 14px; font-weight: 500; color: var(--text-tertiary); }
-      .rate-label { font-size: 12px; color: var(--text-tertiary); }
-      .rate-note { margin: 0; font-size: 13px; color: var(--text-secondary); max-width: 62ch; }
+      .funnel {
+        display: flex;
+        gap: 4px;
+        padding: 12px 8px;
+        overflow-x: auto;
+      }
+      .funnel-stage {
+        flex: 1 1 0;
+        min-width: 88px;
+        padding: 10px 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .funnel-stage.muted .funnel-count {
+        color: var(--text-tertiary);
+      }
+      .funnel-count {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .funnel-label {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .funnel-arrow {
+        align-self: center;
+        font-size: 18px;
+        color: var(--text-tertiary);
+      }
 
-      .rows { padding: 4px 18px 16px; display: flex; flex-direction: column; }
-      .body { padding: 4px 18px 16px; font-size: 13px; }
-      .muted { color: var(--text-tertiary); }
-      .warn { color: #d97706; }
-      .error { margin: 0; padding: 0 18px 14px; font-size: 13px; color: var(--danger, #dc2626); }
+      .rate {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 16px 20px;
+      }
+      .rate-figure {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 90px;
+      }
+      .rate-value {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .rate-value small {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-tertiary);
+      }
+      .rate-label {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .rate-note {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+        max-width: 62ch;
+      }
 
-      .chase-row, .entry {
-        display: flex; align-items: center; gap: 12px; padding: 9px 0;
+      .rows {
+        padding: 4px 18px 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .body {
+        padding: 4px 18px 16px;
+        font-size: 13px;
+      }
+      .muted {
+        color: var(--text-tertiary);
+      }
+      .warn {
+        color: #d97706;
+      }
+      .error {
+        margin: 0;
+        padding: 0 18px 14px;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
+
+      .chase-row,
+      .entry {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 0;
         border-top: 1px solid var(--border-light);
       }
-      .chase-row:first-child, .entry:first-child { border-top: 0; }
-      .chase-title, .entry-title { font-size: 14px; font-weight: 600; }
-      .chase-org { flex: 1; font-size: 12px; color: var(--text-tertiary); }
-      .chase-age { font-size: 12px; color: #d97706; }
-
-      .entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-      .entry-meta { font-size: 12px; color: var(--text-tertiary); }
-      .entry.closed .entry-title { color: var(--text-tertiary); }
-      .entry select {
-        flex: none; padding: 6px 8px; font-size: 13px;
-        border: 1px solid var(--border-light); border-radius: var(--radius);
-        background: var(--bg-primary); color: var(--text-primary);
+      .chase-row:first-child,
+      .entry:first-child {
+        border-top: 0;
       }
-      .remove { flex: none; font-size: 12px; color: var(--text-tertiary); }
-      .remove:hover:not(:disabled) { color: var(--danger, #dc2626); }
-      .link { font-size: 13px; font-weight: 600; color: var(--accent); }
-      .link:disabled, .remove:disabled { opacity: .5; }
-      .retry { font-size: 13px; font-weight: 600; color: var(--accent); }
+      .chase-title,
+      .entry-title {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .chase-org {
+        flex: 1;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .chase-age {
+        font-size: 12px;
+        color: #d97706;
+      }
+
+      .entry-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .entry-meta {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .entry.closed .entry-title {
+        color: var(--text-tertiary);
+      }
+      .entry select {
+        flex: none;
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+      }
+      .remove {
+        flex: none;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .remove:hover:not(:disabled) {
+        color: var(--danger, #dc2626);
+      }
+      .link {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .link:disabled,
+      .remove:disabled {
+        opacity: 0.5;
+      }
+      .retry {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+      }
 
       @media (max-width: 768px) {
-        .page { padding: 16px; }
-        .entry { flex-wrap: wrap; }
+        .page {
+          padding: 16px;
+        }
+        .entry {
+          flex-wrap: wrap;
+        }
       }
     `,
   ],

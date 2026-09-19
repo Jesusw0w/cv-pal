@@ -57,8 +57,8 @@ function linesOf(text: string): string[] {
       <header class="intro">
         <h1>What you are looking for</h1>
         <p>
-          Job matches are scored against this, not against whatever a job board happened
-          to return. Leave anything blank that you genuinely do not mind about.
+          Job matches are scored against this, not against whatever a job board happened to return.
+          Leave anything blank that you genuinely do not mind about.
         </p>
       </header>
 
@@ -73,8 +73,8 @@ function linesOf(text: string): string[] {
         <section class="field">
           <h3>Target roles</h3>
           <p class="hint">
-            One per line. A posting's title is compared against these, so
-            "Backend Engineer" also matches "Senior Backend Engineer".
+            One per line. A posting's title is compared against these, so "Backend Engineer" also
+            matches "Senior Backend Engineer".
           </p>
           <textarea
             rows="4"
@@ -106,23 +106,21 @@ function linesOf(text: string): string[] {
             <input type="checkbox" [(ngModel)]="regimeStrict" name="regimeStrict" />
             <span>
               <strong>Non-negotiable.</strong>
-              Postings that state a different arrangement are hidden, not just ranked
-              lower. A posting that does not say is still shown.
+              Postings that state a different arrangement are hidden, not just ranked lower. A
+              posting that does not say is still shown.
             </span>
           </label>
           @if (regimeStrict && chosenRegimes().length === 0) {
-            <p class="warn">
-              Choose at least one arrangement, or nothing can ever match.
-            </p>
+            <p class="warn">Choose at least one arrangement, or nothing can ever match.</p>
           }
         </section>
 
         <section class="field">
           <h3>Where you can work</h3>
           <p class="hint">
-            One per line. Remote does not mean unrestricted &mdash; most remote postings
-            name a country or region you have to be in, and without this they are ranked
-            as if you could take them.
+            One per line. Remote does not mean unrestricted &mdash; most remote postings name a
+            country or region you have to be in, and without this they are ranked as if you could
+            take them.
           </p>
           <!-- Explicit write side: the suggestion chips and the warning read a signal,
                and a plain [(ngModel)] property would not notify them as you type. -->
@@ -139,9 +137,9 @@ function linesOf(text: string): string[] {
                the same reasoning that limits the skills alias map. So list every term a
                posting might use for somewhere you can work. -->
           <p class="hint">
-            List every wording that applies to you, including the wider regions: a
-            posting saying <em>Europe</em> is only matched if you listed Europe. Postings
-            open <em>worldwide</em> always match.
+            List every wording that applies to you, including the wider regions: a posting saying
+            <em>Europe</em> is only matched if you listed Europe. Postings open
+            <em>worldwide</em> always match.
           </p>
           @if (suggestions().length > 0) {
             <p class="suggest">
@@ -157,8 +155,8 @@ function linesOf(text: string): string[] {
             <input type="checkbox" [(ngModel)]="locationStrict" name="locationStrict" />
             <span>
               <strong>Non-negotiable.</strong>
-              Postings that name somewhere else are hidden, not just ranked lower. A
-              posting that does not say where is still shown.
+              Postings that name somewhere else are hidden, not just ranked lower. A posting that
+              does not say where is still shown.
             </span>
           </label>
           @if (locationStrict && chosenLocations().length === 0) {
@@ -206,66 +204,177 @@ function linesOf(text: string): string[] {
       </form>
 
       <p class="footnote">
-        Deferred on purpose until something reads them: direction (step up, sideways,
-        pivot), commute limits, contract types, company size, and the parts of a job you
-        want more and less of.
+        Deferred on purpose until something reads them: direction (step up, sideways, pivot),
+        commute limits, contract types, company size, and the parts of a job you want more and less
+        of.
       </p>
     </div>
   `,
   styles: [
     `
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; max-width: 720px; }
-      .intro h1 { font-size: 22px; margin: 0 0 6px; }
-      .intro p { margin: 0; font-size: 14px; color: var(--text-secondary); max-width: 70ch; }
-
-      .panel { display: flex; flex-direction: column; gap: 22px; padding: 22px; }
-      .field { display: flex; flex-direction: column; gap: 8px; }
-      .field h3 { font-size: 14px; margin: 0; }
-      .hint { margin: 0; font-size: 12px; color: var(--text-tertiary); max-width: 65ch; }
-
-      textarea, input {
-        padding: 9px 11px; border: 1px solid var(--border-light); border-radius: var(--radius);
-        background: var(--bg-primary); color: var(--text-primary);
-        font-size: 13px; font-family: inherit;
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 720px;
       }
-      textarea { resize: vertical; }
+      .intro h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .intro p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+        max-width: 70ch;
+      }
 
-      .choices { display: flex; flex-wrap: wrap; gap: 14px; }
-      .choice { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        padding: 22px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .field h3 {
+        font-size: 14px;
+        margin: 0;
+      }
+      .hint {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        max-width: 65ch;
+      }
 
-      .strict { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-tertiary); }
-      .strict input { margin-top: 2px; }
-      .strict strong { color: var(--text-secondary); }
+      textarea,
+      input {
+        padding: 9px 11px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: inherit;
+      }
+      textarea {
+        resize: vertical;
+      }
 
-      .salary { display: flex; gap: 8px; }
-      .salary input { width: 140px; }
-      .currency { width: 70px; text-transform: uppercase; }
+      .choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+      .choice {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+      }
 
-      .warn { margin: 0; font-size: 12px; color: #d97706; }
-      .error { margin: 0; font-size: 13px; color: var(--danger, #dc2626); }
-      .ok { margin: 0; font-size: 13px; color: #16a34a; }
-      .link { color: var(--accent); font-weight: 600; }
-      .notice { margin: 0; padding: 14px 18px; font-size: 13px; }
+      .strict {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .strict input {
+        margin-top: 2px;
+      }
+      .strict strong {
+        color: var(--text-secondary);
+      }
+
+      .salary {
+        display: flex;
+        gap: 8px;
+      }
+      .salary input {
+        width: 140px;
+      }
+      .currency {
+        width: 70px;
+        text-transform: uppercase;
+      }
+
+      .warn {
+        margin: 0;
+        font-size: 12px;
+        color: #d97706;
+      }
+      .error {
+        margin: 0;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
+      .ok {
+        margin: 0;
+        font-size: 13px;
+        color: #16a34a;
+      }
+      .link {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .notice {
+        margin: 0;
+        padding: 14px 18px;
+        font-size: 13px;
+      }
 
       .primary {
-        align-self: flex-start; padding: 9px 18px; border-radius: var(--radius);
-        background: var(--accent); color: #fff; font-size: 14px; font-weight: 600;
+        align-self: flex-start;
+        padding: 9px 18px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
       }
-      .primary:disabled { opacity: .5; }
+      .primary:disabled {
+        opacity: 0.5;
+      }
 
-      .footnote { margin: 0; font-size: 12px; color: var(--text-tertiary); max-width: 70ch; }
+      .footnote {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        max-width: 70ch;
+      }
 
       .suggest {
-        margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-        font-size: 12px; color: var(--text-tertiary);
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-tertiary);
       }
       .chip {
-        font-size: 12px; padding: 2px 9px; border-radius: 999px;
-        border: 1px solid var(--border-light); color: var(--text-secondary);
+        font-size: 12px;
+        padding: 2px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--border-light);
+        color: var(--text-secondary);
       }
-      .chip:hover { border-color: var(--accent); color: var(--accent); }
+      .chip:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
 
-      @media (max-width: 768px) { .page { padding: 16px; } }
+      @media (max-width: 768px) {
+        .page {
+          padding: 16px;
+        }
+      }
     `,
   ],
 })

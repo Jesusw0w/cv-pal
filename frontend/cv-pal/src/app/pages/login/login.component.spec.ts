@@ -16,9 +16,7 @@ describe('detailOf', () => {
     // Every password-policy rejection arrives in this shape, so reading `detail`
     // directly puts a stringified array in front of the user.
     const body = {
-      detail: [
-        { type: 'value_error', loc: ['body'], msg: 'Value error, Password is too common.' },
-      ],
+      detail: [{ type: 'value_error', loc: ['body'], msg: 'Value error, Password is too common.' }],
     };
 
     expect(detailOf(asError(body, 422))).toBe('Password is too common.');

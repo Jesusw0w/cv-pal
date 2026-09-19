@@ -20,11 +20,13 @@ describe('AuthService', () => {
 
   it('spends a refresh token once even when several requests refresh at the same time', () => {
     service.login('dev@cvpal.test', 'a-long-enough-password').subscribe();
-    http.expectOne((request) => request.url.endsWith('/auth/login')).flush({
-      access_token: 'access-1',
-      refresh_token: 'refresh-1',
-      token_type: 'bearer',
-    });
+    http
+      .expectOne((request) => request.url.endsWith('/auth/login'))
+      .flush({
+        access_token: 'access-1',
+        refresh_token: 'refresh-1',
+        token_type: 'bearer',
+      });
 
     const seen: string[] = [];
     service.refresh().subscribe((tokens) => seen.push(tokens.access_token));
@@ -47,18 +49,22 @@ describe('AuthService', () => {
 
   it('refreshes again after the previous refresh has settled', () => {
     service.login('dev@cvpal.test', 'a-long-enough-password').subscribe();
-    http.expectOne((request) => request.url.endsWith('/auth/login')).flush({
-      access_token: 'access-1',
-      refresh_token: 'refresh-1',
-      token_type: 'bearer',
-    });
+    http
+      .expectOne((request) => request.url.endsWith('/auth/login'))
+      .flush({
+        access_token: 'access-1',
+        refresh_token: 'refresh-1',
+        token_type: 'bearer',
+      });
 
     service.refresh().subscribe();
-    http.expectOne((request) => request.url.endsWith('/auth/refresh')).flush({
-      access_token: 'access-2',
-      refresh_token: 'refresh-2',
-      token_type: 'bearer',
-    });
+    http
+      .expectOne((request) => request.url.endsWith('/auth/refresh'))
+      .flush({
+        access_token: 'access-2',
+        refresh_token: 'refresh-2',
+        token_type: 'bearer',
+      });
 
     // The shared observable must be released on completion, or the session can never
     // be refreshed a second time and the user is logged out after 30 minutes.
@@ -70,11 +76,13 @@ describe('AuthService', () => {
 
   it('clears the session locally even if the server is unreachable on logout', () => {
     service.login('dev@cvpal.test', 'a-long-enough-password').subscribe();
-    http.expectOne((request) => request.url.endsWith('/auth/login')).flush({
-      access_token: 'access-1',
-      refresh_token: 'refresh-1',
-      token_type: 'bearer',
-    });
+    http
+      .expectOne((request) => request.url.endsWith('/auth/login'))
+      .flush({
+        access_token: 'access-1',
+        refresh_token: 'refresh-1',
+        token_type: 'bearer',
+      });
 
     service.logout();
     http

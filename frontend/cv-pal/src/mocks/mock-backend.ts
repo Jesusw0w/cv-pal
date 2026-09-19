@@ -119,17 +119,11 @@ export class MockBackend {
       return { status: 201, body: this.register(request.body) };
     }
 
-    if (
-      method === 'POST' &&
-      (path === '/auth/login' || path === '/auth/refresh')
-    ) {
+    if (method === 'POST' && (path === '/auth/login' || path === '/auth/refresh')) {
       return { status: 200, body: this.issueTokens() };
     }
 
-    if (
-      method === 'POST' &&
-      (path === '/auth/logout' || path === '/auth/logout-all')
-    ) {
+    if (method === 'POST' && (path === '/auth/logout' || path === '/auth/logout-all')) {
       return { status: 204, body: null };
     }
 
@@ -223,7 +217,7 @@ export class MockBackend {
         id: this.nextJobId++,
         source: payload.source ?? 'greenhouse',
         identifier: payload.identifier ?? 'acme',
-        label: payload.label ?? (payload.identifier ?? 'acme'),
+        label: payload.label ?? payload.identifier ?? 'acme',
         filter_by_goals: payload.filter_by_goals ?? false,
         last_synced_at: null,
         last_error: null,
@@ -293,9 +287,7 @@ export class MockBackend {
     const letterId = matchId(path, '/jobs', '/cover-letter');
     if (letterId !== null && (method === 'POST' || method === 'PUT')) {
       const edited =
-        method === 'PUT'
-          ? String((request.body as { body?: string } | null)?.body ?? '')
-          : null;
+        method === 'PUT' ? String((request.body as { body?: string } | null)?.body ?? '') : null;
       return { status: 200, body: this.coverLetter(letterId, edited) };
     }
 
@@ -616,10 +608,7 @@ export class MockBackend {
    * shows the real behaviour: the first letter scores 0, the second scaffolded one
    * scores high, and writing something specific brings it down.
    */
-  private coverLetter(
-    postingId: number,
-    edited: string | null,
-  ): CoverLetterDraftResponse {
+  private coverLetter(postingId: number, edited: string | null): CoverLetterDraftResponse {
     const posting = this.jobs.find((entry) => entry.posting.id === postingId);
     if (!posting) {
       throw new MockHttpError(404, 'Job posting not found');
@@ -818,9 +807,7 @@ export class MockBackend {
 
   /** Recompute the two fields the real API derives from today's date. */
   private withAge(application: ApplicationResponse): ApplicationResponse {
-    const days = Math.floor(
-      (Date.now() - new Date(application.applied_at).getTime()) / 86_400_000,
-    );
+    const days = Math.floor((Date.now() - new Date(application.applied_at).getTime()) / 86_400_000);
     const open = !['rejected', 'withdrawn'].includes(application.status);
     return { ...application, days_since_applied: days, needs_chasing: open && days > 14 };
   }
@@ -987,9 +974,7 @@ function mockSimilarity(draft: string, previous: string[]): number {
     if (words.length <= 5) {
       return new Set([words.join(' ')]);
     }
-    return new Set(
-      words.slice(0, words.length - 4).map((_, i) => words.slice(i, i + 5).join(' ')),
-    );
+    return new Set(words.slice(0, words.length - 4).map((_, i) => words.slice(i, i + 5).join(' ')));
   };
   const draftShingles = shingles(draft);
   const scores = previous.map((earlier) => {

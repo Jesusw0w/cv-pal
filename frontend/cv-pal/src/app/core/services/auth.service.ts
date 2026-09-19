@@ -30,10 +30,10 @@ export class AuthService {
   private readonly http = inject(HttpClient);
 
   private readonly access = signal(
-    environment.useMocks ? 'mock-session' : store?.getItem(ACCESS_KEY) ?? null,
+    environment.useMocks ? 'mock-session' : (store?.getItem(ACCESS_KEY) ?? null),
   );
   private readonly refreshToken = signal(
-    environment.useMocks ? 'mock-session' : store?.getItem(REFRESH_KEY) ?? null,
+    environment.useMocks ? 'mock-session' : (store?.getItem(REFRESH_KEY) ?? null),
   );
 
   /**

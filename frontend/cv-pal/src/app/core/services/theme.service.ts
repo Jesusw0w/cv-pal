@@ -20,6 +20,6 @@ export class ThemeService {
   }
 
   toggle() {
-    this.dark.update(v => !v);
+    this.dark.update((v) => !v);
   }
 }

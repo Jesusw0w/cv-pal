@@ -10,53 +10,69 @@ import { hasSeenWelcome } from './first-run';
   selector: 'app-layout',
   imports: [RouterOutlet, SidebarComponent, TopbarComponent],
   template: `
-    <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="sidebarOpen.set(false)"></div>
-    <app-sidebar [open]="sidebarOpen()" (close)="sidebarOpen.set(false)" />
+    <!-- A button, not a div: the backdrop dismisses the menu, so it has to be reachable
+         and activatable from the keyboard like any other control that does that. -->
+    <button
+      type="button"
+      class="sidebar-overlay"
+      [class.visible]="sidebarOpen()"
+      (click)="sidebarOpen.set(false)"
+      aria-label="Close the menu"
+    ></button>
+    <app-sidebar [open]="sidebarOpen()" (closed)="sidebarOpen.set(false)" />
     <div class="main-area">
       <app-topbar (menuToggle)="sidebarOpen.set(!sidebarOpen())" />
       <router-outlet />
     </div>
   `,
-  styles: [`
-    :host {
-      display: flex;
-      min-height: 100vh;
-    }
+  styles: [
+    `
+      :host {
+        display: flex;
+        min-height: 100vh;
+      }
 
-    .main-area {
-      margin-left: var(--sidebar-width);
-      flex: 1;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .sidebar-overlay {
-      display: none;
-    }
-
-    @media (max-width: 768px) {
       .main-area {
-        margin-left: 0;
+        margin-left: var(--sidebar-width);
+        flex: 1;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
       .sidebar-overlay {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, .4);
-        z-index: 99;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity .2s;
+        display: none;
       }
 
-      .sidebar-overlay.visible {
-        opacity: 1;
-        pointer-events: auto;
+      @media (max-width: 768px) {
+        .main-area {
+          margin-left: 0;
+        }
+
+        .sidebar-overlay {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 99;
+          opacity: 0;
+          pointer-events: none;
+          /* Not just opacity: a transparent button still takes tab focus, which would
+             put an invisible "Close the menu" stop in front of every page. */
+          visibility: hidden;
+          transition:
+            opacity 0.2s,
+            visibility 0.2s;
+        }
+
+        .sidebar-overlay.visible {
+          opacity: 1;
+          pointer-events: auto;
+          visibility: visible;
+        }
       }
-    }
-  `]
+    `,
+  ],
 })
 export class LayoutComponent {
   private readonly auth = inject(AuthService);

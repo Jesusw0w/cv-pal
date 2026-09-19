@@ -26,8 +26,8 @@ import { CvResponse } from '../../shared/models/api.model';
         <h1>Documents</h1>
         <p>
           The CVs you have uploaded. Each one can be checked against a posting on the
-          <a routerLink="/analysis">analysis screen</a>, or reviewed by a language model
-          under <a routerLink="/ai-tools">AI review</a>.
+          <a routerLink="/analysis">analysis screen</a>, or reviewed by a language model under
+          <a routerLink="/ai-tools">AI review</a>.
         </p>
       </header>
 
@@ -35,7 +35,12 @@ import { CvResponse } from '../../shared/models/api.model';
         <div class="card-header">
           <h3>Your CVs</h3>
           <label class="upload">
-            <input type="file" accept=".pdf,.docx" (change)="onFileChosen($event)" [disabled]="uploading()" />
+            <input
+              type="file"
+              accept=".pdf,.docx"
+              (change)="onFileChosen($event)"
+              [disabled]="uploading()"
+            />
             {{ uploading() ? 'Uploading…' : 'Upload a CV' }}
           </label>
         </div>
@@ -65,58 +70,144 @@ import { CvResponse } from '../../shared/models/api.model';
               <div class="doc-actions">
                 <a routerLink="/analysis" class="link">Analyse</a>
                 <a routerLink="/ai-tools" class="link">Review</a>
-                <button type="button" class="remove" [attr.aria-label]="'Delete ' + cv.filename" (click)="remove(cv)">
+                <button
+                  type="button"
+                  class="remove"
+                  [attr.aria-label]="'Delete ' + cv.filename"
+                  (click)="remove(cv)"
+                >
                   Delete
                 </button>
               </div>
             </li>
           } @empty {
             @if (!analysis.isLoading()) {
-              <li class="empty">
-                Nothing uploaded yet. A PDF or DOCX under 10 MB.
-              </li>
+              <li class="empty">Nothing uploaded yet. A PDF or DOCX under 10 MB.</li>
             }
           }
         </ul>
       </section>
 
       <p class="footnote">
-        Generated CVs and cover letters are not built yet — this lists the files you
-        uploaded, not documents CV Pal produced.
+        Generated CVs and cover letters are not built yet — this lists the files you uploaded, not
+        documents CV Pal produced.
       </p>
     </div>
   `,
   styles: [
     `
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; max-width: 820px; }
-      .intro h1 { font-size: 22px; margin: 0 0 6px; }
-      .intro p { margin: 0; font-size: 14px; color: var(--text-secondary); max-width: 72ch; }
-      .intro a, .link { color: var(--accent); font-weight: 600; }
-
-      .upload { font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; }
-      .upload input { display: none; }
-
-      .docs { list-style: none; margin: 0; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-      .doc {
-        display: flex; align-items: center; justify-content: space-between; gap: 16px;
-        padding: 10px 10px; border-radius: var(--radius);
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 820px;
       }
-      .doc:hover { background: var(--bg-hover); }
-      .doc + .doc { border-top: 1px solid var(--border-light); }
-      .doc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-      .doc-name { font-size: 14px; font-weight: 500; }
-      .doc-meta { font-size: 12px; color: var(--text-tertiary); }
-      .doc-actions { display: flex; align-items: center; gap: 14px; flex: none; font-size: 12px; }
-      .remove { font-size: 12px; color: var(--text-tertiary); }
-      .remove:hover { color: var(--danger, #dc2626); }
+      .intro h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .intro p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+        max-width: 72ch;
+      }
+      .intro a,
+      .link {
+        color: var(--accent);
+        font-weight: 600;
+      }
 
-      .empty, .muted { padding: 12px; font-size: 13px; color: var(--text-tertiary); margin: 0; }
-      .error { margin: 0; padding: 4px 18px 10px; font-size: 13px; color: var(--danger, #dc2626); }
-      .footnote { margin: 0; font-size: 12px; color: var(--text-tertiary); }
+      .upload {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .upload input {
+        display: none;
+      }
+
+      .docs {
+        list-style: none;
+        margin: 0;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .doc {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 10px;
+        border-radius: var(--radius);
+      }
+      .doc:hover {
+        background: var(--bg-hover);
+      }
+      .doc + .doc {
+        border-top: 1px solid var(--border-light);
+      }
+      .doc-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .doc-name {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .doc-meta {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .doc-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: none;
+        font-size: 12px;
+      }
+      .remove {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .remove:hover {
+        color: var(--danger, #dc2626);
+      }
+
+      .empty,
+      .muted {
+        padding: 12px;
+        font-size: 13px;
+        color: var(--text-tertiary);
+        margin: 0;
+      }
+      .error {
+        margin: 0;
+        padding: 4px 18px 10px;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
+      .footnote {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
       @media (max-width: 768px) {
-        .page { padding: 16px; }
-        .doc { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .page {
+          padding: 16px;
+        }
+        .doc {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
       }
     `,
   ],
@@ -158,8 +249,7 @@ export class DocumentsComponent {
   remove(cv: CvResponse): void {
     this.analysis.delete(cv.id).subscribe({
       next: () => this.analysis.reload(),
-      error: (error: unknown) =>
-        this.error.set(messageFor(error, 'Could not delete that file.')),
+      error: (error: unknown) => this.error.set(messageFor(error, 'Could not delete that file.')),
     });
   }
 }

@@ -34,13 +34,7 @@ const NOTICES: Record<string, string> = {
 
         <label>
           Email
-          <input
-            name="email"
-            type="email"
-            [(ngModel)]="email"
-            autocomplete="username"
-            required
-          />
+          <input name="email" type="email" [(ngModel)]="email" autocomplete="username" required />
         </label>
 
         <label>

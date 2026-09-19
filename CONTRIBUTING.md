@@ -17,10 +17,12 @@ cd frontend/cv-pal && npm install && npm run start:mock   # UI only, no backend
 
 ```bash
 cd backend         && uv run nox                          # ruff + mypy --strict + pytest + migrations
-cd frontend/cv-pal && npm test -- --watch=false && npm run build
+cd frontend/cv-pal && npm run lint && npm run format:check && npm test -- --watch=false && npm run build
 ```
 
 Both must be green. CI runs the same commands, so there are no surprises.
+
+`npm run format` applies Prettier, the way `uv run nox -s format` does for the backend.
 
 ## What the code expects
 

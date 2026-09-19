@@ -17,6 +17,19 @@ and why each decision went the way it did — is in
   because every test used the dev environment's `http://localhost:8000` form.
 - A crash in the topbar when it read the route title during construction, before the
   deepest route had a snapshot — the second reason `npm run start:mock` showed nothing.
+- **The mobile menu backdrop could not be dismissed from the keyboard.** It was a `div`
+  with a click handler; it is now a labelled button, hidden from the tab order while the
+  menu is closed. Found by the new frontend linter.
+- The sidebar's `close` output shadowed the native DOM `close` event, and is now
+  `closed`.
+
+### Added
+
+- **The frontend has a linter.** `angular-eslint` with the recommended TypeScript,
+  Angular and template-accessibility rules, wired to `npm run lint` and enforced in CI.
+  Prettier was configured but nothing ran it, so 52 files had drifted; `npm run format`
+  applies it and `npm run format:check` gates it. The backend already had the equivalent
+  through `nox`.
 
 ### Changed
 

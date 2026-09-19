@@ -94,13 +94,7 @@ export interface ParseabilityResponse {
  * of a vacancy. `other` exists because Remotive emits it.
  */
 export type EmploymentType =
-  | 'full_time'
-  | 'part_time'
-  | 'contract'
-  | 'freelance'
-  | 'internship'
-  | 'volunteer'
-  | 'other';
+  'full_time' | 'part_time' | 'contract' | 'freelance' | 'internship' | 'volunteer' | 'other';
 
 export type ProficiencyLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 
@@ -428,12 +422,7 @@ export interface SyncResultResponse {
  * There is no "no reply" — silence is the absence of a status, and time since
  * `applied_at` says it better than a state nothing would ever write.
  */
-export type ApplicationStatus =
-  | 'applied'
-  | 'interviewing'
-  | 'offer'
-  | 'rejected'
-  | 'withdrawn';
+export type ApplicationStatus = 'applied' | 'interviewing' | 'offer' | 'rejected' | 'withdrawn';
 
 export interface ApplicationResponse {
   id: number;
@@ -510,10 +499,7 @@ export interface LinkedInSectionResponse {
 }
 
 export type LinkedInIssueKind =
-  | 'employer_only_on_linkedin'
-  | 'employer_only_on_profile'
-  | 'title_differs'
-  | 'dates_differ';
+  'employer_only_on_linkedin' | 'employer_only_on_profile' | 'title_differs' | 'dates_differ';
 
 export interface LinkedInIssueResponse {
   kind: LinkedInIssueKind;

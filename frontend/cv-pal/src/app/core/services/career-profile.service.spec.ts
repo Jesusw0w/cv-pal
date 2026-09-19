@@ -166,17 +166,19 @@ describe('CareerProfileService on a brand-new account', () => {
 
     service.profile();
     TestBed.tick();
-    http.expectOne((request) => request.url.endsWith('/profile')).flush({
-      id: 1,
-      headline: null,
-      summary: null,
-      location: null,
-      website_url: null,
-      linkedin_url: null,
-      experiences: [],
-      educations: [],
-      skills: [],
-    });
+    http
+      .expectOne((request) => request.url.endsWith('/profile'))
+      .flush({
+        id: 1,
+        headline: null,
+        summary: null,
+        location: null,
+        website_url: null,
+        linkedin_url: null,
+        experiences: [],
+        educations: [],
+        skills: [],
+      });
     TestBed.tick();
   });
 

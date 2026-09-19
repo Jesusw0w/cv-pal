@@ -88,11 +88,16 @@ useful when working with a real CV.
 
 ```bash
 cd backend            && uv run nox              # ruff + mypy --strict + pytest + migrations
-cd frontend/cv-pal    && npm test -- --watch=false && npm run build
+cd frontend/cv-pal    && npm run lint && npm run format:check && npm test -- --watch=false && npm run build
 ```
 
 `nox` runs four sessions (`lint`, `typecheck`, `tests`, `migrations`). Run one with
 `uv run nox -s lint`. `uv run nox -s format` applies ruff formatting and safe autofixes.
+
+The frontend splits the same job across two tools: `npm run lint` is ESLint
+(`angular-eslint`, including template accessibility rules) and catches mistakes, while
+`npm run format` is Prettier and settles layout. They do not overlap — the ESLint config
+carries no stylistic rules — so neither needs to know about the other.
 
 The `migrations` session applies every revision to a throwaway database, runs
 `alembic check`, and rolls back to base. It is there for the one failure the test suite
