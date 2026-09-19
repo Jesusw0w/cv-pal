@@ -1,31 +1,11 @@
 """The LinkedIn import and review endpoints."""
 
-import io
-import zipfile
-
 from httpx import AsyncClient
 
-from tests.helpers import register_and_login
+from tests.helpers import linkedin_archive, register_and_login
 from tests.test_linkedin_parsing import REAL_EXPORT
 
-
-def _archive(files: dict[str, str]) -> bytes:
-    """Build a LinkedIn-shaped export archive.
-
-    Args:
-        files: Member name to CSV body.
-
-    Returns:
-        The ZIP bytes.
-    """
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, body in files.items():
-            archive.writestr(name, body)
-    return buffer.getvalue()
-
-
-FULL_EXPORT = _archive(
+FULL_EXPORT = linkedin_archive(
     {
         "Profile.csv": (
             "First Name,Last Name,Headline,Summary\n"
@@ -176,7 +156,11 @@ async def test_a_document_that_is_not_a_profile_is_refused(
         "/linkedin/import",
         headers=headers,
         files={
-            "file": ("notes.zip", _archive({"Notes.csv": "a\n1\n"}), "application/zip")
+            "file": (
+                "notes.zip",
+                linkedin_archive({"Notes.csv": "a\n1\n"}),
+                "application/zip",
+            )
         },
     )
 

@@ -67,10 +67,6 @@ def needs_chasing(application: Application) -> bool:
 async def list_applications(db: AsyncSession, *, user_id: int) -> list[Application]:
     """Return the user's applications, most recently sent first.
 
-    Args:
-        db: Async database session.
-        user_id: The owning user.
-
     Returns:
         The applications, each with its posting loaded.
     """
@@ -221,10 +217,6 @@ async def applied_posting_ids(db: AsyncSession, *, user_id: int) -> set[int]:
 
     Lets the job list mark them without a query per posting.
 
-    Args:
-        db: Async database session.
-        user_id: The owning user.
-
     Returns:
         The posting ids.
     """
@@ -276,10 +268,6 @@ async def postings_without_applications(
     db: AsyncSession, *, user_id: int
 ) -> list[JobPosting]:
     """Saved postings the user has not recorded an application for.
-
-    Args:
-        db: Async database session.
-        user_id: The owning user.
 
     Returns:
         The postings, newest first.

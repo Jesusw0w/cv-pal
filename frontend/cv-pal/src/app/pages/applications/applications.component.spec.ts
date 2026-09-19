@@ -17,9 +17,7 @@ describe('ApplicationsComponent', () => {
     const fixture = TestBed.createComponent(ApplicationsComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('h1').textContent).toContain(
-      'Applications',
-    );
+    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Applications');
     expect(fixture.nativeElement.textContent).toContain('Nothing recorded yet');
   });
 
@@ -31,9 +29,7 @@ describe('ApplicationsComponent', () => {
 
     const rate: string = fixture.nativeElement.querySelector('.rate-value').textContent;
     expect(rate).not.toContain('0%');
-    expect(fixture.nativeElement.textContent).toContain(
-      'Nothing has been out long enough',
-    );
+    expect(fixture.nativeElement.textContent).toContain('Nothing has been out long enough');
   });
 
   it('records an application against the posting it is for', () => {

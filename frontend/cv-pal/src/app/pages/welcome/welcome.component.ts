@@ -41,7 +41,11 @@ const ROLE_SUGGESTIONS = 2;
         <div class="progress">
           <div class="dots" aria-hidden="true">
             @for (index of steps; track index) {
-              <span class="dot" [class.on]="index <= step()" [class.skipped]="skipped(index)"></span>
+              <span
+                class="dot"
+                [class.on]="index <= step()"
+                [class.skipped]="skipped(index)"
+              ></span>
             }
           </div>
           <span class="count" role="status">Step {{ step() + 1 }} of {{ steps.length }}</span>
@@ -54,15 +58,14 @@ const ROLE_SUGGESTIONS = 2;
           <section class="card step">
             <h2>Welcome to CV Pal</h2>
             <p>
-              CV Pal keeps one structured record of your career and writes every CV from
-              it. That is what lets it tailor a CV to a posting without inventing
-              anything — if a fact is not in your record, it will not appear in a
-              document, it will be reported to you as a gap.
+              CV Pal keeps one structured record of your career and writes every CV from it. That is
+              what lets it tailor a CV to a posting without inventing anything — if a fact is not in
+              your record, it will not appear in a document, it will be reported to you as a gap.
             </p>
             <p class="muted">
-              Setting that record up takes about five minutes, and the fastest way is to
-              let it read a CV you already have. Nothing is saved until you say so, and
-              you can change any of it later.
+              Setting that record up takes about five minutes, and the fastest way is to let it read
+              a CV you already have. Nothing is saved until you say so, and you can change any of it
+              later.
             </p>
             <div class="actions">
               <button type="button" class="primary" (click)="step.set(1)">Get started</button>
@@ -74,8 +77,8 @@ const ROLE_SUGGESTIONS = 2;
           <section class="card step">
             <h2>Start with a CV</h2>
             <p>
-              Upload the CV you use now. It is read on your machine — parsing, the ATS
-              check and keyword coverage all run without a language model.
+              Upload the CV you use now. It is read on your machine — parsing, the ATS check and
+              keyword coverage all run without a language model.
             </p>
 
             <label
@@ -114,9 +117,9 @@ const ROLE_SUGGESTIONS = 2;
           <section class="step">
             <h2>Keep what it read correctly</h2>
             <p class="lead">
-              Extraction is a guess at a layout nobody controls, so nothing here is saved
-              until you add it. Add the rows that are right and ignore the rest — you can
-              add anything it missed by hand afterwards.
+              Extraction is a guess at a layout nobody controls, so nothing here is saved until you
+              add it. Add the rows that are right and ignore the rest — you can add anything it
+              missed by hand afterwards.
             </p>
 
             <app-import-panel [cvId]="uploadedId()" (added)="profile.reload()" />
@@ -132,8 +135,8 @@ const ROLE_SUGGESTIONS = 2;
           <section class="card step">
             <h2>The parts a CV does not say plainly</h2>
             <p class="muted">
-              A headline and a summary are the top of every CV this generates. Both are
-              rewritten per posting later — these are the starting point.
+              A headline and a summary are the top of every CV this generates. Both are rewritten
+              per posting later — these are the starting point.
             </p>
 
             <label class="field">
@@ -146,8 +149,8 @@ const ROLE_SUGGESTIONS = 2;
                 placeholder="Ana Silva"
               />
               <small class="help">
-                The heading of every CV and cover letter this generates. Without it they
-                are titled "Curriculum Vitae".
+                The heading of every CV and cover letter this generates. Without it they are titled
+                "Curriculum Vitae".
               </small>
             </label>
 
@@ -193,8 +196,8 @@ const ROLE_SUGGESTIONS = 2;
 
             @if (drafted()) {
               <p class="note">
-                Drafted from the roles and skills in your profile, and not saved yet.
-                Read it before you keep it — it is your name on it.
+                Drafted from the roles and skills in your profile, and not saved yet. Read it before
+                you keep it — it is your name on it.
               </p>
             }
 
@@ -218,8 +221,8 @@ const ROLE_SUGGESTIONS = 2;
           <section class="card step">
             <h2>What are you looking for?</h2>
             <p class="muted">
-              This is what a posting is scored against. Without it every job scores the
-              same, which is the same as not scoring them at all.
+              This is what a posting is scored against. Without it every job scores the same, which
+              is the same as not scoring them at all.
             </p>
 
             <label class="field">
@@ -289,73 +292,210 @@ const ROLE_SUGGESTIONS = 2;
   `,
   styles: [
     `
-      .wrap { max-width: 720px; margin: 0 auto; padding: 12px 0 40px; }
-      .head { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 18px; }
-      .progress { display: flex; align-items: center; gap: 10px; }
-      .dots { display: flex; gap: 6px; }
-      .dot { width: 26px; height: 4px; border-radius: 2px; background: var(--border-light); }
-      .dot.on { background: var(--accent); }
-      .dot.skipped { background: var(--border-light); outline: 1px solid var(--accent); }
-      .count { font-size: 12px; color: var(--text-tertiary); }
-      .skip { font-size: 12px; color: var(--text-tertiary); }
-      .skip:hover { color: var(--text-primary); }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 12px 0 40px;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 2px 18px;
+      }
+      .progress {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .dots {
+        display: flex;
+        gap: 6px;
+      }
+      .dot {
+        width: 26px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border-light);
+      }
+      .dot.on {
+        background: var(--accent);
+      }
+      .dot.skipped {
+        background: var(--border-light);
+        outline: 1px solid var(--accent);
+      }
+      .count {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .skip {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .skip:hover {
+        color: var(--text-primary);
+      }
 
-      .step { padding: 22px; }
-      .step h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin: 0 0 10px; }
-      .step p { font-size: 14px; line-height: 1.6; margin: 0 0 12px; }
-      .muted { color: var(--text-tertiary); }
-      .lead { color: var(--text-secondary); }
+      .step {
+        padding: 22px;
+      }
+      .step h2 {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+        margin: 0 0 10px;
+      }
+      .step p {
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0 0 12px;
+      }
+      .muted {
+        color: var(--text-tertiary);
+      }
+      .lead {
+        color: var(--text-secondary);
+      }
 
       .drop {
-        display: block; padding: 22px; margin: 6px 0 4px; text-align: center; cursor: pointer;
-        border: 1px dashed var(--border-light); border-radius: var(--radius);
-        color: var(--text-secondary); font-size: 13px;
+        display: block;
+        padding: 22px;
+        margin: 6px 0 4px;
+        text-align: center;
+        cursor: pointer;
+        border: 1px dashed var(--border-light);
+        border-radius: var(--radius);
+        color: var(--text-secondary);
+        font-size: 13px;
       }
-      .drop:hover, .drop.over { border-color: var(--accent); color: var(--accent); }
-      .drop.over { background: var(--accent-light); }
-      .drop input { display: none; }
-
-      .field { display: block; margin: 14px 0; }
-      .field > span, .field legend {
-        display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;
-        font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      .drop:hover,
+      .drop.over {
+        border-color: var(--accent);
+        color: var(--accent);
       }
-      .field input, .field textarea {
-        width: 100%; padding: 9px 11px; font: inherit; font-size: 14px;
-        border: 1px solid var(--border-light); border-radius: var(--radius);
-        background: var(--bg-primary); color: var(--text-primary);
+      .drop.over {
+        background: var(--accent-light);
       }
-      .field textarea { resize: vertical; }
-      .help { display: block; margin-top: 5px; font-size: 11px; color: var(--text-tertiary); }
-      fieldset.field { border: 0; padding: 0; margin: 14px 0; }
+      .drop input {
+        display: none;
+      }
 
-      .row { display: flex; gap: 12px; align-items: flex-end; }
-      .grow { flex: 1; }
-      .currency { width: 110px; }
+      .field {
+        display: block;
+        margin: 14px 0;
+      }
+      .field > span,
+      .field legend {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 9px 11px;
+        font: inherit;
+        font-size: 14px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+      }
+      .field textarea {
+        resize: vertical;
+      }
+      .help {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        color: var(--text-tertiary);
+      }
+      fieldset.field {
+        border: 0;
+        padding: 0;
+        margin: 14px 0;
+      }
 
-      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+      }
+      .grow {
+        flex: 1;
+      }
+      .currency {
+        width: 110px;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
       .chip {
-        font-size: 13px; padding: 7px 14px; border-radius: 999px;
-        border: 1px solid var(--border-light); color: var(--text-secondary);
+        font-size: 13px;
+        padding: 7px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border-light);
+        color: var(--text-secondary);
       }
-      .chip.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+      .chip.on {
+        border-color: var(--accent);
+        background: var(--accent-light);
+        color: var(--accent);
+      }
 
       .note {
-        font-size: 12px; color: var(--text-tertiary);
-        border-left: 2px solid var(--accent); padding-left: 10px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        border-left: 2px solid var(--accent);
+        padding-left: 10px;
       }
-      .error { font-size: 13px; color: var(--danger, #dc2626); }
+      .error {
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
 
-      .actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
-      .actions .primary {
-        margin-left: auto; padding: 9px 18px; border-radius: var(--radius);
-        background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
       }
-      .actions .primary:disabled { opacity: .5; }
-      .ghost { font-size: 13px; color: var(--text-secondary); padding: 9px 4px; }
-      .link { font-size: 13px; font-weight: 600; color: var(--accent); }
-      .link.inline { font-size: 11px; }
-      .link:disabled { opacity: .5; }
+      .actions .primary {
+        margin-left: auto;
+        padding: 9px 18px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .actions .primary:disabled {
+        opacity: 0.5;
+      }
+      .ghost {
+        font-size: 13px;
+        color: var(--text-secondary);
+        padding: 9px 4px;
+      }
+      .link {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .link.inline {
+        font-size: 11px;
+      }
+      .link:disabled {
+        opacity: 0.5;
+      }
     `,
   ],
 })

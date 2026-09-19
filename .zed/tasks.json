@@ -74,6 +74,18 @@
     "reveal": "always"
   },
   {
+    "label": "frontend: lint",
+    "command": "npm run lint",
+    "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",
+    "save": "all"
+  },
+  {
+    "label": "frontend: format (applies fixes)",
+    "command": "npm run format",
+    "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",
+    "save": "all"
+  },
+  {
     "label": "frontend: tests",
     "command": "npm test -- --watch=false",
     "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",

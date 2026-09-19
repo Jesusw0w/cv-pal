@@ -11,8 +11,6 @@ sharing a name prefix, the three roles under one employer line, and the location
 appears with and without a region. Each of those is a bug this fixture caught.
 """
 
-import io
-import zipfile
 from datetime import date
 
 from cv_pal.analysis.linkedin import (
@@ -22,6 +20,7 @@ from cv_pal.analysis.linkedin import (
 )
 from cv_pal.analysis.linkedin_export import parse_export
 from cv_pal.constants import LinkedInSectionStatus, LinkedInSource
+from tests.helpers import linkedin_archive
 
 # Sidebar, then identity, then body; several roles share one employer line. The
 # non-breaking spaces are real — pypdf emits them, and they caused a bug.
@@ -181,25 +180,9 @@ def test_paste_is_not_scored_for_sections_it_could_not_delimit() -> None:
     assert "no section boundaries" in result.note
 
 
-def _archive(files: dict[str, str]) -> bytes:
-    """Build a LinkedIn-shaped export archive.
-
-    Args:
-        files: Member name to CSV body.
-
-    Returns:
-        The ZIP bytes.
-    """
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, body in files.items():
-            archive.writestr(name, body)
-    return buffer.getvalue()
-
-
 def test_the_data_export_carries_what_the_pdf_drops() -> None:
     """The archive states the full skill list, the About text and role descriptions."""
-    data = _archive(
+    data = linkedin_archive(
         {
             "Profile.csv": (
                 "First Name,Last Name,Headline,Summary\n"
@@ -235,7 +218,7 @@ def test_the_data_export_carries_what_the_pdf_drops() -> None:
 
 def test_an_archive_without_profile_files_parses_to_nothing() -> None:
     """Selecting the wrong files when requesting the export is reported, not crashed."""
-    snapshot = parse_export(_archive({"Connections.csv": "First Name\nAda\n"}))
+    snapshot = parse_export(linkedin_archive({"Connections.csv": "First Name\nAda\n"}))
 
     assert snapshot.is_empty is True
 

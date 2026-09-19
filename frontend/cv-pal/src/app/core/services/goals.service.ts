@@ -3,10 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import {
-  CareerGoalsResponse,
-  CareerGoalsUpdate,
-} from '../../shared/models/api.model';
+import { CareerGoalsResponse, CareerGoalsUpdate } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
 
 const EMPTY_GOALS: CareerGoalsResponse = {
@@ -47,9 +44,6 @@ export class GoalsService {
 
   /** A replace, not a merge: an omitted preference means the user cleared it. */
   save(payload: CareerGoalsUpdate): Observable<CareerGoalsResponse> {
-    return this.http.put<CareerGoalsResponse>(
-      `${environment.apiUrl}/profile/goals`,
-      payload,
-    );
+    return this.http.put<CareerGoalsResponse>(`${environment.apiUrl}/profile/goals`, payload);
   }
 }

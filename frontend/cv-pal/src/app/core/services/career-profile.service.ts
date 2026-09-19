@@ -96,7 +96,9 @@ export class CareerProfileService {
   );
 
   readonly educations = computed(() =>
-    [...this.profile().educations].sort((a, b) => (b.end_date ?? '').localeCompare(a.end_date ?? '')),
+    [...this.profile().educations].sort((a, b) =>
+      (b.end_date ?? '').localeCompare(a.end_date ?? ''),
+    ),
   );
 
   /**
@@ -203,10 +205,7 @@ export class CareerProfileService {
   }
 
   addExperience(payload: ExperienceCreate): Observable<ExperienceResponse> {
-    return this.http.post<ExperienceResponse>(
-      `${environment.apiUrl}/profile/experiences`,
-      payload,
-    );
+    return this.http.post<ExperienceResponse>(`${environment.apiUrl}/profile/experiences`, payload);
   }
 
   updateExperience(id: number, payload: ExperienceUpdate): Observable<ExperienceResponse> {
@@ -221,10 +220,7 @@ export class CareerProfileService {
   }
 
   addEducation(payload: EducationCreate): Observable<EducationResponse> {
-    return this.http.post<EducationResponse>(
-      `${environment.apiUrl}/profile/educations`,
-      payload,
-    );
+    return this.http.post<EducationResponse>(`${environment.apiUrl}/profile/educations`, payload);
   }
 
   updateEducation(id: number, payload: EducationUpdate): Observable<EducationResponse> {
@@ -244,10 +240,7 @@ export class CareerProfileService {
 
   /** Amend a skill. `evidence_experience_ids` replaces the citations when sent. */
   updateSkill(id: number, payload: SkillUpdate): Observable<SkillResponse> {
-    return this.http.patch<SkillResponse>(
-      `${environment.apiUrl}/profile/skills/${id}`,
-      payload,
-    );
+    return this.http.patch<SkillResponse>(`${environment.apiUrl}/profile/skills/${id}`, payload);
   }
 
   deleteSkill(id: number): Observable<void> {
@@ -287,10 +280,7 @@ export class CareerProfileService {
    * model configured — it fails with 502 when there is none.
    */
   generateSummary(): Observable<ProfileSummaryResponse> {
-    return this.http.post<ProfileSummaryResponse>(
-      `${environment.apiUrl}/profile/summary`,
-      null,
-    );
+    return this.http.post<ProfileSummaryResponse>(`${environment.apiUrl}/profile/summary`, null);
   }
 
   /**

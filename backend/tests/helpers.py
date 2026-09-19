@@ -1,3 +1,4 @@
+import zipfile
 from io import BytesIO
 
 from httpx import AsyncClient
@@ -24,6 +25,15 @@ def _build_minimal_pdf() -> bytes:
 
 
 MINIMAL_PDF = _build_minimal_pdf()
+
+
+def linkedin_archive(files: dict[str, str]) -> bytes:
+    """Build a LinkedIn-shaped export archive from member name to CSV body."""
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, body in files.items():
+            archive.writestr(name, body)
+    return buffer.getvalue()
 
 
 async def register_and_login(

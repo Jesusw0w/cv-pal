@@ -1,160 +1,209 @@
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-:root,[data-theme="light"]{
-  color-scheme:light;
-  --bg-primary:#ffffff;
-  --bg-secondary:#f8f9fc;
-  --bg-tertiary:#f1f3f9;
-  --bg-card:#ffffff;
-  --bg-hover:#f1f3f9;
-  --bg-active:#e8ebf2;
-  --border:#e2e5ef;
-  --border-light:#eef0f6;
-  --text-primary:#0f1729;
-  --text-secondary:#5b6178;
-  --text-tertiary:#8b91a5;
-  --accent:#6366f1;
-  --accent-hover:#4f46e5;
-  --accent-light:#eef2ff;
-  --accent-text:#ffffff;
-  --success:#10b981;
-  --success-light:#ecfdf5;
-  --warning:#f59e0b;
-  --warning-light:#fffbeb;
-  --danger:#ef4444;
-  --danger-light:#fef2f2;
-  --info:#3b82f6;
-  --info-light:#eff6ff;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.05);
-  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
-  --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
-  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
-  --radius-sm:6px;
-  --radius:8px;
-  --radius-lg:12px;
-  --radius-xl:16px;
-  --sidebar-bg:#fafbfd;
-  --sidebar-border:#eef0f6;
-  --sidebar-width:260px;
-  --topbar-height:64px;
-  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fc;
+  --bg-tertiary: #f1f3f9;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f3f9;
+  --bg-active: #e8ebf2;
+  --border: #e2e5ef;
+  --border-light: #eef0f6;
+  --text-primary: #0f1729;
+  --text-secondary: #5b6178;
+  --text-tertiary: #8b91a5;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: #eef2ff;
+  --accent-text: #ffffff;
+  --success: #10b981;
+  --success-light: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --danger: #ef4444;
+  --danger-light: #fef2f2;
+  --info: #3b82f6;
+  --info-light: #eff6ff;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --sidebar-bg: #fafbfd;
+  --sidebar-border: #eef0f6;
+  --sidebar-width: 260px;
+  --topbar-height: 64px;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* `color-scheme` is what tells the browser to render the controls it draws itself —
    scrollbars, select popups, the file picker — in the matching theme. */
-[data-theme="dark"]{
-  color-scheme:dark;
-  --bg-primary:#0f1117;
-  --bg-secondary:#161822;
-  --bg-tertiary:#1c1f2e;
-  --bg-card:#161822;
-  --bg-hover:#1c1f2e;
-  --bg-active:#252940;
-  --border:#2a2d3e;
-  --border-light:#1f2233;
-  --text-primary:#f1f5f9;
-  --text-secondary:#94a3b8;
-  --text-tertiary:#64748b;
-  --accent:#818cf8;
-  --accent-hover:#6366f1;
-  --accent-light:#1e1b4b;
-  --accent-text:#ffffff;
-  --success:#34d399;
-  --success-light:#064e3b;
-  --warning:#fbbf24;
-  --warning-light:#78350f;
-  --danger:#f87171;
-  --danger-light:#7f1d1d;
-  --info:#60a5fa;
-  --info-light:#1e3a5f;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
-  --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
-  --shadow-md:0 4px 6px -1px rgba(0,0,0,.4),0 2px 4px -2px rgba(0,0,0,.3);
-  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
-  --sidebar-bg:#12141e;
-  --sidebar-border:#1f2233;
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-primary: #0f1117;
+  --bg-secondary: #161822;
+  --bg-tertiary: #1c1f2e;
+  --bg-card: #161822;
+  --bg-hover: #1c1f2e;
+  --bg-active: #252940;
+  --border: #2a2d3e;
+  --border-light: #1f2233;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-light: #1e1b4b;
+  --accent-text: #ffffff;
+  --success: #34d399;
+  --success-light: #064e3b;
+  --warning: #fbbf24;
+  --warning-light: #78350f;
+  --danger: #f87171;
+  --danger-light: #7f1d1d;
+  --info: #60a5fa;
+  --info-light: #1e3a5f;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --sidebar-bg: #12141e;
+  --sidebar-border: #1f2233;
 }
 
-html,body{
-  height:100%;
-  font-family:var(--font-sans);
-  background:var(--bg-primary);
-  color:var(--text-primary);
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  line-height:1.5;
-  font-size:14px;
+html,
+body {
+  height: 100%;
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-size: 14px;
 }
 
-a{color:var(--accent);text-decoration:none}
-a:hover{color:var(--accent-hover)}
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-hover);
+}
 
 /* `color` is inherited too. Without it a button with no colour of its own falls back to
    the UA's `buttontext`, which is black regardless of the theme — that is what made the
    CV filenames on the analysis and AI review screens unreadable in dark mode. */
-button{
-  font-family:inherit;
-  cursor:pointer;
-  border:none;
-  background:none;
-  font-size:inherit;
-  color:inherit;
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: inherit;
+  color: inherit;
 }
 
-input,textarea,select{
-  font-family:inherit;
-  font-size:inherit;
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:8px 12px;
-  background:var(--bg-primary);
-  color:var(--text-primary);
-  outline:none;
-  transition:border-color .15s;
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
 }
 
-input:focus,textarea:focus,select:focus{
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-light);
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--text-tertiary)}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
 
 /* Shared containers.
    Every page had declared its own identical .card and .badge, which is what put the
    dashboard over the 4 kB anyComponentStyle budget. Declared once here, components
    now carry only the layout that is genuinely theirs. */
 
-.card{
-  background:var(--bg-card);
-  border:1px solid var(--border-light);
-  border-radius:var(--radius-lg);
-  overflow:hidden;
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
-.card-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:18px 20px;
-  border-bottom:1px solid var(--border-light);
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.card-header h3{font-size:15px;font-weight:600}
-.card-link{font-size:13px;font-weight:500;color:var(--accent)}
-
-.badge{
-  font-size:12px;
-  font-weight:500;
-  padding:3px 8px;
-  border-radius:20px;
-  white-space:nowrap;
+.card-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.card-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
 }
 
-.badge-green,.badge-active{background:var(--success-light);color:var(--success)}
-.badge-blue,.badge-draft{background:var(--info-light);color:var(--info)}
-.badge-amber{background:var(--warning-light);color:var(--warning)}
-.badge-gray,.badge-archived{background:var(--bg-tertiary);color:var(--text-tertiary)}
+.badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.badge-green,
+.badge-active {
+  background: var(--success-light);
+  color: var(--success);
+}
+.badge-blue,
+.badge-draft {
+  background: var(--info-light);
+  color: var(--info);
+}
+.badge-amber {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+.badge-gray,
+.badge-archived {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+}

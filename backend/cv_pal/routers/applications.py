@@ -45,10 +45,6 @@ async def list_applications(
 ) -> list[ApplicationResponse]:
     """List the user's applications, most recently sent first.
 
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
-
     Returns:
         The applications.
     """
@@ -65,10 +61,6 @@ async def application_stats(
     """Report how the search is going.
 
     Declared before `/{application_id}` or the path is read as an id.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         Counts per status, reply rate, and how many applications have gone quiet.
@@ -89,10 +81,6 @@ async def postings_without_applications(
 
     What the user can act on next, and the only list that shrinks as a search
     progresses.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         The postings, newest first.

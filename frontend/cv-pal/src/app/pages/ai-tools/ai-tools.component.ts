@@ -25,10 +25,9 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
       <header class="intro">
         <h1>AI review</h1>
         <p>
-          Suggestions on a CV's wording and structure, from the language model you
-          configured. The
-          <a routerLink="/analysis">parseability and keyword checks</a> need no model at
-          all — start there if you have not set one up.
+          Suggestions on a CV's wording and structure, from the language model you configured. The
+          <a routerLink="/analysis">parseability and keyword checks</a> need no model at all — start
+          there if you have not set one up.
         </p>
       </header>
 
@@ -59,13 +58,14 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
         <section class="card">
           <div class="card-header">
             <h3>{{ cv.filename }}</h3>
-            <button
-              type="button"
-              class="primary"
-              [disabled]="running()"
-              (click)="analyseCv(cv)"
-            >
-              {{ running() ? 'Reviewing…' : suggestions().length > 0 ? 'Review again' : 'Review this CV' }}
+            <button type="button" class="primary" [disabled]="running()" (click)="analyseCv(cv)">
+              {{
+                running()
+                  ? 'Reviewing…'
+                  : suggestions().length > 0
+                    ? 'Review again'
+                    : 'Review this CV'
+              }}
             </button>
           </div>
 
@@ -85,26 +85,28 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
                 <div class="decide">
                   @if (item.accepted === null) {
                     <button type="button" class="yes" (click)="decide(item, true)">Useful</button>
-                    <button type="button" class="no" (click)="decide(item, false)">Not useful</button>
+                    <button type="button" class="no" (click)="decide(item, false)">
+                      Not useful
+                    </button>
                   } @else {
                     <span class="verdict">{{ item.accepted ? 'Marked useful' : 'Dismissed' }}</span>
-                    <button type="button" class="undo" (click)="decide(item, !item.accepted)">Change</button>
+                    <button type="button" class="undo" (click)="decide(item, !item.accepted)">
+                      Change
+                    </button>
                   }
                 </div>
               </li>
             } @empty {
               @if (!running() && !loadingSuggestions()) {
-                <li class="empty">
-                  No suggestions yet. Press <strong>Review this CV</strong>.
-                </li>
+                <li class="empty">No suggestions yet. Press <strong>Review this CV</strong>.</li>
               }
             }
           </ul>
 
           @if (suggestions().length > 0) {
             <p class="grounding">
-              Marking a suggestion useful records your decision. It does not rewrite the
-              file — nothing here edits a document on your behalf.
+              Marking a suggestion useful records your decision. It does not rewrite the file —
+              nothing here edits a document on your behalf.
             </p>
           }
         </section>
@@ -113,48 +115,161 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
   `,
   styles: [
     `
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; max-width: 820px; }
-      .intro h1 { font-size: 22px; margin: 0 0 6px; }
-      .intro p { margin: 0; font-size: 14px; color: var(--text-secondary); max-width: 72ch; }
-      .intro a, .empty a { color: var(--accent); font-weight: 600; }
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 820px;
+      }
+      .intro h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .intro p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+        max-width: 72ch;
+      }
+      .intro a,
+      .empty a {
+        color: var(--accent);
+        font-weight: 600;
+      }
 
-      .body { padding: 6px 18px 14px; }
-      .muted { font-size: 13px; color: var(--text-tertiary); margin: 0; }
-      .error { margin: 0; padding: 6px 18px 12px; font-size: 13px; color: var(--danger, #dc2626); }
+      .body {
+        padding: 6px 18px 14px;
+      }
+      .muted {
+        font-size: 13px;
+        color: var(--text-tertiary);
+        margin: 0;
+      }
+      .error {
+        margin: 0;
+        padding: 6px 18px 12px;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
 
-      .cv-list { list-style: none; margin: 0; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-      .cv { border-radius: var(--radius); }
-      .cv:hover { background: var(--bg-hover); }
-      .cv.selected { background: var(--bg-hover); box-shadow: inset 2px 0 0 var(--accent); }
-      .cv-pick { width: 100%; text-align: left; padding: 9px 10px; font-size: 14px; }
-      .empty { padding: 12px; font-size: 13px; color: var(--text-tertiary); }
+      .cv-list {
+        list-style: none;
+        margin: 0;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .cv {
+        border-radius: var(--radius);
+      }
+      .cv:hover {
+        background: var(--bg-hover);
+      }
+      .cv.selected {
+        background: var(--bg-hover);
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+      .cv-pick {
+        width: 100%;
+        text-align: left;
+        padding: 9px 10px;
+        font-size: 14px;
+      }
+      .empty {
+        padding: 12px;
+        font-size: 13px;
+        color: var(--text-tertiary);
+      }
 
       .primary {
-        padding: 8px 16px; border-radius: var(--radius); background: var(--accent);
-        color: #fff; font-size: 13px; font-weight: 600;
+        padding: 8px 16px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
       }
-      .primary:disabled { opacity: .5; }
+      .primary:disabled {
+        opacity: 0.5;
+      }
 
-      .suggestions { list-style: none; margin: 0; padding: 8px 18px 4px; display: flex; flex-direction: column; gap: 12px; }
-      .suggestion { display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; }
-      .suggestion + .suggestion { border-top: 1px solid var(--border-light); padding-top: 12px; }
-      .suggestion.decided { opacity: .65; }
+      .suggestions {
+        list-style: none;
+        margin: 0;
+        padding: 8px 18px 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .suggestion {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-bottom: 12px;
+      }
+      .suggestion + .suggestion {
+        border-top: 1px solid var(--border-light);
+        padding-top: 12px;
+      }
+      .suggestion.decided {
+        opacity: 0.65;
+      }
       .kind {
-        align-self: flex-start; font-size: 10px; font-weight: 700; letter-spacing: .08em;
-        text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
-        border: 1px solid var(--border-light); color: var(--text-tertiary);
+        align-self: flex-start;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border-light);
+        color: var(--text-tertiary);
       }
-      .text { margin: 0; font-size: 14px; color: var(--text-secondary); max-width: 78ch; }
-      .decide { display: flex; align-items: center; gap: 12px; }
-      .yes, .no, .undo { font-size: 12px; font-weight: 600; }
-      .yes { color: #16a34a; }
-      .no { color: var(--text-tertiary); }
-      .undo { color: var(--accent); }
-      .verdict { font-size: 12px; color: var(--text-tertiary); }
+      .text {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+        max-width: 78ch;
+      }
+      .decide {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .yes,
+      .no,
+      .undo {
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .yes {
+        color: #16a34a;
+      }
+      .no {
+        color: var(--text-tertiary);
+      }
+      .undo {
+        color: var(--accent);
+      }
+      .verdict {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
-      .grounding { margin: 0; padding: 4px 18px 18px; font-size: 12px; color: var(--text-tertiary); }
+      .grounding {
+        margin: 0;
+        padding: 4px 18px 18px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
-      @media (max-width: 768px) { .page { padding: 16px; } }
+      @media (max-width: 768px) {
+        .page {
+          padding: 16px;
+        }
+      }
     `,
   ],
 })
@@ -203,9 +318,7 @@ export class AiToolsComponent {
   decide(item: SuggestionResponse, accepted: boolean): void {
     this.reviews.decide(item.id, accepted).subscribe({
       next: (updated) =>
-        this.suggestions.update((all) =>
-          all.map((one) => (one.id === updated.id ? updated : one)),
-        ),
+        this.suggestions.update((all) => all.map((one) => (one.id === updated.id ? updated : one))),
       error: (error: unknown) => this.error.set(messageFor(error)),
     });
   }

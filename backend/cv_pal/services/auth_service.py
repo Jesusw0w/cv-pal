@@ -82,10 +82,6 @@ async def authenticate(
 async def issue_tokens(db: AsyncSession, *, user: User) -> tuple[str, str]:
     """Issue an access token and a fresh refresh token for a user.
 
-    Args:
-        db: Async database session.
-        user: The authenticated user.
-
     Returns:
         A tuple of ``(access_token, refresh_token)``. The refresh token is returned in
         plaintext exactly once; only its hash is stored.

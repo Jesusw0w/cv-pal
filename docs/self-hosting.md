@@ -22,7 +22,7 @@ docker compose version
 ## 2. Download CV Pal
 
 ```bash
-git clone https://github.com/jesusw0w/cv-pal.git
+git clone https://github.com/Jesusw0w/cv-pal.git
 cd cv-pal
 ```
 
@@ -95,7 +95,7 @@ docker compose up -d
 
 Then open **<http://localhost:8080>** and create an account.
 
-The first start takes a few minutes while images are built. Later starts take seconds.
+The first start takes a few minutes while the images download. Later starts take seconds.
 
 ---
 
@@ -131,7 +131,7 @@ Updating is always something you asked for: nothing downloads a new version on i
 so the app cannot change between the evening you drafted an application and the morning
 you sent it. To stay on a known version instead of the newest, set `CV_PAL_VERSION` in
 `.env` — `CV_PAL_VERSION=0.1.0` pins it, and the released versions are listed on the
-[releases page](https://github.com/jesusw0w/cv-pal/releases).
+[releases page](https://github.com/Jesusw0w/cv-pal/releases).
 
 Your data lives in a Docker volume called `cv-pal_cv-pal-data` and survives `down` and
 updates. It is deleted only if you run `docker compose down -v`.

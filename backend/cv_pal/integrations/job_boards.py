@@ -412,9 +412,6 @@ class RemotiveBoard:
     async def _feed(self, client: httpx.AsyncClient) -> list[BoardPosting]:
         """Read and parse the whole feed.
 
-        Args:
-            client: The HTTP client to use.
-
         Returns:
             Every posting the feed currently carries, unfiltered.
 

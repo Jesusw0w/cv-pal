@@ -40,9 +40,7 @@ export class DashboardService {
 
   /** CVs not touched for a while. A stale CV quietly costs opportunities. */
   readonly staleDocuments = computed(() =>
-    this.docs
-      .documents()
-      .filter((cv) => this.daysSince(cv.created_at) > STALE_AFTER_DAYS),
+    this.docs.documents().filter((cv) => this.daysSince(cv.created_at) > STALE_AFTER_DAYS),
   );
 
   /** Matches strong enough to be worth reviewing before anything else. */

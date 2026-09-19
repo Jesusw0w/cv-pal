@@ -100,8 +100,7 @@ export const MOCK_GENERATED_SUGGESTIONS: readonly Omit<
 >[] = [
   {
     suggestion_type: 'content',
-    content:
-      'Lead each bullet with an action verb and close it with a measurable result.',
+    content: 'Lead each bullet with an action verb and close it with a measurable result.',
     accepted: null,
   },
   {
@@ -398,7 +397,10 @@ export const MOCK_SCORED_JOBS: readonly ScoredPostingResponse[] = [
       blocked_by: null,
       reasons: [
         { label: 'Skills 74/100', detail: 'Your profile evidences 6 of 9 terms it uses.' },
-        { label: 'Title 100/100', detail: '"Senior Backend Engineer" against the roles you are targeting.' },
+        {
+          label: 'Title 100/100',
+          detail: '"Senior Backend Engineer" against the roles you are targeting.',
+        },
         { label: 'Work arrangement', detail: 'Offers remote, which you said suits you.' },
       ],
       missing_required: ['kubernetes'],
@@ -427,8 +429,7 @@ export const MOCK_SCORED_JOBS: readonly ScoredPostingResponse[] = [
     posting: {
       id: 3,
       source: 'remotive',
-      source_url:
-        'https://remotive.com/remote-jobs/software-development/senior-full-stack-2091100',
+      source_url: 'https://remotive.com/remote-jobs/software-development/senior-full-stack-2091100',
       title: 'Senior Full Stack Engineer',
       company: 'Cardinal Labs',
       location: 'Remote · Europe',
@@ -443,7 +444,10 @@ export const MOCK_SCORED_JOBS: readonly ScoredPostingResponse[] = [
       blocked_by: null,
       reasons: [
         { label: 'Skills 68/100', detail: 'Your profile evidences 5 of 8 terms it uses.' },
-        { label: 'Title 95/100', detail: '"Senior Full Stack Engineer" against the roles you are targeting.' },
+        {
+          label: 'Title 95/100',
+          detail: '"Senior Full Stack Engineer" against the roles you are targeting.',
+        },
         { label: 'Work arrangement', detail: 'Offers remote, which you said suits you.' },
       ],
       missing_required: ['graphql'],

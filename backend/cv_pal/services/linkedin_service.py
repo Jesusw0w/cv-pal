@@ -303,10 +303,6 @@ def _merge(stored: LinkedInProfile, snapshot: LinkedInSnapshot) -> None:
 async def get_profile(db: AsyncSession, *, user_id: int) -> LinkedInProfile:
     """Return the user's imported snapshot.
 
-    Args:
-        db: Async database session.
-        user_id: The owning user.
-
     Returns:
         The stored snapshot.
 
@@ -327,10 +323,6 @@ async def delete_profile(db: AsyncSession, *, user_id: int) -> None:
 
     A LinkedIn profile is a sensitive document, so removing it is a first-class action
     rather than something only account deletion can do.
-
-    Args:
-        db: Async database session.
-        user_id: The owning user.
 
     Raises:
         LinkedInProfileNotFoundError: If nothing has been imported yet.
@@ -392,10 +384,6 @@ async def review_profile(db: AsyncSession, *, user_id: int) -> LinkedInReview:
     Recomputed on every call rather than stored: the verdict depends on the career
     profile and the target roles, both of which change more often than the snapshot, and
     a cached review would quietly go stale against the record it is comparing.
-
-    Args:
-        db: Async database session.
-        user_id: The owning user.
 
     Returns:
         The review.

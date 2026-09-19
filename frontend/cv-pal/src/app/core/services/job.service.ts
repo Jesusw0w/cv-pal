@@ -64,10 +64,11 @@ export class JobService {
     identifier: string,
     filterByGoals = false,
   ): Observable<JobBoardConnectionResponse> {
-    return this.http.post<JobBoardConnectionResponse>(
-      `${environment.apiUrl}/jobs/sources`,
-      { source, identifier, filter_by_goals: filterByGoals },
-    );
+    return this.http.post<JobBoardConnectionResponse>(`${environment.apiUrl}/jobs/sources`, {
+      source,
+      identifier,
+      filter_by_goals: filterByGoals,
+    });
   }
 
   /**
@@ -85,10 +86,7 @@ export class JobService {
 
   /** Every watched source in one call — the same endpoint a scheduler would hit. */
   syncAll(): Observable<SyncResultResponse[]> {
-    return this.http.post<SyncResultResponse[]>(
-      `${environment.apiUrl}/jobs/sources/sync`,
-      null,
-    );
+    return this.http.post<SyncResultResponse[]>(`${environment.apiUrl}/jobs/sources/sync`, null);
   }
 
   unwatch(connectionId: number): Observable<void> {
@@ -96,10 +94,7 @@ export class JobService {
   }
 
   paste(payload: JobPostingCreate): Observable<JobPostingResponse> {
-    return this.http.post<JobPostingResponse>(
-      `${environment.apiUrl}/jobs/paste`,
-      payload,
-    );
+    return this.http.post<JobPostingResponse>(`${environment.apiUrl}/jobs/paste`, payload);
   }
 
   /** Only Remotive, Greenhouse and Lever links resolve; anything else the API refuses. */
@@ -129,15 +124,11 @@ export class JobService {
     return this.tailorFile(postingId, 'pdf');
   }
 
-  private tailorFile(
-    postingId: number,
-    format: 'docx' | 'pdf',
-  ): Observable<HttpResponse<Blob>> {
-    return this.http.post(
-      `${environment.apiUrl}/jobs/${postingId}/tailor/${format}`,
-      null,
-      { observe: 'response', responseType: 'blob' },
-    );
+  private tailorFile(postingId: number, format: 'docx' | 'pdf'): Observable<HttpResponse<Blob>> {
+    return this.http.post(`${environment.apiUrl}/jobs/${postingId}/tailor/${format}`, null, {
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 
   /** Assemble a cover letter draft, with its similarity to the user's kept letters. */
@@ -149,10 +140,7 @@ export class JobService {
   }
 
   /** Keep a letter, which is what puts it into the corpus similarity is measured against. */
-  saveCoverLetter(
-    postingId: number,
-    body: string,
-  ): Observable<CoverLetterDraftResponse> {
+  saveCoverLetter(postingId: number, body: string): Observable<CoverLetterDraftResponse> {
     return this.http.put<CoverLetterDraftResponse>(
       `${environment.apiUrl}/jobs/${postingId}/cover-letter`,
       { body },

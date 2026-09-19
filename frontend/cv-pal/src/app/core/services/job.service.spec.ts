@@ -37,7 +37,13 @@ describe('JobService', () => {
       .flush({ access_token: 'a', refresh_token: 'b', token_type: 'bearer' });
     TestBed.tick();
     for (const request of http.match((r) => r.url.endsWith('/users/me'))) {
-      request.flush({ id: 1, email: 'dev@cvpal.test', full_name: null, is_active: true, created_at: '' });
+      request.flush({
+        id: 1,
+        email: 'dev@cvpal.test',
+        full_name: null,
+        is_active: true,
+        created_at: '',
+      });
     }
   });
 

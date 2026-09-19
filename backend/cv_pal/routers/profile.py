@@ -78,10 +78,6 @@ async def get_profile(
     An empty profile is created on first access, so the client never has to handle
     "not created yet" as a distinct state.
 
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
-
     Returns:
         The profile with its experiences, educations and skills.
     """
@@ -169,10 +165,6 @@ async def get_goals(current_user: CurrentUser, db: DbSession) -> CareerGoalsResp
 
     An empty record is created on first access, so the client never has to handle
     "not set yet" as a distinct state.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         The user's career goals.
@@ -382,10 +374,6 @@ async def suggest_skill_evidence(
     CV, and after a CV import there are usually twenty of them — this finds the
     citations that are already sitting in the descriptions rather than asking the user
     to re-enter what they wrote.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         One entry per skill with roles worth citing.

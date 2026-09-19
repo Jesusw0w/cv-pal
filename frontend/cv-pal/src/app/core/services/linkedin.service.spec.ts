@@ -3,11 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { AuthService } from './auth.service';
-import {
-  LinkedInService,
-  needsDataExport,
-  rejectLinkedInFile,
-} from './linkedin.service';
+import { LinkedInService, needsDataExport, rejectLinkedInFile } from './linkedin.service';
 
 describe('LinkedInService', () => {
   let service: LinkedInService;

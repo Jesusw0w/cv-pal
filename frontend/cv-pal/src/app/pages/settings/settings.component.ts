@@ -32,12 +32,16 @@ import { forgetWelcome } from '../../core/first-run';
         <div class="rows form">
           <label class="field">
             <span>Your name</span>
-            <input type="text" autocomplete="name"
-              [value]="fullName()" (input)="fullName.set(value($event))" />
+            <input
+              type="text"
+              autocomplete="name"
+              [value]="fullName()"
+              (input)="fullName.set(value($event))"
+            />
           </label>
           <p class="hint">
-            The heading of every CV and cover letter CV Pal generates. Leave it empty and
-            they are titled "Curriculum Vitae".
+            The heading of every CV and cover letter CV Pal generates. Leave it empty and they are
+            titled "Curriculum Vitae".
           </p>
           @if (nameError(); as message) {
             <p class="error" role="alert">{{ message }}</p>
@@ -56,8 +60,8 @@ import { forgetWelcome } from '../../core/first-run';
             <div class="row-info">
               <span class="row-label">Guided setup</span>
               <span class="row-desc">
-                Walk through the CV import, the profile basics and your goals again.
-                Nothing is cleared — the steps start from what you already have.
+                Walk through the CV import, the profile basics and your goals again. Nothing is
+                cleared — the steps start from what you already have.
               </span>
             </div>
             <button type="button" class="ghost-btn" (click)="rerunSetup()">Run again</button>
@@ -93,43 +97,59 @@ import { forgetWelcome } from '../../core/first-run';
         <div class="rows form">
           <label class="field">
             <span>Current password</span>
-            <input type="password" autocomplete="current-password"
-              [value]="currentPassword()" (input)="currentPassword.set(value($event))" />
+            <input
+              type="password"
+              autocomplete="current-password"
+              [value]="currentPassword()"
+              (input)="currentPassword.set(value($event))"
+            />
           </label>
           <label class="field">
             <span>New password</span>
-            <input type="password" autocomplete="new-password"
-              [value]="newPassword()" (input)="newPassword.set(value($event))" />
+            <input
+              type="password"
+              autocomplete="new-password"
+              [value]="newPassword()"
+              (input)="newPassword.set(value($event))"
+            />
           </label>
           <label class="field">
             <span>Confirm new password</span>
-            <input type="password" autocomplete="new-password"
-              [value]="confirmPassword()" (input)="confirmPassword.set(value($event))" />
+            <input
+              type="password"
+              autocomplete="new-password"
+              [value]="confirmPassword()"
+              (input)="confirmPassword.set(value($event))"
+            />
           </label>
           @if (mismatch()) {
             <p class="error" role="alert">Those two do not match.</p>
           }
           <p class="hint">
-            At least 12 characters. Length beats punctuation — a phrase you can remember
-            is stronger than a short password with symbols in it.
+            At least 12 characters. Length beats punctuation — a phrase you can remember is stronger
+            than a short password with symbols in it.
           </p>
           @if (passwordError(); as message) {
             <p class="error" role="alert">{{ message }}</p>
           }
           <div class="right">
-            <button type="button" class="primary"
+            <button
+              type="button"
+              class="primary"
               [disabled]="!canChangePassword() || busy()"
-              (click)="changePassword()">
+              (click)="changePassword()"
+            >
               {{ busy() ? 'Changing…' : 'Change password' }}
             </button>
           </div>
           <p class="hint">
-            Changing it signs out every device, this one included. Locked out with no
-            way in? There is no reset email — a self-hosted instance usually has no mail
-            server, and a reset link that cannot be delivered would be worse than none.
-            Recover from a terminal on the machine running CV Pal:
-            <code>docker compose exec backend python -m cv_pal.admin reset-password
-            your@email</code>
+            Changing it signs out every device, this one included. Locked out with no way in? There
+            is no reset email — a self-hosted instance usually has no mail server, and a reset link
+            that cannot be delivered would be worse than none. Recover from a terminal on the
+            machine running CV Pal:
+            <code
+              >docker compose exec backend python -m cv_pal.admin reset-password your@email</code
+            >
           </p>
         </div>
       </section>
@@ -141,8 +161,8 @@ import { forgetWelcome } from '../../core/first-run';
             <div class="row-info">
               <span class="row-label">Download everything</span>
               <span class="row-desc">
-                Your profile, goals, saved postings and the list of your documents, as
-                one JSON file. Uploaded files are downloaded from Documents.
+                Your profile, goals, saved postings and the list of your documents, as one JSON
+                file. Uploaded files are downloaded from Documents.
               </span>
             </div>
             <button type="button" class="ghost-btn" [disabled]="exporting()" (click)="exportData()">
@@ -159,9 +179,9 @@ import { forgetWelcome } from '../../core/first-run';
         <div class="card-header"><h3>Delete this account</h3></div>
         <div class="rows form">
           <p class="hint">
-            Removes your profile, goals, uploaded CVs and their files, saved postings and
-            letters. It happens immediately and cannot be undone — there is no soft
-            delete and no copy kept. Download your data first if you want a copy.
+            Removes your profile, goals, uploaded CVs and their files, saved postings and letters.
+            It happens immediately and cannot be undone — there is no soft delete and no copy kept.
+            Download your data first if you want a copy.
           </p>
           @if (!confirming()) {
             <div class="right">
@@ -172,16 +192,24 @@ import { forgetWelcome } from '../../core/first-run';
           } @else {
             <label class="field">
               <span>Type your password to confirm</span>
-              <input type="password" autocomplete="current-password"
-                [value]="deletePassword()" (input)="deletePassword.set(value($event))" />
+              <input
+                type="password"
+                autocomplete="current-password"
+                [value]="deletePassword()"
+                (input)="deletePassword.set(value($event))"
+              />
             </label>
             @if (deleteError(); as message) {
               <p class="error" role="alert">{{ message }}</p>
             }
             <div class="right">
               <button type="button" class="ghost" (click)="cancelDelete()">Cancel</button>
-              <button type="button" class="danger-btn"
-                [disabled]="!deletePassword() || busy()" (click)="deleteAccount()">
+              <button
+                type="button"
+                class="danger-btn"
+                [disabled]="!deletePassword() || busy()"
+                (click)="deleteAccount()"
+              >
                 {{ busy() ? 'Deleting…' : 'Delete everything, permanently' }}
               </button>
             </div>
@@ -198,71 +226,185 @@ import { forgetWelcome } from '../../core/first-run';
   styles: [
     `
       /* .card and .card-header come from styles.css. Only layout here. */
-      .page { padding: 28px; display: flex; flex-direction: column; gap: 20px; max-width: 720px; }
+      .page {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 720px;
+      }
 
-      .rows { padding: 8px 18px 18px; display: flex; flex-direction: column; gap: 4px; }
-      .row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0; }
-      .row-info { display: flex; flex-direction: column; gap: 2px; }
-      .row-label { font-size: 14px; font-weight: 500; }
-      .row-desc { font-size: 12px; color: var(--text-tertiary); }
+      .rows {
+        padding: 8px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 10px 0;
+      }
+      .row-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .row-label {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .row-desc {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
 
       .toggle {
-        width: 44px; height: 24px; border-radius: 999px; flex: none;
-        background: var(--border-light); transition: background .15s;
+        width: 44px;
+        height: 24px;
+        border-radius: 999px;
+        flex: none;
+        background: var(--border-light);
+        transition: background 0.15s;
       }
-      .toggle.active { background: var(--accent); }
+      .toggle.active {
+        background: var(--accent);
+      }
       .toggle-knob {
-        display: block; width: 18px; height: 18px; margin-left: 3px;
-        border-radius: 50%; background: #fff; transition: transform .15s;
+        display: block;
+        width: 18px;
+        height: 18px;
+        margin-left: 3px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.15s;
       }
-      .toggle.active .toggle-knob { transform: translateX(20px); }
+      .toggle.active .toggle-knob {
+        transform: translateX(20px);
+      }
 
-      .danger { font-size: 13px; font-weight: 600; color: var(--danger, #dc2626); }
-      .note { margin: 0; font-size: 12px; color: var(--text-tertiary); }
-      .note code { font-family: ui-monospace, monospace; }
+      .danger {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--danger, #dc2626);
+      }
+      .note {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .note code {
+        font-family: ui-monospace, monospace;
+      }
 
-      .form { gap: 10px; }
-      .field { display: block; }
+      .form {
+        gap: 10px;
+      }
+      .field {
+        display: block;
+      }
       .field > span {
-        display: block; margin-bottom: 5px;
-        font-size: 12px; font-weight: 600; color: var(--text-secondary);
+        display: block;
+        margin-bottom: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
       }
       .field input {
-        width: 100%; max-width: 340px; padding: 8px 11px; font: inherit; font-size: 14px;
-        border: 1px solid var(--border-light); border-radius: var(--radius);
-        background: var(--bg-primary); color: var(--text-primary);
+        width: 100%;
+        max-width: 340px;
+        padding: 8px 11px;
+        font: inherit;
+        font-size: 14px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
       }
-      .hint { margin: 0; font-size: 12px; line-height: 1.6; color: var(--text-tertiary); }
+      .hint {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-tertiary);
+      }
       .hint code {
-        font-family: ui-monospace, monospace; font-size: 11px;
-        background: var(--bg-hover); padding: 1px 5px; border-radius: 4px;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        background: var(--bg-hover);
+        padding: 1px 5px;
+        border-radius: 4px;
       }
-      .error { margin: 0; font-size: 13px; color: var(--danger, #dc2626); }
-      .ok { margin: 0; font-size: 13px; color: var(--accent); }
+      .error {
+        margin: 0;
+        font-size: 13px;
+        color: var(--danger, #dc2626);
+      }
+      .ok {
+        margin: 0;
+        font-size: 13px;
+        color: var(--accent);
+      }
 
-      .right { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 4px; }
+      .right {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        margin-top: 4px;
+      }
       .primary {
-        padding: 8px 16px; border-radius: var(--radius); background: var(--accent);
-        color: #fff; font-size: 13px; font-weight: 600;
+        padding: 8px 16px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
       }
-      .primary:disabled { opacity: .5; }
-      .ghost { font-size: 13px; color: var(--text-secondary); padding: 8px 4px; }
+      .primary:disabled {
+        opacity: 0.5;
+      }
+      .ghost {
+        font-size: 13px;
+        color: var(--text-secondary);
+        padding: 8px 4px;
+      }
       .ghost-btn {
-        flex: none; padding: 8px 14px; border-radius: var(--radius);
-        border: 1px solid var(--border-light); color: var(--text-primary);
-        font-size: 13px; font-weight: 600;
+        flex: none;
+        padding: 8px 14px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-light);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 600;
       }
-      .ghost-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-      .ghost-btn:disabled { opacity: .5; }
-      .danger-card { border-color: var(--danger, #dc2626); }
+      .ghost-btn:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .ghost-btn:disabled {
+        opacity: 0.5;
+      }
+      .danger-card {
+        border-color: var(--danger, #dc2626);
+      }
       .danger-btn {
-        padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600;
-        color: #fff; background: var(--danger, #dc2626);
+        padding: 8px 16px;
+        border-radius: var(--radius);
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--danger, #dc2626);
       }
-      .danger-btn:disabled { opacity: .5; }
+      .danger-btn:disabled {
+        opacity: 0.5;
+      }
 
       @media (max-width: 768px) {
-        .page { padding: 16px; }
+        .page {
+          padding: 16px;
+        }
       }
     `,
   ],
@@ -306,8 +448,7 @@ export class SettingsComponent {
 
   /** Only once both are typed: an empty second field is not yet a mismatch. */
   readonly mismatch = computed(
-    () =>
-      this.confirmPassword().length > 0 && this.newPassword() !== this.confirmPassword(),
+    () => this.confirmPassword().length > 0 && this.newPassword() !== this.confirmPassword(),
   );
 
   /**

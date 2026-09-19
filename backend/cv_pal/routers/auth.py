@@ -157,10 +157,5 @@ async def logout(payload: RefreshRequest, db: DbSession) -> None:
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
 async def logout_all(current_user: CurrentUser, db: DbSession) -> None:
-    """End every session for the authenticated user, on all devices.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
-    """
+    """End every session for the authenticated user, on all devices."""
     await auth_service.revoke_all_sessions(db, user_id=current_user.id)
