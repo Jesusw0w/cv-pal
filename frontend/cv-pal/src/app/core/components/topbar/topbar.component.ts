@@ -123,7 +123,10 @@ export class TopbarComponent {
     while (route.firstChild) {
       route = route.firstChild;
     }
-    return (route.snapshot.data['title'] as string | undefined) ?? '';
+    // Constructed mid-navigation, the deepest route has no snapshot yet and reading
+    // through it throws before the first render — a blank page, not a missing title.
+    // The NavigationEnd subscription above supplies the real one a moment later.
+    return (route.snapshot?.data['title'] as string | undefined) ?? '';
   }
 
   signOut(): void {

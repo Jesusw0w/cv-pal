@@ -36,6 +36,22 @@ describe('mockApiInterceptor', () => {
     expect(cvs[0].filename).toBeDefined();
   });
 
+  it('matches routes when apiUrl is a path prefix rather than an origin', async () => {
+    // What the mock and self-hosted builds actually send. Every test above uses the dev
+    // environment's `http://localhost:8000`, so the whole suite passed while
+    // `npm run build:mock` served a blank page: `/api/cvs/` matched no route, every
+    // request 404'd, and the app never got a user.
+    const original = environment.apiUrl;
+    (environment as { apiUrl: string }).apiUrl = '/api';
+    try {
+      const cvs = await firstValueFrom(http.get<CvResponse[]>('/api/cvs/'));
+
+      expect(cvs.length).toBeGreaterThan(0);
+    } finally {
+      (environment as { apiUrl: string }).apiUrl = original;
+    }
+  });
+
   it('honours pagination parameters', async () => {
     const cvs = await firstValueFrom(
       http.get<CvResponse[]>(`${API}/cvs/`, { params: { limit: 1 } }),

@@ -9,6 +9,15 @@ and why each decision went the way it did — is in
 
 ## [Unreleased]
 
+### Fixed
+
+- **Mock mode rendered a blank page.** `apiUrl` is a path prefix (`/api`) in the mock
+  and self-hosted builds, but the mock router only stripped an origin, so every request
+  404'd and the app never loaded a user. The whole frontend suite passed throughout,
+  because every test used the dev environment's `http://localhost:8000` form.
+- A crash in the topbar when it read the route title during construction, before the
+  deepest route had a snapshot — the second reason `npm run start:mock` showed nothing.
+
 ### Changed
 
 - `docker compose up` now pulls published images from `ghcr.io` instead of building

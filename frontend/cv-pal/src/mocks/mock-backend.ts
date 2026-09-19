@@ -1,5 +1,6 @@
 import { HttpRequest } from '@angular/common/http';
 
+import { environment } from '../environments/environment';
 import {
   ApplicationResponse,
   CareerGoalsResponse,
@@ -915,11 +916,24 @@ export class MockBackend {
   }
 }
 
-/** Strip the origin and any trailing slash so routes can be matched on the path alone. */
+/**
+ * Strip the origin, the API base path and any trailing slash, so routes can be matched
+ * on the path alone.
+ *
+ * `apiUrl` is not always an origin: the mock and self-hosted builds set it to `/api`,
+ * because nginx proxies that prefix to the backend. Stripping only the origin left
+ * `/api/users/me`, which matched no route, so every request 404'd and the app rendered
+ * an empty shell.
+ */
 function normalisePath(url: string): string {
   const withoutOrigin = url.replace(/^[a-z]+:\/\/[^/]+/i, '');
   const withoutQuery = withoutOrigin.split('?')[0];
-  return withoutQuery.length > 1 ? withoutQuery.replace(/\/$/, '') : withoutQuery;
+  const base = environment.apiUrl.replace(/^[a-z]+:\/\/[^/]+/i, '');
+  const withoutBase =
+    base !== '' && withoutQuery.startsWith(base)
+      ? withoutQuery.slice(base.length) || '/'
+      : withoutQuery;
+  return withoutBase.length > 1 ? withoutBase.replace(/\/$/, '') : withoutBase;
 }
 
 /** Match a collection path, tolerating the trailing slash FastAPI uses. */

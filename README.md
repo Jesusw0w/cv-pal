@@ -1,30 +1,31 @@
 # CV Pal
 
 **Keep your CV competitive against AI screening — without letting it invent your career.**
-Keep a structured record of your career, check any CV against a real posting for ATS
-parseability and keyword coverage, and — as the phases land — generate versions tailored
-to the postings worth applying for. Runs entirely on your own machine if you want it to.
+Hold a structured record of your career, check any CV against a real posting for ATS
+parseability and keyword coverage, and generate versions tailored to the postings worth
+applying for. Runs entirely on your own machine if you want it to.
 
-<!-- TODO before publishing: screenshot or short recording of the documents view here.
-     Nothing establishes faster that the project is real. -->
-
-<!-- TODO: link the deployed mock build once it is hosted.
-## Try it
-[Live demo](#) — no account, no backend, nothing stored. -->
+![The CV Pal dashboard: next action, application pipeline, profile health, recent documents and job matches](docs/images/dashboard.png)
 
 ## Two guarantees
 
-- **It never invents experience.** Every line it writes is grounded in something you
-  entered. Where a role wants something you do not have, it says so as a *gap* rather
-  than quietly adding it. You should never have to defend a claim this tool made up.
-- **It automates the tedium, not the judgement.** The tools in this space advertise
-  50–100 automated applications a day. This one will not do that, because *applications
-  sent* is the number you can watch move, not the one you want. Applications go out
-  against rules you set, from goals you stated, only above a match score you choose,
-  capped per day and per company, tailored to each posting, and written to a log you can
-  read. **Nothing is sent without you seeing it first** — review mode is on by default,
-  and turning it off is per source, takes a typed confirmation, and switches itself back
-  on whenever your CV, profile or rules change.
+**It never invents experience.** Every line it writes is grounded in something you
+entered. A skill with no role behind it cannot be written into a generated CV, and the
+profile screen says so up front rather than letting you find out when the output is thin.
+
+![The career profile screen, listing what must be true before a CV can be tailored: at least 8 skills, every skill evidenced by a role, and a linked LinkedIn profile](docs/images/career-profile.png)
+
+Where a posting wants something you do not have, it says so as a *gap* rather than
+quietly adding it. Every match score states its reasons, and a posting ruled out by your
+own non-negotiables stays visible instead of silently disappearing.
+
+![A scored posting: 78/100, broken down into skills, title and work arrangement, with kubernetes flagged as required and not on the profile](docs/images/job-match.png)
+
+**It automates the tedium, not the judgement.** The tools in this space advertise
+50–100 automated applications a day. This one will not, because *applications sent* is
+the number you can watch move, not the one you want. Automated submission is not built
+yet; when it is, nothing will go out without you seeing it first. The rules are written
+down in [PLANNING](docs/PLANNING.md) before any of it ships.
 
 ## Run it yourself
 
@@ -35,7 +36,7 @@ checks your local model, and opens the app when it is ready.
 **Any platform:**
 
 ```bash
-git clone <this repository> && cd cv-pal
+git clone https://github.com/Jesusw0w/cv-pal.git && cd cv-pal
 cp .env.docker.example .env          # then set CV_PAL_SECRET_KEY
 docker compose --profile ollama up -d
 ```
