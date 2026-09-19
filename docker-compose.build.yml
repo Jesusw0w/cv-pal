@@ -1,0 +1,19 @@
+# Build from source instead of pulling the published images.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# For anyone changing the code. Self-hosters do not need this file — plain
+# `docker compose up -d` pulls from ghcr.io and is faster.
+#
+# Not named docker-compose.override.yml on purpose: Compose loads that one
+# automatically, which would silently rebuild for everyone who cloned the repo and
+# undo the reason the images are published at all.
+
+services:
+  backend:
+    build:
+      context: ./backend
+
+  frontend:
+    build:
+      context: ./frontend/cv-pal

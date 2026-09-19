@@ -1,0 +1,89 @@
+# CV Pal, self-hosted.
+#
+#   cp .env.docker.example .env
+#   # set CV_PAL_SECRET_KEY
+#   docker compose up -d
+#   open http://localhost:8080
+#
+# Add a local model with:  docker compose --profile ollama up -d
+#
+# This pulls published images rather than building. To build from source instead —
+# which is what you want when changing the code — add the build overlay:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# Pin a release by setting CV_PAL_VERSION=0.1.0 in .env; the default tracks latest.
+
+name: cv-pal
+
+services:
+  backend:
+    image: ghcr.io/jesusw0w/cv-pal-backend:${CV_PAL_VERSION:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Fixed by the image layout; overriding these breaks the data volume.
+      CV_PAL_DATABASE_URL: sqlite+aiosqlite:////data/cv_pal.db
+      CV_PAL_UPLOAD_DIR: /data/uploads
+      # nginx serves the UI and the API from one origin, so no cross-origin grant is
+      # needed. Leaving this empty disables the CORS middleware entirely.
+      CV_PAL_CORS_ORIGINS: "[]"
+    volumes:
+      - cv-pal-data:/data
+    # So CV_PAL_LLM_BASE_URL can point at an Ollama already installed on the host
+    # instead of the container below — which is what a machine with a GPU wants, since
+    # the container is CPU-only on Windows without WSL passthrough. Docker Desktop
+    # provides this name already; the mapping is what makes it work on Linux too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Deliberately not published to the host: the API is reachable only through the
+    # frontend's /api proxy, on the internal network. To expose it directly for
+    # debugging, uncomment the mapping below.
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+    expose:
+      - "8000"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready').read()
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  frontend:
+    image: ghcr.io/jesusw0w/cv-pal-frontend:${CV_PAL_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      # Bound to the loopback interface: a self-hosted instance should not be on the
+      # local network by accident. Change to "8080:8080" to expose it deliberately.
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  # Opt-in: `docker compose --profile ollama up -d`.
+  # A 4–8B model wants roughly 8 GB of RAM, so this must not be the default.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    restart: unless-stopped
+    volumes:
+      - cv-pal-ollama:/root/.ollama
+    expose:
+      - "11434"
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  # The database and uploaded CVs. This is the volume to back up.
+  cv-pal-data:
+  # Downloaded models. Large, and re-downloadable — no need to back this up.
+  cv-pal-ollama:

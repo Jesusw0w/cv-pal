@@ -1,2 +1,13 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Shell scripts are executed inside Linux containers. On a Windows clone with the
+# default `core.autocrlf=true`, `docker-entrypoint.sh` checks out with CRLF, the
+# shebang becomes `#!/bin/sh\r`, and the kernel looks for an interpreter called
+# `/bin/sh\r` — so the backend container boot-loops with
+# "exec /usr/local/bin/docker-entrypoint.sh: no such file or directory".
+# Nothing in the build can recover from this, so pin the ending here.
+*.sh text eol=lf
+
+# The mirror image of the rule above: cmd.exe parses a batch file line by line and a
+# lone LF can leave a trailing character on the command, so the Windows launcher is
+# pinned the other way regardless of the cloner's autocrlf setting.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

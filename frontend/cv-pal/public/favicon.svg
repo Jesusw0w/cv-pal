@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="CV Pal">
+  <!--
+    The favicon is a *separate drawing*, not logo.svg scaled down — which is the whole
+    reason the old raster icon failed. At 16px the full mark's four rule lines fall
+    below one device pixel each and merge into a smear.
+
+    So this version: fewer, thicker elements (two bars instead of four), more
+    pronounced ears, and less padding so the shape fills the tab's tiny box.
+
+    A browser renders a favicon standalone, so `currentColor` has nothing to inherit
+    and would fall back to black — the fill is explicit here, and the media query
+    lightens it against a dark tab strip.
+  -->
+  <style>
+    path { fill: #6366f1 }
+    @media (prefers-color-scheme: dark) { path { fill: #818cf8 } }
+  </style>
+  <path fill-rule="evenodd" d="
+    M 6 26.6 L 6 7.6 L 6.45 3.8 Q 7.05 1.9 8.6 3.5 L 13.2 7.6
+    Q 16 8.5 18.8 7.6 L 23.4 3.5 Q 24.95 1.9 25.55 3.8 L 26 7.6
+    L 26 26.6 Q 26 30 22.6 30 L 9.4 30 Q 6 30 6 26.6 Z
+    M 10 13.2 h 7.4 a 1.5 1.5 0 0 1 0 3 h -7.4 a 1.5 1.5 0 0 1 0 -3 Z
+    M 10 20.2 h 12 a 1.5 1.5 0 0 1 0 3 h -12 a 1.5 1.5 0 0 1 0 -3 Z
+  "/>
+</svg>

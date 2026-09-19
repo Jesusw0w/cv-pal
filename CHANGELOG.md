@@ -1,0 +1,66 @@
+# Changelog
+
+Notable changes to CV Pal, in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+form. Versions follow [semantic versioning](https://semver.org/spec/v2.0.0.html).
+
+This file is the summary. The session-by-session account — what was tried, what broke,
+and why each decision went the way it did — is in
+[docs/PROGRESS.md](docs/PROGRESS.md).
+
+## [Unreleased]
+
+### Changed
+
+- `docker compose up` now pulls published images from `ghcr.io` instead of building
+  locally, so a first start is a download rather than a ten-minute Angular and Python
+  build. Building from source moved to an explicit overlay,
+  `docker-compose.build.yml`. Pin a version with `CV_PAL_VERSION` in `.env`.
+
+## [0.1.0] — 2026-09-19
+
+First public release. Early, and the [README](README.md#status) is explicit about what
+is not built.
+
+### Added
+
+- **Accounts** — registration (closable via `CV_PAL_ALLOW_REGISTRATION`), sign-in,
+  password change, and account deletion that removes the profile, CVs and uploaded
+  files with it. Sessions use short-lived JWTs plus single-use opaque refresh tokens.
+- **Guided first run** — upload a CV, confirm what was read correctly, then state what
+  you are looking for. The drafted summary is shown for approval before it is kept.
+- **Career profile** — roles, education and skills, each editable and removable, with
+  skills citable to the roles that evidence them. Importable wholesale from a CV.
+- **Career goals** — target roles, work regime, salary floor, and which of those are
+  non-negotiable.
+- **CVs** — upload, list and delete, with uploads validated by magic bytes and stored
+  under server-generated names.
+- **Analysis** — ATS parseability and keyword coverage, both computed rather than
+  generated, so they need no model and give the same answer twice.
+- **AI CV review** — suggestions accepted or rejected individually.
+- **Job postings** — paste one, import a Greenhouse, Lever or Remotive link, or watch a
+  board and sync it on demand.
+- **Match scoring** against your goals, with the reason stated for every score.
+- **Tailored CV generation** and cover-letter drafts, every line grounded in something
+  already in your profile, exportable to DOCX and PDF. Letters are checked against your
+  own recent ones so they cannot all be the same letter.
+- **LinkedIn import** — print-to-PDF, the official data export, or paste, each reviewed
+  section by section before anything is kept.
+- **Models** — OpenAI, Anthropic, Ollama or any OpenAI-compatible endpoint, chosen per
+  deployment. `CV_PAL_LOCAL_ONLY=true` refuses to contact a hosted provider at all,
+  checked against the base URL as well as the provider name.
+- **Self-hosting** — `docker compose up`, with the UI and API on one origin behind
+  nginx, bound to `127.0.0.1` by default. `start-cv-pal.cmd` does the same on Windows
+  from a double-click.
+
+### Security
+
+- Passwords hashed with argon2id; legacy bcrypt hashes upgraded on next login.
+- Password screening per NIST SP 800-63B: 12-character minimum, common-password
+  blocklist, and rejection of passwords derived from the user's own email.
+- Login rate limited per client with per-account exponential backoff, counted for any
+  submitted address so lockout cannot enumerate accounts.
+- Ownership enforced inside the query, so another user's record is indistinguishable
+  from one that does not exist.
+- No default secret key: an unconfigured instance refuses to start.
+
+Known limitations are listed in [SECURITY.md](SECURITY.md#known-limitations).

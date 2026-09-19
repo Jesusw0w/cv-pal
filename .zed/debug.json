@@ -1,0 +1,77 @@
+// Zed debug configurations. Open the debugger with the `debugger: start` action.
+//
+// The backend configs set `cwd` to `backend/`, so pydantic-settings picks up
+// `backend/.env` automatically — no secrets belong in this file.
+[
+  {
+    "label": "Backend: FastAPI server",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "module": "uvicorn",
+    "args": ["cv_pal.main:app", "--host", "127.0.0.1", "--port", "8000"],
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "python": "$ZED_WORKTREE_ROOT/backend/.venv/bin/python",
+    // Silences debugpy's frozen-modules warning on Python 3.11+.
+    "env": { "PYDEVD_DISABLE_FILE_VALIDATION": "1" },
+    // Deliberately no --reload: the reloader runs your code in a child process,
+    // so breakpoints in the parent never hit. Use the "backend: dev server" task
+    // when you want reload and don't need the debugger.
+    "justMyCode": false
+  },
+  {
+    "label": "Backend: current test file",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "module": "pytest",
+    "args": ["$ZED_FILE", "-vv", "--no-header"],
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "python": "$ZED_WORKTREE_ROOT/backend/.venv/bin/python",
+    // Silences debugpy's frozen-modules warning on Python 3.11+.
+    "env": { "PYDEVD_DISABLE_FILE_VALIDATION": "1" },
+    "justMyCode": false
+  },
+  {
+    "label": "Backend: all tests",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "module": "pytest",
+    "args": ["tests", "-vv", "--no-header"],
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "python": "$ZED_WORKTREE_ROOT/backend/.venv/bin/python",
+    // Silences debugpy's frozen-modules warning on Python 3.11+.
+    "env": { "PYDEVD_DISABLE_FILE_VALIDATION": "1" },
+    "justMyCode": false
+  },
+  {
+    "label": "Backend: current file",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "program": "$ZED_FILE",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "python": "$ZED_WORKTREE_ROOT/backend/.venv/bin/python",
+    // Silences debugpy's frozen-modules warning on Python 3.11+.
+    "env": { "PYDEVD_DISABLE_FILE_VALIDATION": "1" },
+    "justMyCode": false
+  },
+  {
+    // Start the dev server first: the "frontend: dev server" task, or
+    // the "frontend: dev server (mock)" task to run with no backend at all.
+    "label": "Frontend: Chrome on :4200",
+    "adapter": "JavaScript",
+    "type": "chrome",
+    "request": "launch",
+    "url": "http://localhost:4200",
+    "webRoot": "$ZED_WORKTREE_ROOT/frontend/cv-pal/src",
+    "console": "integratedTerminal",
+    "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+  },
+  {
+    // For a Chrome already started with --remote-debugging-port=9222.
+    "label": "Frontend: attach to Chrome",
+    "adapter": "JavaScript",
+    "type": "chrome",
+    "request": "attach",
+    "port": 9222,
+    "webRoot": "$ZED_WORKTREE_ROOT/frontend/cv-pal/src"
+  }
+]

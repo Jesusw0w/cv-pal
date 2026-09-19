@@ -1,0 +1,88 @@
+// Project tasks. Run with the `task: spawn` action.
+[
+  {
+    "label": "backend: dev server",
+    "command": "uv run uvicorn cv_pal.main:app --reload",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "backend: nox (lint + types + tests)",
+    "command": "uv run nox",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "save": "all"
+  },
+  {
+    "label": "backend: lint",
+    "command": "uv run nox -s lint",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "save": "all"
+  },
+  {
+    "label": "backend: format (applies fixes)",
+    "command": "uv run nox -s format",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "save": "all"
+  },
+  {
+    "label": "backend: typecheck",
+    "command": "uv run nox -s typecheck",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "save": "all"
+  },
+  {
+    "label": "backend: tests",
+    "command": "uv run pytest",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "save": "all"
+  },
+  {
+    "label": "backend: test current file",
+    "command": "uv run pytest $ZED_FILE -vv",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "save": "all"
+  },
+  {
+    "label": "backend: migrate to head",
+    "command": "uv run alembic upgrade head",
+    "cwd": "$ZED_WORKTREE_ROOT/backend"
+  },
+  {
+    // Prompts for the message, then reminds you to review the result: autogenerate
+    // misses renames, type changes and server defaults.
+    "label": "backend: new migration",
+    "command": "read -p 'Migration message: ' msg && uv run alembic revision --autogenerate -m \"$msg\" && echo && echo 'Now READ the generated file before applying it.'",
+    "cwd": "$ZED_WORKTREE_ROOT/backend",
+    "shell": { "program": "bash" }
+  },
+  {
+    "label": "frontend: dev server",
+    "command": "npm start",
+    "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "frontend: dev server (mock, no backend)",
+    "command": "npm run start:mock",
+    "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "frontend: tests",
+    "command": "npm test -- --watch=false",
+    "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",
+    "save": "all"
+  },
+  {
+    "label": "frontend: build",
+    "command": "npm run build",
+    "cwd": "$ZED_WORKTREE_ROOT/frontend/cv-pal",
+    "save": "all"
+  }
+]

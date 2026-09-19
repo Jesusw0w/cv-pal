@@ -1,0 +1,37 @@
+// Project-local Zed settings. Personal preferences belong in ~/.config/zed/settings.json;
+// this file is only for things that are true for anyone working on this repo.
+{
+  // Keep search, file finder and the language servers out of build and dependency
+  // output. Without this, `.venv`, `.nox` and `node_modules` dominate every search.
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/.svn",
+    "**/.hg",
+    "**/CVS",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+    "**/.classpath",
+    "**/.settings",
+    "**/.venv",
+    "**/.nox",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.mypy_cache",
+    "**/.ruff_cache",
+    "**/.pytest_cache",
+    "**/dist",
+    "**/.angular",
+    "**/uploads"
+  ],
+  "languages": {
+    "Python": {
+      "tab_size": 4
+    },
+    "TypeScript": {
+      "tab_size": 2
+    },
+    "JSON": {
+      "tab_size": 2
+    }
+  }
+}

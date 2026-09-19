@@ -1,0 +1,108 @@
+name: CI
+
+# Runs the same commands as the local quality gate, so a green CI means what a green
+# `nox` means. See CONTRIBUTING.md.
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — lint, types, tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+
+      - name: Lint
+        run: uv run ruff check cv_pal tests noxfile.py
+
+      - name: Format check
+        run: uv run ruff format --check cv_pal tests noxfile.py
+
+      - name: Type check
+        run: uv run mypy --strict cv_pal tests
+
+      - name: Tests
+        run: uv run pytest
+
+      - name: Migrations apply, match the models, and roll back cleanly
+        env:
+          CV_PAL_SECRET_KEY: ci-secret-key-not-used-for-anything
+          CV_PAL_LLM_PROVIDER: ollama
+          CV_PAL_DATABASE_URL: sqlite+aiosqlite:///./ci.db
+        run: |
+          uv run alembic upgrade head
+          # Fails if a model changed without a migration, which the test suite cannot
+          # catch: tests build their schema from the models, so they pass either way.
+          uv run alembic check
+          uv run alembic downgrade base
+
+  frontend:
+    name: Frontend — tests and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/cv-pal
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/cv-pal/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests
+        run: npm test -- --watch=false
+
+      - name: Build
+        run: npm run build
+
+      - name: Build mock bundle
+        run: npm run build:mock
+
+  containers:
+    name: Container images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Both files, because only the overlay is exercised by the build steps below and
+      # a typo in the base file would otherwise surface on a user's machine. The copy
+      # is not incidental: the services declare `env_file: .env`, so this also proves
+      # the example file a new self-hoster copies is still a valid one.
+      - name: Compose files are valid
+        run: |
+          cp .env.docker.example .env
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.build.yml config --quiet
+
+      - name: Build backend image
+        run: docker build -t cv-pal-backend:ci ./backend
+
+      - name: Build frontend image
+        run: docker build -t cv-pal-frontend:ci ./frontend/cv-pal

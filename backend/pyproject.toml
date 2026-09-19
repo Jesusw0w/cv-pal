@@ -1,0 +1,114 @@
+[project]
+name = "cv-pal"
+version = "0.1.0"
+description = "AI-powered CV optimization tool"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic-settings>=2.0.0",
+    "pydantic[email]>=2.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "bcrypt>=4.0.0",          # legacy hashes only; new hashes use argon2id
+    "argon2-cffi>=23.1.0",
+    "python-multipart>=0.0.9",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "alembic>=1.13.0",
+    "openai>=1.0.0",        # covers OpenAI, Ollama and any compatible gateway
+    "anthropic>=0.40.0",    # Claude speaks its own protocol, not an OpenAI-shaped one
+    "pypdf>=4.0.0",
+    "python-docx>=1.0.0",
+    # PDF export. BSD-licensed, pure Python, and — unlike WeasyPrint — needs no system
+    # libraries, which the self-hosted install story cannot afford. fpdf2 is smaller but
+    # LGPL, which is friction this MIT project does not need to take on.
+    "reportlab>=4.0.0",
+    "anyio>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.11.0",
+    "mypy>=1.10.0",
+    "nox>=2024.4.15",
+    "types-python-jose>=3.3.0",
+    "debugpy>=1.8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+src = ["cv_pal", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "SIM",      # simplify
+    "C4",       # comprehensions
+    "ANN",      # missing annotations
+    "D",        # pydocstyle
+    "RUF",      # ruff-specific
+    "ASYNC",    # blocking calls inside async functions
+    "S",        # bandit security checks
+    "PTH",      # prefer pathlib over os.path
+    "TID",      # tidy imports
+    "A",        # builtin shadowing
+]
+ignore = [
+    "D203",  # conflicts with D211
+    "D213",  # conflicts with D212
+    "D100",  # module docstrings: the module name and its contents already say it
+    "D104",  # ditto for packages
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Migrations are generated and intentionally terse.
+"alembic/*" = ["D", "ANN", "E501"]
+# assert is the point of a test, and asserting on files on disk is not a blocking-IO
+# problem in a test the way it would be in a request handler.
+"tests/*" = ["S101", "ASYNC240"]
+# The LinkedIn fixture reproduces a real PDF export byte for byte, non-breaking
+# spaces included — they are what the parser has to survive, so normalising them
+# out would hide the bug they caused.
+"tests/test_linkedin_parsing.py" = ["S101", "ASYNC240", "RUF001"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["cv_pal", "tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+# None of these ships type information.
+module = ["pypdf.*", "docx.*", "reportlab.*"]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cv_pal"]
