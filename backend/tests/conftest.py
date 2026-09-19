@@ -1,7 +1,21 @@
 import json
 import os
+import sys
+import sysconfig
 from collections.abc import AsyncGenerator, Iterator
 from pathlib import Path
+
+# SQLAlchemy's async layer bridges to sync DBAPI calls through greenlet, whose stack
+# switching is not supported on a free-threaded build: the suite dies with a Windows
+# access violation / segfault inside greenlet_spawn rather than a test failure. Say so
+# instead, because the crash names nothing you can act on.
+if sysconfig.get_config_var("Py_GIL_DISABLED"):
+    sys.exit(
+        f"This suite needs a GIL-enabled CPython; {sys.executable} is free-threaded.\n"
+        "SQLAlchemy's async engine relies on greenlet, which crashes under free "
+        "threading.\nPoint the virtualenv at a standard build, e.g. "
+        "`uv venv --python cpython-3.14.3`."
+    )
 
 # Settings are validated at import time and secret_key has no default by design, so
 # the environment must be primed before anything under cv_pal is imported.
@@ -186,8 +200,6 @@ def upload_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path
     """
     target = tmp_path / "uploads"
     target.mkdir()
-    # Exercised through real configuration rather than by patching a constant, so the
-    # env-var path the container relies on is the one under test.
     monkeypatch.setenv("CV_PAL_UPLOAD_DIR", str(target))
     get_settings.cache_clear()
     yield target
