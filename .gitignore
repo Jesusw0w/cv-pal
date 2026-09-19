@@ -249,10 +249,10 @@ test_docs/
 # Someone else's repository, checked out beside this one to run a local model.
 llama.cpp/
 
-# Model weights
+# Model weights.
 *.gguf
 *.safetensors
-models/
+/models/
 
 # Exported CVs and letters. Privacy, not tidiness: an export written by hand is a real
 # CV — name, address, employment history. `git add -f` if a sample is ever wanted.
