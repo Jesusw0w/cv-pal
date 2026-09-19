@@ -62,10 +62,6 @@ async def get_or_create_profile(db: AsyncSession, *, user_id: int) -> CareerProf
     Creating on read means the client never has to handle "no profile yet" as a separate
     state — there is always somewhere to add the first role.
 
-    Args:
-        db: Async database session.
-        user_id: The owning user.
-
     Returns:
         The user's career profile with its collections loaded.
     """
@@ -399,10 +395,6 @@ async def suggest_skill_evidence(
     A proposal, like `extract_from_cv`: nothing is written. The client shows what was
     found and the ordinary `PATCH /profile/skills/{id}` records whatever the user keeps.
 
-    Args:
-        db: Async database session.
-        user_id: The owning user.
-
     Returns:
         One entry per skill with roles worth citing. Empty when the profile has no
         unevidenced skills, or nothing in the descriptions to back them.
@@ -513,10 +505,6 @@ async def get_or_create_goals(db: AsyncSession, *, user_id: int) -> CareerGoals:
 
     Same rule as the profile: the client never has to handle "not set yet" as a distinct
     state, and an empty goals record reads correctly as "nothing stated yet".
-
-    Args:
-        db: Async database session.
-        user_id: The owning user.
 
     Returns:
         The user's career goals.

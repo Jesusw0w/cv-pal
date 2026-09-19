@@ -92,14 +92,9 @@ export class LinkedInService {
 }
 
 /**
- * Whether the official data export would still add something.
- *
- * A pure function over the provenance map rather than a method, so the rule can be
- * tested without standing up a resource.
- *
- * @param fieldSources Which route supplied each field group, or undefined when nothing
- *   has been imported.
- * @returns True when some group came from a route less complete than the archive.
+ * A pure function over the provenance map rather than a method on the service, so the
+ * rule can be tested without standing up a resource. Undefined means nothing has been
+ * imported yet, which is not a gap worth reporting.
  */
 export function needsDataExport(
   fieldSources: Record<string, LinkedInSource> | undefined,

@@ -85,10 +85,6 @@ async def get_profile(
 ) -> LinkedInProfileResponse:
     """Return the imported LinkedIn snapshot.
 
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
-
     Returns:
         The stored snapshot.
 
@@ -113,10 +109,6 @@ async def review_profile(
 
     Recomputed on each request, because the goals and career profile it is measured
     against change more often than the snapshot does.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         The review.
@@ -165,10 +157,6 @@ async def delete_profile(current_user: CurrentUser, db: DbSession) -> None:
 
     A profile export is a sensitive document, so removing it is a first-class action
     rather than something only account deletion can do.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Raises:
         LinkedInProfileNotFoundError: If nothing has been imported yet.

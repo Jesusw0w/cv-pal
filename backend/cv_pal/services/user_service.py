@@ -140,10 +140,6 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
     keeps the two from drifting apart. Uploaded files themselves are not inlined — they
     are downloaded whole from the documents screen.
 
-    Args:
-        db: Async database session.
-        user: The authenticated account.
-
     Returns:
         A JSON-serialisable snapshot of the account.
     """

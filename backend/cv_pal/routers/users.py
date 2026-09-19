@@ -11,9 +11,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 async def read_users_me(current_user: CurrentUser) -> UserResponse:
     """Get the current authenticated user's profile.
 
-    Args:
-        current_user: The authenticated user.
-
     Returns:
         The user's profile data.
     """
@@ -81,10 +78,6 @@ async def export_users_me(
     The other half of principle 4: the delete below is irreversible, so there has to be
     a way to take a copy out first. Uploaded files are not inlined — they are downloaded
     whole from the documents endpoints.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         A snapshot of the account.

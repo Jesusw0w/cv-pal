@@ -74,10 +74,6 @@ def content_hash(title: str, company: str | None, description: str) -> str:
 async def list_postings(db: AsyncSession, *, user_id: int) -> list[JobPosting]:
     """Return the user's saved postings, newest first.
 
-    Args:
-        db: Async database session.
-        user_id: The owning user.
-
     Returns:
         The postings.
     """
@@ -332,10 +328,6 @@ async def list_connections(
     db: AsyncSession, *, user_id: int
 ) -> list[JobBoardConnection]:
     """Return the boards this user is watching.
-
-    Args:
-        db: Async database session.
-        user_id: The owning user.
 
     Returns:
         The connections, oldest first.

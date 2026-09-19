@@ -41,10 +41,6 @@ async def list_jobs(
     reflected immediately. Scoring is deterministic and cheap — no model is involved —
     which is what makes recomputing it per request reasonable.
 
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
-
     Returns:
         The postings, newest first, each with its score.
     """
@@ -324,10 +320,6 @@ async def list_sources(
     current_user: CurrentUser, db: DbSession
 ) -> list[JobBoardConnectionResponse]:
     """List the company boards this user is watching.
-
-    Args:
-        current_user: The authenticated user.
-        db: Async database session.
 
     Returns:
         The connections.
