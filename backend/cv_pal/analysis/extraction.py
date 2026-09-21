@@ -152,6 +152,8 @@ class ExtractedProfile:
         experiences: Dated roles.
         educations: Dated study.
         skills: Recognised skill names from the skills section.
+        enriched: Whether a language model complemented this read. Reported so the
+            client can say which of the two passes produced what it is showing.
     """
 
     contact: ExtractedContact = field(default_factory=ExtractedContact)
@@ -161,6 +163,7 @@ class ExtractedProfile:
     experiences: tuple[ExtractedEntry, ...] = field(default_factory=tuple)
     educations: tuple[ExtractedEntry, ...] = field(default_factory=tuple)
     skills: tuple[str, ...] = field(default_factory=tuple)
+    enriched: bool = False
 
 
 def _reflow(text: str) -> list[str]:
@@ -310,7 +313,7 @@ def _as_date(
         return None
 
 
-def _is_education(entry: ExtractedEntry) -> bool:
+def is_education(entry: ExtractedEntry) -> bool:
     """Decide whether a dated entry is study rather than work.
 
     Judged from the entry's own words — "University", "BSc", "School" — rather than the
@@ -579,7 +582,7 @@ def extract_profile(cv_text: str) -> ExtractedProfile:
     flat = _WHITESPACE.sub(" ", cv_text)
 
     # Gathered whole-document then classified: on a multi-column CV the headings
-    # cannot be trusted to bound sections. See `_is_education`.
+    # cannot be trusted to bound sections. See `is_education`.
     entries = _entries(lines)
     headline, location = _header_facts(cv_text)
 
@@ -588,7 +591,7 @@ def extract_profile(cv_text: str) -> ExtractedProfile:
         headline=headline,
         summary=_summary(sections.get("summary", [])),
         location=location,
-        experiences=tuple(e for e in entries if not _is_education(e)),
-        educations=tuple(e for e in entries if _is_education(e)),
+        experiences=tuple(e for e in entries if not is_education(e)),
+        educations=tuple(e for e in entries if is_education(e)),
         skills=_skills(sections.get("skills", [])),
     )

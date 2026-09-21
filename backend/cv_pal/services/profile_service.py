@@ -18,6 +18,7 @@ from cv_pal.analysis.evidence import (
     SkillFacts,
     suggest_evidence,
 )
+from cv_pal.analysis.enrichment import enrich
 from cv_pal.analysis.extraction import ExtractedProfile, extract_profile
 from cv_pal.analysis.keywords import canonical
 from cv_pal.constants import (
@@ -556,7 +557,7 @@ async def replace_goals(
 
 
 async def extract_from_cv(
-    db: AsyncSession, *, user_id: int, cv_id: int
+    db: AsyncSession, *, user_id: int, cv_id: int, client: LLMClient | None = None
 ) -> ExtractedProfile:
     """Read structured records out of one of the user's uploaded CVs.
 
@@ -566,10 +567,16 @@ async def extract_from_cv(
     a rejected suggestion rather than a false claim on a profile that CV generation is
     grounded in.
 
+    The deterministic pass always runs and is always enough. A model, when one is
+    offered, complements it — mainly with the bullet points per role that the pattern
+    matcher flattens, which is what a job board's application form asks for.
+
     Args:
         db: Async database session.
         user_id: The owning user.
         cv_id: The CV to read.
+        client: A language model to complement the read with. Omit for the
+            deterministic pass alone.
 
     Returns:
         The extracted proposal, which may be empty when the layout does not survive
@@ -580,7 +587,12 @@ async def extract_from_cv(
     """
     cv = await get_owned_cv(db, cv_id=cv_id, user_id=user_id)
     text = await extract_cv_text(Path(cv.file_path))
-    return extract_profile(text)
+    found = extract_profile(text)
+    if client is None:
+        return found
+    # No provider, an unreachable one or unusable output all land here as None: the
+    # deterministic proposal is already a usable answer, so none of them is an error.
+    return await enrich(client, cv_text=text, base=found) or found
 
 
 def _summary_facts(profile: CareerProfile) -> str:

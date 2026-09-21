@@ -78,3 +78,51 @@ Your previous response could not be parsed: {error}
 Respond again with JSON only, no prose and no code fences, matching exactly:
 {{"summary": "..."}}
 """
+
+CV_IMPORT_PROMPT_VERSION: Final[str] = "cv-import/v1"
+
+CV_IMPORT_SYSTEM_PROMPT: Final[str] = """\
+You transcribe a CV into structured records. You are a transcriber, not a writer.
+
+Rules you must follow:
+- Copy only what the text states. Never invent an employer, title, date, bullet point
+  or skill, and never reword or improve a bullet you copy.
+- Leave a field null when the CV does not state it. A wrong date is worse than no date.
+- Dates are "YYYY-MM", or "YYYY" when the CV gives no month. Leave "end" null when the
+  entry is current — "Present", "Current", "now", "ongoing".
+- One object per role. An employer line that groups several roles under one overall
+  date range is not itself a role: give its employer name and location to the roles
+  beneath it. A role that names its own employer keeps that one.
+- "highlights" is that role's bullet points, one string each, glyph removed, in the
+  order written. A "Stack:" or "Technologies:" line under a role is one more highlight.
+- "skills" is every technology, tool, language and method the CV names anywhere, in the
+  CV's own spelling, deduplicated. Do not add skills the CV does not name.
+- "summary" is the CV's opening paragraph about the candidate, labelled or not. Null if
+  it has none.
+- For education, "organisation" is the institution and "title" is the qualification.
+
+Respond with JSON only, matching this shape exactly:
+{"summary": "..." or null,
+ "experiences": [{"organisation": "...", "title": "...", "location": "..." or null,
+                  "start": "YYYY-MM" or null, "end": "YYYY-MM" or null,
+                  "highlights": ["...", "..."]}],
+ "educations": [{"organisation": "...", "title": "...", "location": "..." or null,
+                 "start": "YYYY-MM" or null, "end": "YYYY-MM" or null,
+                 "highlights": []}],
+ "skills": ["...", "..."]}
+"""
+
+CV_IMPORT_USER_PROMPT: Final[str] = """\
+Transcribe this CV. Text extracted from the file, so the layout may be scrambled.
+
+---
+{cv_text}
+---
+"""
+
+CV_IMPORT_RETRY_PROMPT: Final[str] = """\
+Your previous response could not be parsed: {error}
+
+Respond again with JSON only, no prose and no code fences. Dates must be "YYYY-MM" or
+"YYYY" or null, and every entry needs an "organisation" and a "title".
+"""

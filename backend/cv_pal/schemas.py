@@ -258,6 +258,42 @@ class GeneratedSuggestions(BaseModel):
     suggestions: list[GeneratedSuggestion]
 
 
+class ImportedEntry(BaseModel):
+    """A role or a course as a language model read it out of a CV.
+
+    Lengths are deliberately unbounded here and trimmed when the entry is merged: a
+    model that returns one over-long organisation name should cost that one field, not
+    fail validation and throw away the whole read.
+
+    Attributes:
+        start: ``YYYY-MM``, or ``YYYY`` when the CV gave no month.
+        end: The same, or None when the entry reads as current.
+        highlights: The entry's bullet points, one per string.
+    """
+
+    organisation: str
+    title: str
+    location: str | None = None
+    # A day is accepted but ignored — models add one unprompted often enough that
+    # rejecting it would spend a retry on a date that was already right.
+    start: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$")
+    end: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$")
+    highlights: list[str] = Field(default_factory=list)
+
+
+class ImportedProfile(BaseModel):
+    """Structured-output envelope for a CV transcription.
+
+    A proposal like everything else on the import path: it is merged with the
+    deterministic read and shown for confirmation, and none of it is persisted.
+    """
+
+    summary: str | None = None
+    experiences: list[ImportedEntry] = Field(default_factory=list)
+    educations: list[ImportedEntry] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+
+
 class ProfileSummaryResponse(BaseModel):
     """A proposed professional summary.
 

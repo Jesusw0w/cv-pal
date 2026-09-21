@@ -107,7 +107,11 @@ async def update_profile(
 
 @router.post("/import-from-cv/{cv_id}", response_model=CvExtractionResponse)
 async def import_from_cv(
-    cv_id: int, current_user: CurrentUser, db: DbSession
+    cv_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+    client: LLMClientDep,
+    enrich: bool = True,
 ) -> CvExtractionResponse:
     """Read structured records out of an uploaded CV, without storing any of them.
 
@@ -116,19 +120,23 @@ async def import_from_cv(
     `/profile/experiences`, `/profile/educations` and `/profile/skills` endpoints. No
     extraction result reaches the profile without a person agreeing to it.
 
-    Runs with no language model configured — it is a deterministic pass over the
-    extracted text.
+    Runs with no language model configured — the deterministic pass is the answer, and
+    the model only ever complements it. This endpoint therefore never fails because of
+    the model: `enriched` in the response says whether one contributed.
 
     Args:
         cv_id: The CV to read.
         current_user: The authenticated user.
         db: Async database session.
+        client: The configured language model client.
+        enrich: Whether to let a model complement the deterministic read. Pass false
+            to force the deterministic pass alone — it is faster and reproducible.
 
     Returns:
         The extracted proposal.
     """
     extracted = await profile_service.extract_from_cv(
-        db, user_id=current_user.id, cv_id=cv_id
+        db, user_id=current_user.id, cv_id=cv_id, client=client if enrich else None
     )
     return CvExtractionResponse.model_validate(extracted)
 
