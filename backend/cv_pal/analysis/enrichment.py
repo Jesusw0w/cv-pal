@@ -187,6 +187,6 @@ async def enrich(
             retry_prompt=CV_IMPORT_RETRY_PROMPT,
         )
     except LLMError:
-        logger.info("CV import enrichment unavailable; returning the deterministic read")
+        logger.info("CV import enrichment unavailable; returning deterministic read")
         return None
     return merge(base, found)

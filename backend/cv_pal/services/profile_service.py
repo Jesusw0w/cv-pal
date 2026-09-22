@@ -12,13 +12,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from cv_pal.analysis.enrichment import enrich
 from cv_pal.analysis.evidence import (
     EvidenceSuggestion,
     ExperienceFacts,
     SkillFacts,
     suggest_evidence,
 )
-from cv_pal.analysis.enrichment import enrich
 from cv_pal.analysis.extraction import ExtractedProfile, extract_profile
 from cv_pal.analysis.keywords import canonical
 from cv_pal.constants import (
@@ -28,6 +28,7 @@ from cv_pal.constants import (
     DEFAULT_ERROR_EXPERIENCE_NOT_FOUND,
     DEFAULT_ERROR_SKILL_DUPLICATE,
     DEFAULT_ERROR_SKILL_NOT_FOUND,
+    DEFAULT_MAX_ROLE_HIGHLIGHTS,
 )
 from cv_pal.exceptions import (
     ConflictError,
@@ -42,6 +43,9 @@ from cv_pal.prompts import (
     PROFILE_SUMMARY_RETRY_PROMPT,
     PROFILE_SUMMARY_SYSTEM_PROMPT,
     PROFILE_SUMMARY_USER_PROMPT,
+    ROLE_HIGHLIGHTS_RETRY_PROMPT,
+    ROLE_HIGHLIGHTS_SYSTEM_PROMPT,
+    ROLE_HIGHLIGHTS_USER_PROMPT,
 )
 from cv_pal.schemas import (
     CareerGoalsUpdate,
@@ -51,6 +55,7 @@ from cv_pal.schemas import (
     ExperienceCreate,
     ExperienceUpdate,
     ProfileSummaryResponse,
+    RoleHighlightsResponse,
     SkillCreate,
     SkillUpdate,
 )
@@ -673,4 +678,62 @@ async def generate_summary(
         user=PROFILE_SUMMARY_USER_PROMPT.format(facts=_summary_facts(profile)),
         schema=ProfileSummaryResponse,
         retry_prompt=PROFILE_SUMMARY_RETRY_PROMPT,
+    )
+
+
+async def draft_highlights(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    experience_id: int,
+    context: str,
+    client: LLMClient,
+) -> RoleHighlightsResponse:
+    """Shape what the user remembers about one role into bullet points.
+
+    The **notes are the only source**: a model with nothing to work from produces a
+    thin bullet rather than a plausible invention. And it **writes nothing** — the
+    bullets reach the role through `PATCH /profile/experiences/{id}` if kept.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        experience_id: The role to write about.
+        context: What the user typed about this role.
+        client: The language model client.
+
+    Returns:
+        The proposed bullet points.
+
+    Raises:
+        NotFoundError: If the role is not on this user's profile.
+        LLMError: If the model is unreachable or its output is unusable.
+    """
+    experience = await _owned_experience(
+        db, user_id=user_id, experience_id=experience_id
+    )
+
+    # Passed as more notes, never as something to embellish. This is what lets the same
+    # call reformat a description that arrived from a CV as one run-on line.
+    notes = context.strip()
+    if experience.description:
+        notes = f"{notes}\n\nAlready recorded for this role:\n{experience.description}"
+
+    end = experience.end_date
+    period = f"{experience.start_date.isoformat()} to "
+    period += end.isoformat() if end else "present (current role)"
+
+    return await complete_validated(
+        client,
+        system=ROLE_HIGHLIGHTS_SYSTEM_PROMPT.format(
+            max_highlights=DEFAULT_MAX_ROLE_HIGHLIGHTS
+        ),
+        user=ROLE_HIGHLIGHTS_USER_PROMPT.format(
+            title=experience.title,
+            organisation=experience.organisation,
+            period=period,
+            context=notes,
+        ),
+        schema=RoleHighlightsResponse,
+        retry_prompt=ROLE_HIGHLIGHTS_RETRY_PROMPT,
     )

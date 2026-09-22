@@ -126,3 +126,47 @@ Your previous response could not be parsed: {error}
 Respond again with JSON only, no prose and no code fences. Dates must be "YYYY-MM" or
 "YYYY" or null, and every entry needs an "organisation" and a "title".
 """
+
+ROLE_HIGHLIGHTS_PROMPT_VERSION: Final[str] = "role-highlights/v1"
+
+ROLE_HIGHLIGHTS_SYSTEM_PROMPT: Final[str] = """\
+You format one role's bullet points for a CV and for the "describe this role" box on a
+job application. You are an editor, not a biographer: the notes below are the only
+things that happened.
+
+Rules you must follow:
+- Every bullet must trace to something in the notes. Never add a technology, a team, a
+  metric, a client, a responsibility or an outcome the notes do not state.
+- Never invent numbers. If the notes say "cut the runtime a lot", the bullet says that,
+  not "by 40%". If a number is in the notes, keep it exactly as written.
+- Do not characterise quality or attitude — no "successfully", no "cutting-edge", no
+  "passionate", no "team player".
+- Vague notes make a vague bullet. That is the correct outcome: it shows the person
+  what they still need to say, and a specific invention would hide it.
+- One achievement or responsibility per bullet. Start with what was done — a past-tense
+  verb, or present tense for a current role. No leading glyph, no trailing full stop
+  unless the bullet is a full sentence.
+- Merge notes that describe the same thing; drop nothing that is distinct.
+- Write between 1 and {max_highlights} bullets. Fewer thin notes beat padded ones.
+
+Respond with JSON only, matching this shape exactly:
+{{"highlights": ["...", "..."]}}
+"""
+
+ROLE_HIGHLIGHTS_USER_PROMPT: Final[str] = """\
+Role: {title}
+Employer: {organisation}
+Period: {period}
+
+Notes about this role, which are the only facts you have:
+---
+{context}
+---
+"""
+
+ROLE_HIGHLIGHTS_RETRY_PROMPT: Final[str] = """\
+Your previous response could not be parsed: {error}
+
+Respond again with JSON only, no prose and no code fences, matching exactly:
+{{"highlights": ["...", "..."]}}
+"""

@@ -21,11 +21,13 @@ from cv_pal.constants import (
     DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY,
     DEFAULT_ERROR_SALARY_NEEDS_CURRENCY,
     DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY,
+    DEFAULT_HIGHLIGHT_MAX_LENGTH,
     DEFAULT_LOCATION_MAX_LENGTH,
     DEFAULT_MAX_COVER_LETTER_LENGTH,
     DEFAULT_MAX_LINKEDIN_PASTE_LENGTH,
     DEFAULT_MAX_NOTES_LENGTH,
     DEFAULT_MAX_POSTING_LENGTH,
+    DEFAULT_MAX_ROLE_HIGHLIGHTS,
     DEFAULT_MAX_SALARY,
     DEFAULT_MAX_TARGET_ROLES,
     DEFAULT_MAX_WORK_LOCATIONS,
@@ -35,6 +37,7 @@ from cv_pal.constants import (
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_ORGANISATION_MAX_LENGTH,
     DEFAULT_PHONE_MAX_LENGTH,
+    DEFAULT_ROLE_CONTEXT_MAX_LENGTH,
     DEFAULT_SKILL_NAME_MAX_LENGTH,
     DEFAULT_SUMMARY_MAX_LENGTH,
     DEFAULT_TARGET_ROLE_MAX_LENGTH,
@@ -303,6 +306,49 @@ class ProfileSummaryResponse(BaseModel):
     """
 
     summary: str = Field(min_length=1, max_length=DEFAULT_SUMMARY_MAX_LENGTH)
+
+
+class RoleHighlightsRequest(BaseModel):
+    """What the user remembers about one role, in their own words.
+
+    Free text on purpose: a form asking for "impact" and "metrics" field by field is
+    the same blank page with more steps.
+    """
+
+    context: str = Field(min_length=1, max_length=DEFAULT_ROLE_CONTEXT_MAX_LENGTH)
+
+
+class RoleHighlightsResponse(BaseModel):
+    """Proposed bullet points for one role.
+
+    Serves twice, like `ProfileSummaryResponse`: it validates the model's output and it
+    is the response body. **Writes nothing** — the bullets reach the role only when the
+    user saves them through `PATCH /profile/experiences/{id}`.
+    """
+
+    highlights: list[str] = Field(min_length=1, max_length=DEFAULT_MAX_ROLE_HIGHLIGHTS)
+
+    @field_validator("highlights", mode="after")
+    @classmethod
+    def clean(cls, value: list[str]) -> list[str]:
+        """Strip the bullet glyph models add unprompted, and drop empty bullets.
+
+        Args:
+            value: The bullets as the model returned them.
+
+        Returns:
+            The cleaned bullets.
+
+        Raises:
+            ValueError: If nothing usable is left, or one bullet is a paragraph.
+        """
+        cleaned = [line.strip().lstrip("-•·*").strip() for line in value]
+        kept = [line for line in cleaned if line]
+        if not kept:
+            raise ValueError("No usable bullet points")
+        if any(len(line) > DEFAULT_HIGHLIGHT_MAX_LENGTH for line in kept):
+            raise ValueError("A bullet point is too long to be one")
+        return kept
 
 
 class CareerProfileUpdate(BaseModel):

@@ -100,6 +100,21 @@ describe('mockApiInterceptor', () => {
     expect(profile.summary).not.toBe(drafted.summary);
   });
 
+  it('drafts role bullets from the notes and nothing else', async () => {
+    const profile = await firstValueFrom(
+      http.get<{ experiences: { id: number }[] }>(`${API}/profile`),
+    );
+    const roleId = profile.experiences[0].id;
+
+    const drafted = await firstValueFrom(
+      http.post<{ highlights: string[] }>(`${API}/profile/experiences/${roleId}/highlights`, {
+        context: 'ran the billing service. moved it to kubernetes',
+      }),
+    );
+
+    expect(drafted.highlights).toEqual(['Ran the billing service.', 'Moved it to kubernetes']);
+  });
+
   it('returns 404 for a route with no fixture, rather than hitting the network', async () => {
     await expect(firstValueFrom(http.get(`${API}/does-not-exist`))).rejects.toMatchObject({
       status: 404,

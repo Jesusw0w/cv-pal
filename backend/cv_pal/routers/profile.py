@@ -16,6 +16,8 @@ from cv_pal.schemas import (
     ExperienceResponse,
     ExperienceUpdate,
     ProfileSummaryResponse,
+    RoleHighlightsRequest,
+    RoleHighlightsResponse,
     SkillCreate,
     SkillResponse,
     SkillUpdate,
@@ -252,6 +254,47 @@ async def update_experience(
         db, user_id=current_user.id, experience_id=experience_id, payload=payload
     )
     return ExperienceResponse.model_validate(experience)
+
+
+@router.post(
+    "/experiences/{experience_id}/highlights", response_model=RoleHighlightsResponse
+)
+async def draft_highlights(
+    experience_id: int,
+    payload: RoleHighlightsRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+    client: LLMClientDep,
+) -> RoleHighlightsResponse:
+    """Turn notes about one role into bullet points for it.
+
+    A **proposal**, like `/summary`: nothing is stored, and keeping the bullets is an
+    ordinary `PATCH /profile/experiences/{id}`. Needs a model configured.
+
+    Written from the notes and the role's own description and nothing else — this does
+    not research the employer or fill in what a role like that usually involves.
+
+    Args:
+        experience_id: The role to write about.
+        payload: What the user remembers about the role.
+        current_user: The authenticated user.
+        db: Async database session.
+        client: The configured language model client.
+
+    Returns:
+        The proposed bullet points.
+
+    Raises:
+        NotFoundError: If the role is not on this user's profile.
+        LLMError: If the model is unreachable or its output is unusable.
+    """
+    return await profile_service.draft_highlights(
+        db,
+        user_id=current_user.id,
+        experience_id=experience_id,
+        context=payload.context,
+        client=client,
+    )
 
 
 @router.delete("/experiences/{experience_id}", status_code=status.HTTP_204_NO_CONTENT)

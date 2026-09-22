@@ -12,10 +12,11 @@ import {
   SkillResponse,
 } from '../../shared/models/api.model';
 import { ImportPanelComponent } from './import-panel.component';
+import { RoleHighlightsComponent } from './role-highlights.component';
 
 @Component({
   selector: 'app-profile',
-  imports: [DatePipe, FormsModule, ImportPanelComponent],
+  imports: [DatePipe, FormsModule, ImportPanelComponent, RoleHighlightsComponent],
   template: `
     <div class="page">
       <!-- Without this a failed request is indistinguishable from an empty profile,
@@ -236,7 +237,12 @@ import { ImportPanelComponent } from './import-panel.component';
                 </span>
                 @if (role.description) {
                   <p class="entry-body">{{ role.description }}</p>
+                } @else {
+                  <p class="entry-thin">
+                    Nothing written under this role. Applications ask what you did here.
+                  </p>
                 }
+                <app-role-highlights [role]="role" (saved)="career.reload()" />
               }
             </li>
           } @empty {
@@ -711,6 +717,12 @@ import { ImportPanelComponent } from './import-panel.component';
         font-size: 13px;
         color: var(--text-secondary);
         max-width: 80ch;
+        white-space: pre-line;
+      }
+      .entry-thin {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
       }
       .empty {
         color: var(--text-tertiary);
