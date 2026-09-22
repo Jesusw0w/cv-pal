@@ -88,6 +88,7 @@ async def issue_tokens(db: AsyncSession, *, user: User) -> tuple[str, str]:
     """
     settings = get_settings()
     refresh_token = generate_refresh_token()
+    access_token = create_access_token(user.email, version=user.token_version)
 
     db.add(
         RefreshToken(
@@ -99,7 +100,7 @@ async def issue_tokens(db: AsyncSession, *, user: User) -> tuple[str, str]:
     )
     await db.commit()
 
-    return create_access_token(user.email), refresh_token
+    return access_token, refresh_token
 
 
 async def _find_refresh_token(db: AsyncSession, token: str) -> RefreshToken | None:
@@ -119,7 +120,7 @@ async def _find_refresh_token(db: AsyncSession, token: str) -> RefreshToken | No
 
 
 async def _revoke_all_for_user(db: AsyncSession, user_id: int) -> None:
-    """Revoke every unrevoked refresh token belonging to a user.
+    """End every session for a user: refresh tokens revoked, access tokens voided.
 
     Args:
         db: Async database session.
@@ -129,6 +130,13 @@ async def _revoke_all_for_user(db: AsyncSession, user_id: int) -> None:
         update(RefreshToken)
         .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
         .values(revoked_at=datetime.now(UTC))
+    )
+    # Refresh tokens are rows and can be revoked; access tokens are not, so they are
+    # invalidated by moving the version they were signed against.
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(token_version=User.token_version + 1)
     )
 
 

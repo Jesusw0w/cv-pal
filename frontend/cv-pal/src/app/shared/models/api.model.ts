@@ -16,10 +16,20 @@ export interface UserResponse {
 }
 
 export interface TokenResponse {
-  access_token: string;
+  /** Null in a cookie session: the tokens arrive as HttpOnly cookies instead. */
+  access_token: string | null;
   /** Single-use. Exchanging it at `/auth/refresh` returns a new pair. */
-  refresh_token: string;
+  refresh_token: string | null;
+  /** `cookie` in a cookie session, `bearer` otherwise. */
   token_type: string;
+}
+
+/** Whether the configured language model can be used. */
+export interface LlmStatusResponse {
+  status: 'ok' | 'unavailable';
+  model: string;
+  /** What is wrong, phrased for a person, when unavailable. */
+  detail: string | null;
 }
 
 export interface RefreshRequest {

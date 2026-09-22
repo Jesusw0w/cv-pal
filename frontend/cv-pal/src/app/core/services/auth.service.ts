@@ -1,12 +1,14 @@
 import { HttpClient, httpResource } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, finalize, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, finalize, shareReplay, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { TokenResponse, UserResponse } from '../../shared/models/api.model';
 
-const ACCESS_KEY = 'cv-pal.access-token';
-const REFRESH_KEY = 'cv-pal.refresh-token';
+/** Whether this browser holds a session. Not a secret: the tokens are HttpOnly cookies. */
+const SIGNED_IN_KEY = 'cv-pal.signed-in';
+/** Where tokens used to be kept, before they moved into cookies. Cleared on load. */
+const LEGACY_KEYS = ['cv-pal.access-token', 'cv-pal.refresh-token'];
 
 /**
  * `localStorage`, or nothing where there is no browser — the test runner and any
@@ -14,13 +16,14 @@ const REFRESH_KEY = 'cv-pal.refresh-token';
  * guard instead of each call site growing its own.
  */
 const store: Storage | null = typeof localStorage === 'undefined' ? null : localStorage;
+LEGACY_KEYS.forEach((key) => store?.removeItem(key));
 
 /**
- * Tokens and the session they represent.
+ * The session, as far as the page can know it.
  *
- * Stored in `localStorage` because the API is bearer-token OAuth2 consumed by a
- * separately-served SPA. Worth revisiting to `HttpOnly` cookies if the container
- * build ends up same-origin.
+ * Both tokens are HttpOnly cookies set by the API, so script on the page — including
+ * injected script — never sees them. What the page keeps is only whether it is signed
+ * in, so the guard can route without a request.
  *
  * In a mock build the session starts already established, so the public demo needs no
  * account and the guard and interceptor still run their real code paths.
@@ -29,11 +32,8 @@ const store: Storage | null = typeof localStorage === 'undefined' ? null : local
 export class AuthService {
   private readonly http = inject(HttpClient);
 
-  private readonly access = signal(
-    environment.useMocks ? 'mock-session' : (store?.getItem(ACCESS_KEY) ?? null),
-  );
-  private readonly refreshToken = signal(
-    environment.useMocks ? 'mock-session' : (store?.getItem(REFRESH_KEY) ?? null),
+  private readonly signedIn = signal(
+    environment.useMocks || store?.getItem(SIGNED_IN_KEY) === 'true',
   );
 
   /**
@@ -45,8 +45,7 @@ export class AuthService {
    */
   private inFlight: Observable<TokenResponse> | null = null;
 
-  readonly accessToken = this.access.asReadonly();
-  readonly isAuthenticated = computed(() => this.access() !== null);
+  readonly isAuthenticated = this.signedIn.asReadonly();
 
   /** The signed-in account. Idle while signed out, so it never fires a doomed request. */
   private readonly account = httpResource<UserResponse>(() =>
@@ -78,11 +77,6 @@ export class AuthService {
       .join('');
   });
 
-  /** Whether a refresh is even possible — an expired access token alone is not enough. */
-  hasRefreshToken(): boolean {
-    return this.refreshToken() !== null;
-  }
-
   login(email: string, password: string): Observable<TokenResponse> {
     // OAuth2 password flow: form-encoded, with the email carried in `username`.
     const body = new URLSearchParams({ username: email, password });
@@ -90,7 +84,7 @@ export class AuthService {
       .post<TokenResponse>(`${environment.apiUrl}/auth/login`, body.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
-      .pipe(tap((tokens) => this.persist(tokens)));
+      .pipe(tap(() => this.markSignedIn(true)));
   }
 
   register(email: string, password: string, fullName: string | null): Observable<UserResponse> {
@@ -102,15 +96,9 @@ export class AuthService {
   }
 
   refresh(): Observable<TokenResponse> {
-    const token = this.refreshToken();
-    if (token === null) {
-      return throwError(() => new Error('No refresh token'));
-    }
-
     this.inFlight ??= this.http
-      .post<TokenResponse>(`${environment.apiUrl}/auth/refresh`, { refresh_token: token })
+      .post<TokenResponse>(`${environment.apiUrl}/auth/refresh`, null)
       .pipe(
-        tap((tokens) => this.persist(tokens)),
         finalize(() => (this.inFlight = null)),
         shareReplay({ bufferSize: 1, refCount: false }),
       );
@@ -120,13 +108,8 @@ export class AuthService {
 
   /** End this session. The local half is dropped first — server revocation is best effort. */
   logout(): void {
-    const token = this.refreshToken();
     this.clearSession();
-    if (token !== null) {
-      this.http
-        .post(`${environment.apiUrl}/auth/logout`, { refresh_token: token })
-        .subscribe({ error: () => undefined });
-    }
+    this.http.post(`${environment.apiUrl}/auth/logout`, null).subscribe({ error: () => undefined });
   }
 
   /**
@@ -160,16 +143,15 @@ export class AuthService {
   }
 
   clearSession(): void {
-    store?.removeItem(ACCESS_KEY);
-    store?.removeItem(REFRESH_KEY);
-    this.access.set(null);
-    this.refreshToken.set(null);
+    this.markSignedIn(false);
   }
 
-  private persist(tokens: TokenResponse): void {
-    store?.setItem(ACCESS_KEY, tokens.access_token);
-    store?.setItem(REFRESH_KEY, tokens.refresh_token);
-    this.access.set(tokens.access_token);
-    this.refreshToken.set(tokens.refresh_token);
+  private markSignedIn(value: boolean): void {
+    if (value) {
+      store?.setItem(SIGNED_IN_KEY, 'true');
+    } else {
+      store?.removeItem(SIGNED_IN_KEY);
+    }
+    this.signedIn.set(value);
   }
 }

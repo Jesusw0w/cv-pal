@@ -1,5 +1,6 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
+from cv_pal.auth import clear_session_cookies
 from cv_pal.dependencies import CurrentUser, DbSession
 from cv_pal.schemas import AccountDelete, AccountUpdate, PasswordChange, UserResponse
 from cv_pal.services import user_service
@@ -43,7 +44,10 @@ async def update_users_me(
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
-    payload: PasswordChange, current_user: CurrentUser, db: DbSession
+    payload: PasswordChange,
+    current_user: CurrentUser,
+    db: DbSession,
+    response: Response,
 ) -> None:
     """Change the account's password.
 
@@ -57,6 +61,7 @@ async def change_password(
         payload: The current password and the replacement.
         current_user: The authenticated user.
         db: Async database session.
+        response: The outgoing response, to clear the now-dead session cookies.
 
     Raises:
         AuthenticationError: If the current password is wrong.
@@ -67,6 +72,7 @@ async def change_password(
         current_password=payload.current_password,
         new_password=payload.new_password,
     )
+    clear_session_cookies(response)
 
 
 @router.get("/me/export")
@@ -87,7 +93,10 @@ async def export_users_me(
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(
-    payload: AccountDelete, current_user: CurrentUser, db: DbSession
+    payload: AccountDelete,
+    current_user: CurrentUser,
+    db: DbSession,
+    response: Response,
 ) -> None:
     """Delete the account, its profile, its CVs and the files behind them.
 
@@ -98,8 +107,10 @@ async def delete_account(
         payload: The account's password, as confirmation.
         current_user: The authenticated user.
         db: Async database session.
+        response: The outgoing response, to clear the session cookies.
 
     Raises:
         AuthenticationError: If the password is wrong.
     """
     await user_service.delete_account(db, user=current_user, password=payload.password)
+    clear_session_cookies(response)

@@ -2,7 +2,7 @@
 
 Thanks for looking. This is a personal project that is useful to other people, so
 contributions are welcome — with the caveat that scope is guarded deliberately (see
-*Scope for a public v1.0* in [docs/PLANNING.md](docs/PLANNING.md)).
+*Roadmap → Scope* in [docs/PLANNING.md](docs/PLANNING.md)).
 
 ## Getting set up
 

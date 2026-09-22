@@ -1,4 +1,5 @@
 import logging
+from functools import cache
 from typing import Protocol
 
 import anthropic
@@ -10,6 +11,9 @@ from cv_pal.constants import (
     DEFAULT_ANTHROPIC_MAX_TOKENS,
     DEFAULT_LLM_API_KEY_PLACEHOLDER,
     DEFAULT_LLM_MAX_RETRIES,
+    DEFAULT_LLM_MODEL_MISSING,
+    DEFAULT_LLM_PROBE_TIMEOUT_SECONDS,
+    DEFAULT_LLM_UNREACHABLE,
     LLMProvider,
 )
 from cv_pal.exceptions import LLMError, LLMResponseError
@@ -41,6 +45,15 @@ class LLMClient(Protocol):
 
         Raises:
             LLMError: If the provider is unreachable or returns no content.
+        """
+        ...
+
+    async def check(self) -> str | None:
+        """Probe whether the configured model can be used.
+
+        Returns:
+            None when the model is available, otherwise what is wrong, phrased for a
+            person reading it.
         """
         ...
 
@@ -153,6 +166,27 @@ class OpenAICompatibleClient:
             raise LLMError
         return content
 
+    async def check(self) -> str | None:
+        """Probe whether the configured model is installed or offered.
+
+        Ollama lists local models with their tag, so ``llama3`` is also found as
+        ``llama3:latest``.
+
+        Returns:
+            None when the model is listed, otherwise the problem.
+        """
+        probe = self._client.with_options(
+            timeout=DEFAULT_LLM_PROBE_TIMEOUT_SECONDS, max_retries=0
+        )
+        try:
+            ids = {model.id async for model in probe.models.list()}
+        except openai.OpenAIError as exc:
+            logger.warning("LLM availability probe failed: %s", exc)
+            return DEFAULT_LLM_UNREACHABLE
+        if self._model in ids or f"{self._model}:latest" in ids:
+            return None
+        return DEFAULT_LLM_MODEL_MISSING.format(model=self._model)
+
 
 class AnthropicClient:
     """LLM client for Claude, through Anthropic's own SDK.
@@ -231,11 +265,31 @@ class AnthropicClient:
             raise LLMError
         return text
 
+    async def check(self) -> str | None:
+        """Probe whether the configured model exists for this key.
 
+        Returns:
+            None when the model is available, otherwise the problem.
+        """
+        probe = self._client.with_options(
+            timeout=DEFAULT_LLM_PROBE_TIMEOUT_SECONDS, max_retries=0
+        )
+        try:
+            await probe.models.retrieve(self._model)
+        except anthropic.NotFoundError:
+            return DEFAULT_LLM_MODEL_MISSING.format(model=self._model)
+        except anthropic.AnthropicError as exc:
+            logger.warning("Claude availability probe failed: %s", exc)
+            return DEFAULT_LLM_UNREACHABLE
+        return None
+
+
+@cache
 def get_llm_client() -> LLMClient:
     """Provide the configured LLM client.
 
-    Used as a FastAPI dependency so tests can override it with a fake.
+    Used as a FastAPI dependency so tests can override it with a fake. Cached, so one
+    connection pool serves the process instead of a new, never-closed one per request.
 
     Returns:
         A client for the provider selected in settings. Anthropic has its own

@@ -3,13 +3,31 @@
 Notable changes to CV Pal, in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 form. Versions follow [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-This file is the summary. The session-by-session account — what was tried, what broke,
-and why each decision went the way it did — is in
-[docs/PROGRESS.md](docs/PROGRESS.md).
+This file is the summary. Current state and what is left are in
+[docs/PROGRESS.md](docs/PROGRESS.md); the reasoning behind decisions is in
+[docs/PLANNING.md](docs/PLANNING.md).
 
 ## [Unreleased]
 
+### Security
+
+- **Browser sessions use HttpOnly cookies.** Tokens are no longer kept in
+  `localStorage`, where a cross-site scripting flaw could read them. A cookie only
+  authenticates alongside the app's session header, which a cross-site form cannot
+  send. Set `CV_PAL_COOKIE_SECURE=true` when serving over HTTPS. Everyone is signed out
+  once by the upgrade.
+- **Changing your password or signing out everywhere ends sessions at once.** Access
+  tokens used to keep working for up to 30 minutes afterwards.
+- `python-jose`, unmaintained with open advisories, replaced by `PyJWT`.
+
 ### Fixed
+
+- A new CV could be given the version number of one that still existed, after an
+  earlier one was deleted.
+- The production frontend build pointed at a hosted API that does not exist; it now
+  talks to its own origin, as the container build always did.
+- A changed logo or favicon could stay cached in returning browsers for a year.
+- A LinkedIn button and three card-header notes were missing their styles.
 
 - **Mock mode rendered a blank page.** `apiUrl` is a path prefix (`/api`) in the mock
   and self-hosted builds, but the mock router only stripped an origin, so every request
@@ -24,6 +42,10 @@ and why each decision went the way it did — is in
   `closed`.
 
 ### Added
+
+- **The app checks whether its model is usable.** A missing or unreachable model is
+  logged at start-up and explained on the AI Tools screen, instead of first appearing
+  as a failed review. `GET /health/llm` reports it.
 
 - **The frontend has a linter.** `angular-eslint` with the recommended TypeScript,
   Angular and template-accessibility rules, wired to `npm run lint` and enforced in CI.
@@ -44,6 +66,10 @@ First public release. Early, and the [README](README.md#status) is explicit abou
 is not built.
 
 ### Added
+
+- **The app checks whether its model is usable.** A missing or unreachable model is
+  logged at start-up and explained on the AI Tools screen, instead of first appearing
+  as a failed review. `GET /health/llm` reports it.
 
 - **Accounts** — registration (closable via `CV_PAL_ALLOW_REGISTRATION`), sign-in,
   password change, and account deletion that removes the profile, CVs and uploaded

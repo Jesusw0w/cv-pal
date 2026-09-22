@@ -221,17 +221,6 @@ interface ProposedField {
         font-size: 13px;
         min-width: 220px;
       }
-      .primary {
-        padding: 8px 16px;
-        border-radius: var(--radius);
-        background: var(--accent);
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .primary:disabled {
-        opacity: 0.5;
-      }
 
       .body {
         padding: 6px 18px 0;

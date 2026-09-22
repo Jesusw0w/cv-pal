@@ -103,30 +103,10 @@ import { CvResponse } from '../../shared/models/api.model';
         gap: 20px;
         max-width: 820px;
       }
-      .intro h1 {
-        font-size: 22px;
-        margin: 0 0 6px;
-      }
-      .intro p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--text-secondary);
-        max-width: 72ch;
-      }
       .intro a,
       .link {
         color: var(--accent);
         font-weight: 600;
-      }
-
-      .upload {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-        cursor: pointer;
-      }
-      .upload input {
-        display: none;
       }
 
       .docs {
@@ -176,9 +156,6 @@ import { CvResponse } from '../../shared/models/api.model';
         font-size: 12px;
         color: var(--text-tertiary);
       }
-      .remove:hover {
-        color: var(--danger, #dc2626);
-      }
 
       .empty,
       .muted {
@@ -200,9 +177,6 @@ import { CvResponse } from '../../shared/models/api.model';
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
         .doc {
           flex-direction: column;
           align-items: flex-start;

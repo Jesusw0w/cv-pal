@@ -354,17 +354,6 @@ import { forgetWelcome } from '../../core/first-run';
         gap: 10px;
         margin-top: 4px;
       }
-      .primary {
-        padding: 8px 16px;
-        border-radius: var(--radius);
-        background: var(--accent);
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .primary:disabled {
-        opacity: 0.5;
-      }
       .ghost {
         font-size: 13px;
         color: var(--text-secondary);
@@ -402,9 +391,6 @@ import { forgetWelcome } from '../../core/first-run';
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
       }
     `,
   ],

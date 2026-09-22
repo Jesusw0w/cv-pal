@@ -73,8 +73,9 @@ async def create_cv(db: AsyncSession, *, user_id: int, file: UploadFile) -> CV:
     """
     stored_path = await storage.save_upload(file)
 
+    # max, not count: after a delete, count + 1 would reuse a live version number.
     version_result = await db.execute(
-        select(func.count()).select_from(CV).where(CV.user_id == user_id)
+        select(func.max(CV.version)).where(CV.user_id == user_id)
     )
     next_version = (version_result.scalar_one() or 0) + 1
 

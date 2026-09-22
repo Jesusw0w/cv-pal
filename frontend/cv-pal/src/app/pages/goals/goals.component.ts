@@ -219,10 +219,6 @@ function linesOf(text: string): string[] {
         gap: 20px;
         max-width: 720px;
       }
-      .intro h1 {
-        font-size: 22px;
-        margin: 0 0 6px;
-      }
       .intro p {
         margin: 0;
         font-size: 14px;
@@ -338,9 +334,6 @@ function linesOf(text: string): string[] {
         font-size: 14px;
         font-weight: 600;
       }
-      .primary:disabled {
-        opacity: 0.5;
-      }
 
       .footnote {
         margin: 0;
@@ -371,9 +364,6 @@ function linesOf(text: string): string[] {
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
       }
     `,
   ],

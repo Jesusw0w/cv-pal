@@ -59,6 +59,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(DEFAULT_HASHED_PASSWORD_LENGTH))
     full_name: Mapped[str | None] = mapped_column(String(DEFAULT_NAME_MAX_LENGTH))
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Carried in every access token; bumping it invalidates all of them at once, so a
+    # password change or logout-all does not leave 30-minute tokens working.
+    token_version: Mapped[int] = mapped_column(default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

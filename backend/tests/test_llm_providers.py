@@ -1,9 +1,14 @@
+from collections.abc import AsyncIterator
+from typing import Any, cast
+
 import anthropic
+import httpx
+import openai
 import pytest
 from pydantic import SecretStr
 
 from cv_pal.config import Settings
-from cv_pal.constants import LLMProvider
+from cv_pal.constants import DEFAULT_LLM_UNREACHABLE, LLMProvider
 from cv_pal.exceptions import LLMError
 from cv_pal.llm import AnthropicClient, OpenAICompatibleClient
 
@@ -205,3 +210,99 @@ def test_anthropic_requires_an_api_key() -> None:
     """Failing at start-up beats failing on the first analysis a user runs."""
     with pytest.raises(ValueError, match="key"):
         settings_for(LLMProvider.ANTHROPIC, llm_api_key=SecretStr(""))
+
+
+class FakeModel:
+    """One entry of a provider's model list."""
+
+    def __init__(self, model_id: str) -> None:
+        """Initialise with an identifier."""
+        self.id = model_id
+
+
+class FakeProbe:
+    """Stands in for an SDK client during the availability probe."""
+
+    def __init__(
+        self, ids: list[str] | None = None, error: Exception | None = None
+    ) -> None:
+        """Hold the model list to serve, or the error to raise."""
+        self._ids = ids or []
+        self._error = error
+        self.models = self
+
+    def with_options(self, **_: object) -> FakeProbe:
+        """Return self; the probe's timeout does not matter here."""
+        return self
+
+    async def _list(self) -> AsyncIterator[FakeModel]:
+        if self._error is not None:
+            raise self._error
+        for model_id in self._ids:
+            yield FakeModel(model_id)
+
+    def list(self) -> AsyncIterator[FakeModel]:
+        """Serve the model list as the SDK's async paginator does."""
+        return self._list()
+
+    async def retrieve(self, model: str) -> FakeModel:
+        """Return the model, or raise the configured error."""
+        if self._error is not None:
+            raise self._error
+        return FakeModel(model)
+
+
+def ollama_client_with(
+    probe: FakeProbe, model: str = "llama3"
+) -> OpenAICompatibleClient:
+    """Build an Ollama client whose SDK is replaced by the probe fake."""
+    client = OpenAICompatibleClient(
+        settings_for(LLMProvider.OLLAMA, llm_api_key=SecretStr(""), llm_model=model)
+    )
+    client._client = probe  # type: ignore[assignment]
+    return client
+
+
+async def test_ollama_model_is_found_under_its_latest_tag() -> None:
+    """Ollama lists `llama3` as `llama3:latest`; that is the same model."""
+    client = ollama_client_with(FakeProbe(["llama3:latest", "gemma4:latest"]))
+
+    assert await client.check() is None
+
+
+async def test_missing_model_is_named() -> None:
+    """The problem a self-hoster actually hits: the model was never pulled."""
+    client = ollama_client_with(FakeProbe(["gemma4:latest"]))
+
+    problem = await client.check()
+
+    assert problem is not None
+    assert "llama3" in problem
+
+
+async def test_unreachable_provider_is_reported_not_raised() -> None:
+    """Start-up must survive Ollama being down."""
+    # cast: newer SDKs type against their own httpx fork; the object is all they read.
+    error = openai.APIConnectionError(
+        request=cast(Any, httpx.Request("GET", "http://x"))
+    )
+    client = ollama_client_with(FakeProbe(error=error))
+
+    assert await client.check() == DEFAULT_LLM_UNREACHABLE
+
+
+async def test_anthropic_unknown_model_is_named() -> None:
+    """A retired model ID is a 404 from the models endpoint."""
+    client = AnthropicClient(settings_for(LLMProvider.ANTHROPIC))
+    request = httpx.Request("GET", "https://api.anthropic.com/v1/models/x")
+    error = anthropic.NotFoundError(
+        "not found",
+        response=cast(Any, httpx.Response(404, request=request)),
+        body=None,
+    )
+    client._client = FakeProbe(error=error)  # type: ignore[assignment]
+
+    problem = await client.check()
+
+    assert problem is not None
+    assert client.model in problem

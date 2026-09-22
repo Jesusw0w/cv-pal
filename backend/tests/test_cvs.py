@@ -152,6 +152,19 @@ async def test_delete_cv(client: AsyncClient, upload_dir: Path) -> None:
     assert (await client.get(f"/cvs/{cv_id}", headers=headers)).status_code == 404
 
 
+async def test_version_is_not_reused_after_a_delete(client: AsyncClient) -> None:
+    """A new upload never takes the version number of a CV that still exists."""
+    headers = await register_and_login(client)
+    first = await upload_cv(client, headers)
+    await upload_cv(client, headers)
+    await client.delete(f"/cvs/{first}", headers=headers)
+
+    await upload_cv(client, headers)
+
+    listed = (await client.get("/cvs/", headers=headers)).json()
+    assert sorted(cv["version"] for cv in listed) == [2, 3]
+
+
 async def test_delete_cv_belonging_to_another_user(
     client: AsyncClient, upload_dir: Path
 ) -> None:

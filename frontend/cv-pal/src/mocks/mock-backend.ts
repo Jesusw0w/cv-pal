@@ -115,6 +115,10 @@ export class MockBackend {
       return { status: 200, body: { status: 'ok' } };
     }
 
+    if (method === 'GET' && path === '/health/llm') {
+      return { status: 200, body: { status: 'ok', model: 'mock-model', detail: null } };
+    }
+
     if (method === 'POST' && path === '/auth/register') {
       return { status: 201, body: this.register(request.body) };
     }

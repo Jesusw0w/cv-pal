@@ -18,6 +18,13 @@ DEFAULT_MAGIC_BYTES: Final[dict[str, bytes]] = {
 # Auth
 DEFAULT_TOKEN_TYPE: Final[str] = "bearer"  # noqa: S105  # scheme name, not a secret
 DEFAULT_JWT_ALGORITHM: Final[str] = "HS256"
+# Browser sessions keep both tokens in HttpOnly cookies, out of reach of page script.
+# A client opts in with the session header; its presence on every cookie-authenticated
+# request is also the CSRF defence, since a cross-origin form cannot set a header.
+DEFAULT_TOKEN_TYPE_COOKIE: Final[str] = "cookie"  # noqa: S105  # a mode, not a secret
+DEFAULT_SESSION_HEADER: Final[str] = "X-CV-Pal-Session"
+DEFAULT_ACCESS_COOKIE: Final[str] = "cv_pal_access"
+DEFAULT_REFRESH_COOKIE: Final[str] = "cv_pal_refresh"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES: Final[int] = 30
 # Refresh tokens are opaque random strings rather than JWTs: revocation requires a
 # database lookup anyway, and an opaque token cannot leak claims if it is exposed.
@@ -445,6 +452,12 @@ DEFAULT_ANTHROPIC_MODEL: Final[str] = "claude-sonnet-5"
 DEFAULT_ANTHROPIC_MAX_TOKENS: Final[int] = 8_000
 DEFAULT_LLM_TIMEOUT_SECONDS: Final[float] = 120.0
 DEFAULT_LLM_MAX_RETRIES: Final[int] = 2
+# The availability probe must answer fast: it runs at start-up and behind a UI notice.
+DEFAULT_LLM_PROBE_TIMEOUT_SECONDS: Final[float] = 5.0
+DEFAULT_LLM_UNREACHABLE: Final[str] = "The model provider could not be reached."
+DEFAULT_LLM_MODEL_MISSING: Final[str] = (
+    "The model '{model}' is not available from the provider."
+)
 DEFAULT_SUGGESTION_COUNT: Final[int] = 5
 
 # A ceiling, so a model that writes an essay instead of three sentences is rejected.

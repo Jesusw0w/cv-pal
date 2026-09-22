@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build -- --configuration=selfhost
+RUN npm run build
 
 
 # nginx-unprivileged runs as a non-root user and listens on 8080, so no capability to

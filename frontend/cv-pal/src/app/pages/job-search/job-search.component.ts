@@ -595,14 +595,11 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
         gap: 20px;
         max-width: 860px;
       }
-      .intro h1 {
-        font-size: 22px;
-        margin: 0 0 6px;
-      }
       .intro p {
         margin: 0;
         font-size: 14px;
         color: var(--text-secondary);
+        max-width: none;
       }
       .intro a,
       .link {
@@ -669,9 +666,6 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
         font-size: 13px;
         font-weight: 600;
       }
-      .primary:disabled {
-        opacity: 0.5;
-      }
       .error {
         margin: 0;
         padding: 0 18px 14px;
@@ -683,10 +677,6 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
         padding: 16px 18px;
         font-size: 13px;
         color: var(--text-secondary);
-      }
-      .card-note {
-        font-size: 12px;
-        color: var(--text-tertiary);
       }
 
       .job {
@@ -911,9 +901,6 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
         font-size: 12px;
         color: var(--text-tertiary);
       }
-      .remove:hover {
-        color: var(--danger, #dc2626);
-      }
 
       .blocked {
         display: flex;
@@ -969,9 +956,6 @@ const CONTRACT_LABELS: Record<EmploymentType, string> = {
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
       }
     `,
   ],

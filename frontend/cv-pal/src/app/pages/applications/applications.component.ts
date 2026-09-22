@@ -374,9 +374,6 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
         .entry {
           flex-wrap: wrap;
         }

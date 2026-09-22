@@ -156,11 +156,12 @@ class Token(BaseModel):
     """Schema for token responses.
 
     The refresh token is returned in plaintext exactly once per issue; the server keeps
-    only its hash.
+    only its hash. In a cookie session both are set as HttpOnly cookies instead, and
+    the body carries neither — script on the page must never see them.
     """
 
-    access_token: str
-    refresh_token: str
+    access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = DEFAULT_TOKEN_TYPE
 
 

@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
 
     allow_registration: bool = True
+    # Off by default because the default install is plain HTTP on localhost. Turn it on
+    # when the instance is served over HTTPS.
+    cookie_secure: bool = False
 
     # LLM
     llm_provider: LLMProvider = DEFAULT_LLM_PROVIDER

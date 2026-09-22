@@ -19,7 +19,7 @@ if sysconfig.get_config_var("Py_GIL_DISABLED"):
 
 # Settings are validated at import time and secret_key has no default by design, so
 # the environment must be primed before anything under cv_pal is imported.
-os.environ.setdefault("CV_PAL_SECRET_KEY", "test-secret-key")
+os.environ.setdefault("CV_PAL_SECRET_KEY", "test-secret-key-at-least-32-bytes-long")
 os.environ.setdefault("CV_PAL_LLM_PROVIDER", "ollama")
 os.environ.setdefault("CV_PAL_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
@@ -62,6 +62,7 @@ class FakeLLMClient:
             }
         )
         self.calls: list[tuple[str, str]] = []
+        self.unavailable: str | None = None
 
     @property
     def model(self) -> str:
@@ -85,6 +86,14 @@ class FakeLLMClient:
         self.calls.append((system, user))
         return self.response
 
+    async def check(self) -> str | None:
+        """Report the configured availability.
+
+        Returns:
+            None, or the problem a test set in ``self.unavailable``.
+        """
+        return self.unavailable
+
 
 @pytest.fixture
 def test_settings() -> Settings:
@@ -94,7 +103,7 @@ def test_settings() -> Settings:
         Settings for the test run.
     """
     return Settings(
-        secret_key=SecretStr("test-secret-key"),
+        secret_key=SecretStr("test-secret-key-at-least-32-bytes-long"),
         database_url=TEST_DATABASE_URL,
         llm_provider=LLMProvider.OLLAMA,
         llm_base_url="http://localhost:11434/v1",
