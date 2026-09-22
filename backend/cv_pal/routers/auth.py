@@ -1,13 +1,26 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from cv_pal.auth import get_user_by_email
+from cv_pal.auth import (
+    clear_session_cookies,
+    get_user_by_email,
+    set_session_cookies,
+    wants_cookie_session,
+)
 from cv_pal.config import get_settings
-from cv_pal.constants import DEFAULT_ERROR_INVALID_CREDENTIALS
+from cv_pal.constants import (
+    DEFAULT_ERROR_INVALID_CREDENTIALS,
+    DEFAULT_REFRESH_COOKIE,
+    DEFAULT_TOKEN_TYPE_COOKIE,
+)
 from cv_pal.dependencies import CurrentUser, DbSession
-from cv_pal.exceptions import EmailAlreadyRegisteredError, RegistrationClosedError
+from cv_pal.exceptions import (
+    EmailAlreadyRegisteredError,
+    InvalidRefreshTokenError,
+    RegistrationClosedError,
+)
 from cv_pal.hashing import hash_password
 from cv_pal.models import User
 from cv_pal.rate_limit import RateLimiter, get_rate_limiter
@@ -32,6 +45,45 @@ def client_key(request: Request, endpoint: str) -> str:
     """
     host = request.client.host if request.client else "unknown"
     return f"{endpoint}:{host}"
+
+
+def _presented_refresh_token(
+    payload: RefreshRequest | None, request: Request
+) -> str | None:
+    """Find the refresh token in the body, or in the cookie of a cookie session.
+
+    Args:
+        payload: The request body, if one was sent.
+        request: The incoming request.
+
+    Returns:
+        The token, or None when the client presented none.
+    """
+    if payload is not None:
+        return payload.refresh_token
+    if wants_cookie_session(request):
+        return request.cookies.get(DEFAULT_REFRESH_COOKIE)
+    return None
+
+
+def _token_response(
+    request: Request, response: Response, *, access: str, refresh: str
+) -> Token:
+    """Hand a token pair over in the body, or as cookies for a cookie session.
+
+    Args:
+        request: The incoming request.
+        response: The outgoing response.
+        access: The access token.
+        refresh: The refresh token.
+
+    Returns:
+        The response body.
+    """
+    if wants_cookie_session(request):
+        set_session_cookies(response, access=access, refresh=refresh)
+        return Token(token_type=DEFAULT_TOKEN_TYPE_COOKIE)
+    return Token(access_token=access, refresh_token=refresh)
 
 
 @router.post(
@@ -77,13 +129,18 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: LoginForm, request: Request, db: DbSession, limiter: Limiter
+    form_data: LoginForm,
+    request: Request,
+    response: Response,
+    db: DbSession,
+    limiter: Limiter,
 ) -> Token:
-    """Authenticate and return a JWT access token.
+    """Authenticate and issue a token pair.
 
     Args:
         form_data: OAuth2 form carrying the email as ``username`` and the password.
-        request: The incoming request, used for rate limiting.
+        request: The incoming request, used for rate limiting and the session mode.
+        response: The outgoing response, for session cookies.
         db: Async database session.
         limiter: Request throttling and failure backoff.
 
@@ -107,12 +164,18 @@ async def login(
         )
 
     access_token, refresh_token = await auth_service.issue_tokens(db, user=user)
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return _token_response(
+        request, response, access=access_token, refresh=refresh_token
+    )
 
 
 @router.post("/refresh", response_model=Token)
 async def refresh(
-    payload: RefreshRequest, request: Request, db: DbSession, limiter: Limiter
+    request: Request,
+    response: Response,
+    db: DbSession,
+    limiter: Limiter,
+    payload: RefreshRequest | None = None,
 ) -> Token:
     """Exchange a refresh token for a new token pair.
 
@@ -121,10 +184,11 @@ async def refresh(
     basis that two parties cannot both legitimately hold the same one-time token.
 
     Args:
-        payload: The refresh token to exchange.
-        request: The incoming request, used for rate limiting.
+        request: The incoming request, used for rate limiting and the session mode.
+        response: The outgoing response, for session cookies.
         db: Async database session.
         limiter: Request throttling.
+        payload: The refresh token to exchange; omitted in a cookie session.
 
     Returns:
         A new access and refresh token pair.
@@ -135,27 +199,40 @@ async def refresh(
     """
     limiter.check(client_key(request, "refresh"))
 
+    token = _presented_refresh_token(payload, request)
+    if token is None:
+        raise InvalidRefreshTokenError
+
     access_token, refresh_token = await auth_service.rotate_refresh_token(
-        db, token=payload.refresh_token
+        db, token=token
     )
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return _token_response(
+        request, response, access=access_token, refresh=refresh_token
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(payload: RefreshRequest, db: DbSession) -> None:
-    """End the session belonging to a refresh token.
+async def logout(
+    request: Request,
+    response: Response,
+    db: DbSession,
+    payload: RefreshRequest | None = None,
+) -> None:
+    """End the session belonging to a refresh token, from the body or the cookie.
 
     Succeeds whether or not the token was valid: the caller's intent is satisfied
     either way, and distinguishing the cases would confirm which tokens exist.
-
-    Args:
-        payload: The refresh token to revoke.
-        db: Async database session.
     """
-    await auth_service.revoke_refresh_token(db, token=payload.refresh_token)
+    token = _presented_refresh_token(payload, request)
+    if token is not None:
+        await auth_service.revoke_refresh_token(db, token=token)
+    clear_session_cookies(response)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
-async def logout_all(current_user: CurrentUser, db: DbSession) -> None:
+async def logout_all(
+    current_user: CurrentUser, db: DbSession, response: Response
+) -> None:
     """End every session for the authenticated user, on all devices."""
     await auth_service.revoke_all_sessions(db, user_id=current_user.id)
+    clear_session_cookies(response)

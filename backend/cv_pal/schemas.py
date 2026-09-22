@@ -11,6 +11,9 @@ from pydantic import (
 )
 
 from cv_pal.constants import (
+    DEFAULT_API_TOKEN_DEFAULT_DAYS,
+    DEFAULT_API_TOKEN_MAX_DAYS,
+    DEFAULT_API_TOKEN_NAME_MAX_LENGTH,
     DEFAULT_BOARD_IDENTIFIER_PATTERN,
     DEFAULT_COMPANY_MAX_LENGTH,
     DEFAULT_CURRENCY_CODE_LENGTH,
@@ -143,6 +146,49 @@ class AccountDelete(BaseModel):
     password: str
 
 
+class ApiTokenCreate(BaseModel):
+    """Issue a personal access token for an agent.
+
+    The password is required for the same reason as `PasswordChange`: a token is a
+    long-lived credential, and a stolen session should not be able to mint one.
+    """
+
+    name: str = Field(min_length=1, max_length=DEFAULT_API_TOKEN_NAME_MAX_LENGTH)
+    password: str
+    #: Read-only unless asked for. Write lets an agent record postings and applications.
+    write: bool = False
+    expires_in_days: int = Field(
+        default=DEFAULT_API_TOKEN_DEFAULT_DAYS, ge=1, le=DEFAULT_API_TOKEN_MAX_DAYS
+    )
+
+
+class ApiTokenResponse(BaseModel):
+    """A token as listed: never the secret, only enough to recognise it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    display_hint: str
+    scopes: str
+    expires_at: datetime
+    last_used_at: datetime | None
+    created_at: datetime
+
+
+class ApiTokenCreatedResponse(ApiTokenResponse):
+    """A token as issued. `token` is shown this once and cannot be recovered."""
+
+    token: str
+
+
+class ApiTokenListResponse(BaseModel):
+    """The user's tokens, and whether this instance accepts them at all."""
+
+    mcp_enabled: bool
+    tokens: list[ApiTokenResponse]
+
+
 class UserResponse(BaseModel):
     """Schema for user data returned in API responses."""
 
@@ -159,11 +205,12 @@ class Token(BaseModel):
     """Schema for token responses.
 
     The refresh token is returned in plaintext exactly once per issue; the server keeps
-    only its hash.
+    only its hash. In a cookie session both are set as HttpOnly cookies instead, and
+    the body carries neither — script on the page must never see them.
     """
 
-    access_token: str
-    refresh_token: str
+    access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = DEFAULT_TOKEN_TYPE
 
 

@@ -16,10 +16,51 @@ export interface UserResponse {
 }
 
 export interface TokenResponse {
-  access_token: string;
+  /** Null in a cookie session: the tokens arrive as HttpOnly cookies instead. */
+  access_token: string | null;
   /** Single-use. Exchanging it at `/auth/refresh` returns a new pair. */
-  refresh_token: string;
+  refresh_token: string | null;
+  /** `cookie` in a cookie session, `bearer` otherwise. */
   token_type: string;
+}
+
+/** A personal access token for an agent, as listed. The secret is never included. */
+export interface ApiTokenResponse {
+  id: number;
+  name: string;
+  /** The first characters of the secret, to tell tokens apart. */
+  display_hint: string;
+  /** Space-separated: `cvpal:read`, plus `cvpal:write` when it may record things. */
+  scopes: string;
+  expires_at: string;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+/** A token as issued: `token` is shown this once and cannot be recovered. */
+export interface ApiTokenCreatedResponse extends ApiTokenResponse {
+  token: string;
+}
+
+export interface ApiTokenListResponse {
+  /** Whether this instance accepts agent connections at all (`CV_PAL_MCP_ENABLED`). */
+  mcp_enabled: boolean;
+  tokens: ApiTokenResponse[];
+}
+
+export interface ApiTokenCreate {
+  name: string;
+  password: string;
+  write: boolean;
+  expires_in_days: number;
+}
+
+/** Whether the configured language model can be used. */
+export interface LlmStatusResponse {
+  status: 'ok' | 'unavailable';
+  model: string;
+  /** What is wrong, phrased for a person, when unavailable. */
+  detail: string | null;
 }
 
 export interface RefreshRequest {

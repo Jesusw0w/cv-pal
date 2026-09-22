@@ -213,25 +213,11 @@ import {
         max-width: 900px;
       }
 
-      .intro h1 {
-        font-size: 22px;
-        margin: 0 0 6px;
-      }
       .intro p {
         margin: 0;
         font-size: 14px;
         color: var(--text-secondary);
         max-width: 70ch;
-      }
-
-      .upload {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-        cursor: pointer;
-      }
-      .upload input {
-        display: none;
       }
 
       .cv-list {
@@ -311,9 +297,6 @@ import {
         color: #fff;
         font-size: 14px;
         font-weight: 600;
-      }
-      .primary:disabled {
-        opacity: 0.5;
       }
 
       .score {
@@ -433,9 +416,6 @@ import {
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
       }
     `,
   ],

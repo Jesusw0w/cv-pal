@@ -2,6 +2,9 @@ import { HttpRequest } from '@angular/common/http';
 
 import { environment } from '../environments/environment';
 import {
+  ApiTokenCreate,
+  ApiTokenCreatedResponse,
+  ApiTokenResponse,
   ApplicationResponse,
   CareerGoalsResponse,
   CareerProfileResponse,
@@ -79,6 +82,8 @@ export class MockBackend {
   private nextCvId = 1;
   private nextSuggestionId = 1;
   private tokenCounter = 0;
+  private apiTokens: ApiTokenResponse[] = [];
+  private apiTokenCounter = 0;
 
   constructor() {
     this.reset();
@@ -116,6 +121,10 @@ export class MockBackend {
       return { status: 200, body: { status: 'ok' } };
     }
 
+    if (method === 'GET' && path === '/health/llm') {
+      return { status: 200, body: { status: 'ok', model: 'mock-model', detail: null } };
+    }
+
     if (method === 'POST' && path === '/auth/register') {
       return { status: 201, body: this.register(request.body) };
     }
@@ -125,6 +134,20 @@ export class MockBackend {
     }
 
     if (method === 'POST' && (path === '/auth/logout' || path === '/auth/logout-all')) {
+      return { status: 204, body: null };
+    }
+
+    // The demo has no agent endpoint to connect to, so it says so — but the panel still
+    // works, and a created token is shown once exactly as in the real app.
+    if (method === 'GET' && path === '/users/me/tokens') {
+      return { status: 200, body: { mcp_enabled: false, tokens: this.apiTokens } };
+    }
+    if (method === 'POST' && path === '/users/me/tokens') {
+      return { status: 201, body: this.createApiToken(request.body) };
+    }
+    const apiTokenId = matchId(path, '/users/me/tokens');
+    if (method === 'DELETE' && apiTokenId !== null) {
+      this.apiTokens = this.apiTokens.filter((token) => token.id !== apiTokenId);
       return { status: 204, body: null };
     }
 
@@ -455,6 +478,23 @@ export class MockBackend {
       refresh_token: `${MOCK_TOKEN}-refresh-${this.tokenCounter}`,
       token_type: 'bearer',
     };
+  }
+
+  private createApiToken(body: unknown): ApiTokenCreatedResponse {
+    const payload = (body ?? {}) as Partial<ApiTokenCreate>;
+    this.apiTokenCounter += 1;
+    const secret = `mockmock${String(this.apiTokenCounter).padStart(4, '0')}`;
+    const token: ApiTokenResponse = {
+      id: this.apiTokenCounter,
+      name: payload.name ?? 'agent',
+      display_hint: secret.slice(0, 8),
+      scopes: payload.write ? 'cvpal:read cvpal:write' : 'cvpal:read',
+      expires_at: new Date(Date.now() + (payload.expires_in_days ?? 90) * 86_400_000).toISOString(),
+      last_used_at: null,
+      created_at: new Date().toISOString(),
+    };
+    this.apiTokens = [token, ...this.apiTokens];
+    return { ...token, token: `cvp_${secret}` };
   }
 
   private register(body: unknown): UserResponse {

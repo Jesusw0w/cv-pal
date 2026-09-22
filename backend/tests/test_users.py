@@ -93,6 +93,20 @@ async def test_password_change_ends_every_session(
     assert accepted.status_code == 200
 
 
+async def test_password_change_voids_live_access_tokens(client: AsyncClient) -> None:
+    """The access token used for the change stops working at once, not in 30 minutes."""
+    headers = await register_and_login(client)
+
+    response = await client.patch(
+        "/users/me/password",
+        headers=headers,
+        json={"current_password": PASSWORD, "new_password": NEW_PASSWORD},
+    )
+
+    assert response.status_code == 204
+    assert (await client.get("/users/me", headers=headers)).status_code == 401
+
+
 async def test_password_change_holds_the_new_one_to_the_policy(
     client: AsyncClient,
 ) -> None:

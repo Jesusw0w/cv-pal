@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
@@ -6,6 +6,8 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { forgetWelcome } from '../../core/first-run';
+import { detailOf } from '../../shared/http-error';
+import { AgentAccessComponent } from './agent-access.component';
 
 /**
  * Settings: only the controls that do something.
@@ -16,6 +18,7 @@ import { forgetWelcome } from '../../core/first-run';
  */
 @Component({
   selector: 'app-settings',
+  imports: [AgentAccessComponent],
   template: `
     <div class="page">
       <section class="card">
@@ -174,6 +177,8 @@ import { forgetWelcome } from '../../core/first-run';
           }
         </div>
       </section>
+
+      <app-agent-access />
 
       <section class="card danger-card">
         <div class="card-header"><h3>Delete this account</h3></div>
@@ -354,17 +359,6 @@ import { forgetWelcome } from '../../core/first-run';
         gap: 10px;
         margin-top: 4px;
       }
-      .primary {
-        padding: 8px 16px;
-        border-radius: var(--radius);
-        background: var(--accent);
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .primary:disabled {
-        opacity: 0.5;
-      }
       .ghost {
         font-size: 13px;
         color: var(--text-secondary);
@@ -402,9 +396,6 @@ import { forgetWelcome } from '../../core/first-run';
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
       }
     `,
   ],
@@ -574,25 +565,4 @@ function download(blob: Blob, filename: string): void {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
-}
-
-function detailOf(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-    // 422 from Pydantic arrives as a list of per-field errors; the password policy
-    // messages the user needs are inside them.
-    if (Array.isArray(detail)) {
-      const messages = detail
-        .map((item) => (item as { msg?: unknown }).msg)
-        .filter((msg): msg is string => typeof msg === 'string')
-        .map((msg) => msg.replace(/^Value error, /, ''));
-      if (messages.length > 0) {
-        return messages.join(' ');
-      }
-    }
-  }
-  return fallback;
 }

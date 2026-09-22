@@ -31,6 +31,16 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
         </p>
       </header>
 
+      @if (reviews.modelStatus.value(); as model) {
+        @if (model.status === 'unavailable') {
+          <p class="notice" role="status">
+            {{ model.detail }} Reviews will fail until it is — with Ollama, run
+            <code>ollama pull {{ model.model }}</code
+            >, or check the model settings in <code>.env</code>.
+          </p>
+        }
+      }
+
       <section class="card">
         <div class="card-header"><h3>Choose a CV</h3></div>
         @if (analysis.isLoading()) {
@@ -122,16 +132,6 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
         gap: 20px;
         max-width: 820px;
       }
-      .intro h1 {
-        font-size: 22px;
-        margin: 0 0 6px;
-      }
-      .intro p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--text-secondary);
-        max-width: 72ch;
-      }
       .intro a,
       .empty a {
         color: var(--accent);
@@ -145,6 +145,14 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
         font-size: 13px;
         color: var(--text-tertiary);
         margin: 0;
+      }
+      .notice {
+        margin: 0;
+        padding: 12px 16px;
+        border: 1px solid var(--border-light);
+        border-left: 3px solid var(--danger, #dc2626);
+        border-radius: var(--radius);
+        font-size: 13px;
       }
       .error {
         margin: 0;
@@ -181,18 +189,6 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
         padding: 12px;
         font-size: 13px;
         color: var(--text-tertiary);
-      }
-
-      .primary {
-        padding: 8px 16px;
-        border-radius: var(--radius);
-        background: var(--accent);
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .primary:disabled {
-        opacity: 0.5;
       }
 
       .suggestions {
@@ -266,16 +262,13 @@ import { CvResponse, SuggestionResponse } from '../../shared/models/api.model';
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
       }
     `,
   ],
 })
 export class AiToolsComponent {
   readonly analysis = inject(AnalysisService);
-  private readonly reviews = inject(ReviewService);
+  readonly reviews = inject(ReviewService);
 
   readonly selected = signal<CvResponse | null>(null);
   readonly suggestions = signal<SuggestionResponse[]>([]);

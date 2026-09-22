@@ -55,27 +55,6 @@
                 }
               ]
             },
-            "beta": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
-                }
-              ],
-              "outputHashing": "all",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.beta.ts"
-                }
-              ]
-            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -91,27 +70,6 @@
                   "with": "src/environments/environment.mock.ts"
                 }
               ]
-            },
-            "selfhost": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
-                }
-              ],
-              "outputHashing": "all",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.selfhost.ts"
-                }
-              ]
             }
           },
           "defaultConfiguration": "production"
@@ -122,17 +80,11 @@
             "production": {
               "buildTarget": "cv-pal:build:production"
             },
-            "beta": {
-              "buildTarget": "cv-pal:build:beta"
-            },
             "development": {
               "buildTarget": "cv-pal:build:development"
             },
             "mock": {
               "buildTarget": "cv-pal:build:mock"
-            },
-            "selfhost": {
-              "buildTarget": "cv-pal:build:selfhost"
             }
           },
           "defaultConfiguration": "development"

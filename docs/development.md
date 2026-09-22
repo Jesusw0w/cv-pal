@@ -72,7 +72,8 @@ npm start
 
 ## Using a local LLM
 
-Only the CV analysis endpoint needs a model. For a fully local setup:
+Only two features need a model: the AI review and the drafted profile summary. Everything
+else — analysis, matching, tailoring, export — is deterministic. For a fully local setup:
 
 ```bash
 ollama pull llama3               # matches CV_PAL_LLM_MODEL in .env
@@ -128,7 +129,7 @@ generated file before applying it.
 | --- | --- | --- |
 | `npm start` | `environment.ts` | `http://localhost:8000` |
 | `npm run start:mock` | `environment.mock.ts` | Local fixtures |
-| `npm run build` | `environment.prod.ts` | `https://api.cvpal.app` |
+| `npm run build` | `environment.prod.ts` | `/api`, same origin — what the container serves |
 | `npm run build:mock` | `environment.mock.ts` | Local fixtures |
 
 Mock mode lives in `frontend/cv-pal/src/mocks/`. Fixtures are in `mocks/fixtures/`,
@@ -173,7 +174,7 @@ Other editors work fine — none of this is required to run the project.
 | `llm_api_key is required for provider openai` | Provider is `openai` with no key. Either set `CV_PAL_LLM_API_KEY` or switch to `CV_PAL_LLM_PROVIDER=ollama`. |
 | `no such table: users` | Migrations were not applied. Run `uv run alembic upgrade head`. |
 | CORS errors in the browser console | Add the frontend origin to `CV_PAL_CORS_ORIGINS` and restart the backend. |
-| `502` from the analyse endpoint | The LLM is unreachable. Check Ollama is running, or that the hosted key is valid. |
+| `502` from AI review or the summary draft | The model is unreachable or not installed. `GET /health/llm` (signed in) says which; check `ollama list` matches `CV_PAL_LLM_MODEL`, or that the hosted key is valid. |
 | `429` from `/auth/login` or `/auth/register` | Rate limit or failed-login backoff. The `Retry-After` header says how long to wait; restarting the server clears it, since the limiter is in-process. |
 | `Address already in use` | Something holds 8000 or 4200. `uvicorn --port 8001`, or `ng serve --port 4300`. |
 | Tests pass locally but `nox` fails | `nox` builds clean virtualenvs. Your `.venv` may hold a stale dependency — `uv sync --extra dev` to resync. |

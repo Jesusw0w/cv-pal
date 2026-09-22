@@ -16,6 +16,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from cv_pal.constants import (
+    DEFAULT_API_TOKEN_DISPLAY_CHARS,
+    DEFAULT_API_TOKEN_NAME_MAX_LENGTH,
     DEFAULT_COMPANY_MAX_LENGTH,
     DEFAULT_CONTENT_HASH_LENGTH,
     DEFAULT_CURRENCY_CODE_LENGTH,
@@ -59,6 +61,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(DEFAULT_HASHED_PASSWORD_LENGTH))
     full_name: Mapped[str | None] = mapped_column(String(DEFAULT_NAME_MAX_LENGTH))
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Carried in every access token; bumping it invalidates all of them at once, so a
+    # password change or logout-all does not leave 30-minute tokens working.
+    token_version: Mapped[int] = mapped_column(default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -67,6 +72,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     refresh_tokens: Mapped[list[RefreshToken]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    api_tokens: Mapped[list[ApiToken]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     career_profile: Mapped[CareerProfile | None] = relationship(
@@ -163,6 +171,37 @@ class RefreshToken(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="refresh_tokens")
+
+
+class ApiToken(Base):
+    """A personal access token an external agent uses to reach the MCP endpoint.
+
+    Hashed like a refresh token. Unlike one it is long-lived and never rotates, which is
+    why it is scoped, always expires, and is revoked by a password change.
+    """
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(DEFAULT_API_TOKEN_NAME_MAX_LENGTH))
+    token_hash: Mapped[str] = mapped_column(
+        String(DEFAULT_TOKEN_HASH_LENGTH), unique=True, index=True
+    )
+    #: The first characters after the prefix, so the user can tell tokens apart.
+    display_hint: Mapped[str] = mapped_column(String(DEFAULT_API_TOKEN_DISPLAY_CHARS))
+    #: Space-separated, as OAuth writes scopes.
+    scopes: Mapped[str] = mapped_column(String(128))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    user: Mapped[User] = relationship(back_populates="api_tokens")
 
 
 class CareerProfile(Base):

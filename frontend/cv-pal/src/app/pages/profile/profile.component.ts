@@ -541,11 +541,6 @@ import { RoleHighlightsComponent } from './role-highlights.component';
         background: var(--accent);
       }
 
-      .card-note {
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-
       .edit-form,
       .add-form {
         display: flex;
@@ -605,9 +600,6 @@ import { RoleHighlightsComponent } from './role-highlights.component';
         font-size: 13px;
         font-weight: 600;
       }
-      .primary:disabled {
-        opacity: 0.5;
-      }
       .link {
         font-size: 13px;
         font-weight: 600;
@@ -639,9 +631,6 @@ import { RoleHighlightsComponent } from './role-highlights.component';
         font-size: 12px;
         color: var(--text-tertiary);
         padding: 2px 6px;
-      }
-      .remove:hover {
-        color: var(--danger, #dc2626);
       }
 
       .notice {
@@ -839,9 +828,6 @@ import { RoleHighlightsComponent } from './role-highlights.component';
       }
 
       @media (max-width: 768px) {
-        .page {
-          padding: 16px;
-        }
         .identity {
           flex-direction: column;
           gap: 16px;

@@ -75,23 +75,22 @@ Early, and honest about it.
 
 | Works | Not built yet |
 | --- | --- |
-| Accounts, sign-in, sessions with refresh and revocation | The application quality gate — the checks that have to pass before anything is sent |
-| A guided first run: upload a CV, keep what it read correctly, then say what you are looking for | Changing your name after registration — it is asked once and cannot be edited |
-| A summary drafted from the facts already in your profile, which you read before keeping | Match rules, an application queue, and automated submission |
-| Career profile: roles, education and skills — add, amend or remove any of them, cite the roles that evidence a skill, or import the lot from a CV | Application tracking and reply-rate analytics |
-| Career goals: target roles, work regime, salary floor, and which of those are non-negotiable | Per-account model configuration — it is per deployment, in `.env` |
-| CV upload, listing, deletion | Scheduled collection: syncing a board is a command you run, or a cron entry |
-| ATS parseability check and keyword coverage, with no model needed | Projects, certifications, and JSON Resume import |
-| AI CV review with accept/reject suggestions | A skill vocabulary beyond software roles — see [PLANNING](docs/PLANNING.md#known-limitation-the-vocabulary-is-software-specific) |
-| Job postings: paste one, import a Greenhouse / Lever / Remotive link, or watch a board and sync it | Exporting your data from the interface — it is in one volume you can back up, but there is no button yet |
-| Changing your password, and deleting the account outright — profile, CVs, files and all | |
+| Accounts: sign-in, sessions held in HttpOnly cookies, change password, edit your name, export your data, delete everything | The application quality gate — the checks that must pass before anything is sent |
+| A guided first run: upload a CV, keep what it read correctly, then say what you are looking for | Match rules, an application queue, and automated submission |
+| Career profile: roles, education and skills — add, amend, remove, cite the roles that evidence a skill, or import the lot from a CV | Per-account model configuration — it is per deployment, in `.env` |
+| A summary drafted from the facts already in your profile, which you read before keeping | Scheduled collection: syncing boards is one call you run, or a cron entry |
+| Career goals: target roles, work regime, salary floor, where you can work — and which are non-negotiable | Projects, certifications, and JSON Resume import |
+| ATS parseability check and keyword coverage, with no model needed | A skill vocabulary beyond software roles — see [PLANNING](docs/PLANNING.md#known-limitation-the-vocabulary-is-software-specific) |
+| AI CV review with accept/reject suggestions, and a clear notice when the model is not available | |
+| Job postings: paste one, import a Greenhouse / Lever / Remotive link, or watch boards and sync them | |
 | Match scoring against your goals, with the reason for every score | |
-| Tailored CV generation and DOCX / PDF export, every line grounded in your profile | |
+| Tailored CVs exported to DOCX / PDF, every line grounded in your profile | |
 | Cover-letter drafts, checked against your own recent letters so they cannot all be the same one | |
+| Application tracking with reply rate and a list of who to chase | |
 | LinkedIn import — print-to-PDF, the official export, or paste — with a section-by-section review | |
-| Local or hosted models, per deployment | |
+| Local or hosted models: Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint | |
 
-Session-by-session detail: [docs/PROGRESS.md](docs/PROGRESS.md).
+Current state and what is next: [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Architecture at a glance
 
@@ -125,9 +124,8 @@ Design decisions and reasoning: **[docs/PLANNING.md](docs/PLANNING.md)**.
 | [Development](docs/development.md) | Set up, run the tests, add a migration |
 | [Planning](docs/PLANNING.md) | Product plan, architecture, decisions |
 | [Changelog](CHANGELOG.md) | What shipped, per release |
-| [Progress](docs/PROGRESS.md) | The session-by-session account behind it |
+| [Progress](docs/PROGRESS.md) | Current state and what is left |
 | [Security](SECURITY.md) | Reporting, and what the software actually does |
-| [Open source guide](docs/open-source-guide.md) | Branch protection, reviewing external PRs, going public |
 
 ## Contributing
 

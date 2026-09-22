@@ -1,8 +1,15 @@
 import { Environment } from './environment.model';
 
+/**
+ * The production build — the one the container serves.
+ *
+ * `apiUrl` is a same-origin path because nginx reverse-proxies `/api/` to the backend.
+ * One origin means no CORS configuration for the user to get wrong, and it leaves the
+ * door open to moving tokens into `HttpOnly` cookies later.
+ */
 export const environment: Environment = {
   production: true,
-  apiUrl: 'https://api.cvpal.app/api',
+  apiUrl: '/api',
   appName: 'CV Pal',
   useMocks: false,
   mockLatencyMs: 0,

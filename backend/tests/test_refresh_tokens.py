@@ -180,6 +180,9 @@ async def test_logout_all_ends_every_session(client: AsyncClient) -> None:
         assert (
             await client.post("/auth/refresh", json={"refresh_token": token})
         ).status_code == 401
+    # Access tokens too, not only refresh tokens.
+    me = await client.get("/users/me", headers={"Authorization": f"Bearer {access}"})
+    assert me.status_code == 401
 
 
 async def test_logout_all_requires_authentication(client: AsyncClient) -> None:

@@ -226,16 +226,6 @@ import {
         gap: 20px;
         max-width: 820px;
       }
-      .intro h1 {
-        font-size: 22px;
-        margin: 0 0 6px;
-      }
-      .intro p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--text-secondary);
-        max-width: 72ch;
-      }
       .intro a,
       .link,
       .body a {
@@ -252,10 +242,6 @@ import {
       .card-header h3 {
         font-size: 15px;
         margin: 0;
-      }
-      .card-note {
-        font-size: 12px;
-        color: var(--text-tertiary);
       }
       .body {
         font-size: 13px;
@@ -280,15 +266,6 @@ import {
         align-items: center;
         gap: 16px;
         flex-wrap: wrap;
-      }
-      .upload {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-        cursor: pointer;
-      }
-      .upload input {
-        display: none;
       }
       button.link {
         background: none;

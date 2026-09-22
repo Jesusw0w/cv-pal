@@ -1,0 +1,32 @@
+# Angular's packages must all be on the same version: @angular/common 22.1.1 requires
+# @angular/core 22.1.1 exactly. Bumped one at a time, they break `npm ci` — which is
+# how a security update once took down the frontend and container CI jobs. So they
+# move as one group, for security and version updates alike.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend/cv-pal
+    schedule:
+      interval: weekly
+    groups:
+      angular:
+        applies-to: version-updates
+        patterns: ["@angular/*", "@angular-devkit/*", "angular-eslint"]
+      angular-security:
+        applies-to: security-updates
+        patterns: ["@angular/*", "@angular-devkit/*", "angular-eslint"]
+    ignore:
+      # @angular/build runs the tests and declares which vitest majors it supports.
+      # A vitest major lands when Angular's does, not before.
+      - dependency-name: vitest
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

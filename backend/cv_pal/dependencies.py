@@ -2,13 +2,14 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 import httpx
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cv_pal.auth import decode_token, get_user_by_email
+from cv_pal.auth import decode_token, get_user_by_email, wants_cookie_session
 from cv_pal.config import Settings, get_settings
 from cv_pal.constants import (
+    DEFAULT_ACCESS_COOKIE,
     DEFAULT_ERROR_INACTIVE_USER,
     DEFAULT_ERROR_UNAUTHORIZED,
     DEFAULT_HTTP_TIMEOUT_SECONDS,
@@ -17,21 +18,28 @@ from cv_pal.database import get_db
 from cv_pal.llm import LLMClient, get_llm_client
 from cv_pal.models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+# auto_error off: a browser session carries its token in a cookie, not the header.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-AccessToken = Annotated[str, Depends(oauth2_scheme)]
+BearerToken = Annotated[str | None, Depends(oauth2_scheme)]
 # Declared here rather than per router, so the two endpoints that use a model resolve
 # the same dependency — which is also the one the tests override with a fake.
 LLMClientDep = Annotated[LLMClient, Depends(get_llm_client)]
 
 
-async def get_current_user(token: AccessToken, db: DbSession) -> User:
-    """Resolve the authenticated user from a bearer token.
+async def get_current_user(
+    bearer: BearerToken, request: Request, db: DbSession
+) -> User:
+    """Resolve the authenticated user from a bearer token or the session cookie.
+
+    The cookie only counts alongside the session header, which a cross-site form
+    cannot send — that is what stops a forged request riding on the cookie.
 
     Args:
-        token: The JWT bearer token from the Authorization header.
+        bearer: The JWT from the Authorization header, if any.
+        request: The incoming request, for the session cookie.
         db: Async database session.
 
     Returns:
@@ -47,6 +55,12 @@ async def get_current_user(token: AccessToken, db: DbSession) -> User:
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    token = bearer
+    if token is None and wants_cookie_session(request):
+        token = request.cookies.get(DEFAULT_ACCESS_COOKIE)
+    if token is None:
+        raise unauthorized
+
     payload = decode_token(token)
     if payload is None:
         raise unauthorized
@@ -57,7 +71,7 @@ async def get_current_user(token: AccessToken, db: DbSession) -> User:
 
     user = await get_user_by_email(db, subject)
     # A deleted account must not be distinguishable from a forged token.
-    if user is None:
+    if user is None or payload.get("ver") != user.token_version:
         raise unauthorized
     if not user.is_active:
         raise HTTPException(

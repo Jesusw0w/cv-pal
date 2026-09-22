@@ -378,9 +378,6 @@ import { DashboardService } from '../../core/services/dashboard.service';
       }
 
       @media (max-width: 640px) {
-        .page {
-          padding: 16px;
-        }
         .content-grid {
           grid-template-columns: 1fr;
         }

@@ -38,7 +38,12 @@ reasoning are in [docs/PLANNING.md](docs/PLANNING.md).
 - **Sessions** use short-lived JWT access tokens plus opaque refresh tokens, of which
   only a SHA-256 hash is stored. Refresh tokens are single-use; presenting a spent token
   revokes every session for that user, on the assumption that the legitimate holder and
-  a thief cannot both have spent it.
+  a thief cannot both have spent it. Revoking every session also voids outstanding
+  access tokens immediately, through a per-account token version.
+- **The browser never holds a token where script can read it.** Both live in
+  `HttpOnly`, `SameSite=Strict` cookies, and a cookie only authenticates alongside the
+  app's session header — which a cross-site form cannot send. Set
+  `CV_PAL_COOKIE_SECURE=true` when serving over HTTPS.
 - **Password policy** imposes no composition rule, per SP 800-63B §3.1.1.2. Length,
   blocklist screening and context screening do the work.
 - **Login is rate limited** per client, with exponential per-account backoff. Failures
@@ -71,13 +76,12 @@ Stated plainly, because a security policy that only lists strengths is not usefu
 - **Rate limiting is in-process.** With multiple workers the effective limit is
   multiplied by the worker count. Adequate for a personal instance; put a proxy in front
   for anything public.
-- **Tokens are returned in the response body and the browser keeps them in
-  `localStorage`**, not in `HttpOnly` cookies, so a cross-site scripting flaw in the
-  frontend could read them. This follows from the bearer-token API design and is tracked
-  for revisiting now that the container build serves the UI and API from one origin.
-  What limits the damage rather than preventing it: access tokens expire in 30 minutes,
-  refresh tokens are single-use, and presenting a stolen one after the legitimate holder
-  has spent it revokes every session for that account.
-- **No 2FA**, no account recovery, no email verification yet.
+- **A cross-site scripting flaw could still act as the user** while the page is open —
+  cookies stop it stealing the tokens, not using the session. The CSP is what stands in
+  the way of such a flaw.
+- **Session cookies are not `Secure` by default**, because the default install is plain
+  HTTP on localhost. Behind HTTPS, set `CV_PAL_COOKIE_SECURE=true`.
+- **No 2FA and no email verification.** Account recovery is offline only:
+  `python -m cv_pal.admin reset-password <email>` on the machine holding the database.
 - **The upload directory is not virus-scanned.** You are uploading your own CV to your
   own machine, but this matters if you ever expose an instance to others.

@@ -1,9 +1,9 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, httpResource } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { SuggestionResponse } from '../../shared/models/api.model';
+import { LlmStatusResponse, SuggestionResponse } from '../../shared/models/api.model';
 
 /**
  * AI CV review: the one part of the product that needs a language model.
@@ -15,6 +15,9 @@ import { SuggestionResponse } from '../../shared/models/api.model';
 @Injectable({ providedIn: 'root' })
 export class ReviewService {
   private readonly http = inject(HttpClient);
+
+  /** Asked up front, so a missing model is a notice rather than a failed review. */
+  readonly modelStatus = httpResource<LlmStatusResponse>(() => `${environment.apiUrl}/health/llm`);
 
   suggestionsFor(cvId: number): Observable<SuggestionResponse[]> {
     return this.http.get<SuggestionResponse[]>(
