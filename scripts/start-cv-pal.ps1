@@ -12,6 +12,11 @@
     re-downloading gigabytes it already has. The container profile stays in
     docker-compose.yml for anyone without a local install.
 
+.PARAMETER Build
+    Build the images from this checkout instead of pulling the published ones from
+    ghcr.io, using the docker-compose.build.yml overlay. Use it when you have changed
+    the code, or when no release has been published yet (the pull is then refused).
+
 .PARAMETER CheckOnly
     Run the preflight (.env, Ollama, Docker) and exit without building, starting, or
     opening anything. Exits non-zero if the stack could not start. Use it to see what is
@@ -22,9 +27,12 @@
 
 .EXAMPLE
     .\start-cv-pal.cmd -CheckOnly
+
+.EXAMPLE
+    .\start-cv-pal.cmd -Build
 #>
 [CmdletBinding()]
-param([switch]$CheckOnly)
+param([switch]$CheckOnly, [switch]$Build)
 
 $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
@@ -196,11 +204,20 @@ if ($CheckOnly) {
 
 # ---------------------------------------------------------------- 4. start
 
-Write-Step "Starting CV Pal (the first start downloads the images, a few minutes)"
-# No --pull: images come down on first start and stay put. Updating is deliberate,
-# via `docker compose pull`, so the app cannot change under you mid-application.
-& docker compose up -d
+if ($Build) {
+    Write-Step "Building CV Pal from this checkout (the first build takes several minutes)"
+    & docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+} else {
+    Write-Step "Starting CV Pal (the first start downloads the images, a few minutes)"
+    # No --pull: images come down on first start and stay put. Updating is deliberate,
+    # via `docker compose pull`, so the app cannot change under you mid-application.
+    & docker compose up -d
+}
 if ($LASTEXITCODE -ne 0) {
+    if (-not $Build) {
+        Write-Note "If the error says 'denied', no release has been published to ghcr.io yet."
+        Write-Note "Build from source instead:  .\start-cv-pal.cmd -Build"
+    }
     Stop-WithError "docker compose failed. See the output above, or run: docker compose logs"
 }
 

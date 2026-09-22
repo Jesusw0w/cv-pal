@@ -13,6 +13,7 @@ import {
   LinkedInProfileResponse,
   CoverLetterDraftResponse,
   ProfileSummaryResponse,
+  RoleHighlightsResponse,
   ScoredPostingResponse,
   TailoredCvResponse,
   SkillResponse,
@@ -325,6 +326,11 @@ export class MockBackend {
       return { status: 200, body: this.draftSummary() };
     }
 
+    const highlightsFor = matchId(path, '/profile/experiences', '/highlights');
+    if (method === 'POST' && highlightsFor !== null) {
+      return { status: 200, body: this.draftHighlights(highlightsFor, request.body) };
+    }
+
     // Any password: the mock has no credential store. Both sign the client out.
     if (method === 'PATCH' && path === '/users/me/password') {
       return { status: 204, body: null };
@@ -524,6 +530,32 @@ export class MockBackend {
         (evidenced.length > 0 ? `, working across ${evidenced.join(', ')}.` : '.') +
         ` ${roles.length} role${roles.length > 1 ? 's' : ''} recorded in this profile.`,
     };
+  }
+
+  /**
+   * Bullets for one role, split out of the notes rather than written.
+   *
+   * The demo must not imply the real endpoint invents anything, so this only reshapes
+   * what was typed: sentences in, sentences out, capitalised and one per line.
+   */
+  private draftHighlights(experienceId: number, body: unknown): RoleHighlightsResponse {
+    const role = this.profile.experiences.find((entry) => entry.id === experienceId);
+    if (!role) {
+      throw new MockHttpError(404, 'Experience not found');
+    }
+
+    const context = String((body as { context?: string } | null)?.context ?? '');
+    const highlights = context
+      .split(/[\n•]|(?<=[.!?])\s+/)
+      .map((line) => line.trim().replace(/^[-•·*]\s*/, ''))
+      .filter((line) => line.length > 0)
+      .slice(0, 8)
+      .map((line) => line.charAt(0).toUpperCase() + line.slice(1));
+
+    if (highlights.length === 0) {
+      throw new MockHttpError(502, 'The model returned nothing usable.');
+    }
+    return { highlights };
   }
 
   /**

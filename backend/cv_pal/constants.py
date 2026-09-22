@@ -450,6 +450,13 @@ DEFAULT_SUGGESTION_COUNT: Final[int] = 5
 # A ceiling, so a model that writes an essay instead of three sentences is rejected.
 DEFAULT_SUMMARY_MAX_LENGTH: Final[int] = 1200
 
+# A CV import proposes skills as chips to click one by one. Past this it is a wall.
+DEFAULT_MAX_IMPORTED_SKILLS: Final[int] = 60
+
+DEFAULT_MAX_ROLE_HIGHLIGHTS: Final[int] = 8
+DEFAULT_HIGHLIGHT_MAX_LENGTH: Final[int] = 400
+DEFAULT_ROLE_CONTEXT_MAX_LENGTH: Final[int] = 4_000
+
 # Error messages
 DEFAULT_ERROR_NO_FILENAME: Final[str] = "No filename provided"
 DEFAULT_ERROR_FILE_TOO_LARGE: Final[str] = (

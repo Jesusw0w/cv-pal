@@ -15,6 +15,7 @@ import {
   ExperienceResponse,
   ExperienceUpdate,
   ProfileSummaryResponse,
+  RoleHighlightsResponse,
   SkillCreate,
   SkillResponse,
   SkillUpdate,
@@ -48,9 +49,9 @@ const MIN_USEFUL_SKILLS = 8;
  * Conditions `gaps` tests unconditionally. Must move with it — it is the completeness
  * denominator.
  *
- * The evidence check is deliberately not counted here: it cannot fail on a profile with
- * no skills, so counting it would award a brand-new account a free pass and score an
- * entirely empty profile 17% instead of 0%. See `applicableChecks`.
+ * The evidence and role-description checks are deliberately not counted here: neither
+ * can fail on an empty profile, so counting them would award a brand-new account two
+ * free passes and score an entirely empty profile above 0%. See `applicableChecks`.
  */
 const PROFILE_CHECKS = 5;
 
@@ -130,6 +131,11 @@ export class CareerProfileService {
     this.profile().skills.filter((skill) => !skill.is_evidenced),
   );
 
+  /** Roles an application form would ask about and the profile cannot answer for. */
+  readonly rolesWithoutHighlights = computed(() =>
+    this.profile().experiences.filter((role) => !role.description?.trim()),
+  );
+
   /** What the profile still needs before it can drive a tailored CV. */
   readonly gaps = computed<ProfileGap[]>(() => {
     const profile = this.profile();
@@ -165,6 +171,14 @@ export class CareerProfileService {
         detail: 'A skill with no role behind it cannot be written into a generated CV.',
       });
     }
+    if (this.rolesWithoutHighlights().length > 0) {
+      gaps.push({
+        label: `Describe ${this.rolesWithoutHighlights().length} role(s)`,
+        detail:
+          'Job applications ask what you did in each role. Without bullet points there is ' +
+          'nothing to paste, and a tailored CV has only a job title to work from.',
+      });
+    }
     if (!profile.linkedin_url) {
       gaps.push({
         label: 'Link your LinkedIn profile',
@@ -178,12 +192,16 @@ export class CareerProfileService {
   /**
    * How many checks the profile is actually being scored against.
    *
-   * "Evidence your skills" only applies once there are skills to evidence, so it joins
-   * the denominator at the same moment it becomes able to fail. Without this a profile
-   * with nothing in it passes a check it was never asked.
+   * "Evidence your skills" only applies once there are skills to evidence, and
+   * "describe your roles" once there are roles to describe, so each joins the
+   * denominator at the same moment it becomes able to fail. Without this a profile with
+   * nothing in it passes checks it was never asked.
    */
   private readonly applicableChecks = computed(
-    () => PROFILE_CHECKS + (this.profile().skills.length > 0 ? 1 : 0),
+    () =>
+      PROFILE_CHECKS +
+      (this.profile().skills.length > 0 ? 1 : 0) +
+      (this.profile().experiences.length > 0 ? 1 : 0),
   );
 
   /**
@@ -281,6 +299,20 @@ export class CareerProfileService {
    */
   generateSummary(): Observable<ProfileSummaryResponse> {
     return this.http.post<ProfileSummaryResponse>(`${environment.apiUrl}/profile/summary`, null);
+  }
+
+  /**
+   * Shape notes about one role into bullet points.
+   *
+   * Proposes only, like `generateSummary`, and needs a model configured. The notes are
+   * the only source: what comes back is what the user said, reworded — so an empty
+   * answer to "what did you do there" produces thin bullets rather than invented ones.
+   */
+  draftHighlights(experienceId: number, context: string): Observable<RoleHighlightsResponse> {
+    return this.http.post<RoleHighlightsResponse>(
+      `${environment.apiUrl}/profile/experiences/${experienceId}/highlights`,
+      { context },
+    );
   }
 
   /**
