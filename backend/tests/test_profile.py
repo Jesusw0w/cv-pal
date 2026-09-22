@@ -405,6 +405,133 @@ async def test_summary_rejects_output_that_fails_validation_twice(
     assert len(fake_llm.calls) == 2
 
 
+async def test_highlights_are_a_proposal_and_are_not_saved(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """Drafted bullets come back to the caller; the role keeps its own description."""
+    headers = await register_and_login(client)
+    role_id = await add_experience(client, headers)
+    fake_llm.response = json.dumps(
+        {"highlights": ["Ran the billing service", "Moved it to Kubernetes"]}
+    )
+
+    response = await client.post(
+        f"/profile/experiences/{role_id}/highlights",
+        headers=headers,
+        json={"context": "i ran billing, moved it to k8s"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["highlights"] == [
+        "Ran the billing service",
+        "Moved it to Kubernetes",
+    ]
+    profile = (await client.get("/profile", headers=headers)).json()
+    assert profile["experiences"][0]["description"] is None
+
+
+async def test_highlights_prompt_carries_the_notes_and_the_role(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """The notes and the role's own facts are the whole of what the model may use."""
+    headers = await register_and_login(client)
+    role_id = await add_experience(
+        client, headers, title="Platform Engineer", organisation="Zeta"
+    )
+    fake_llm.response = json.dumps({"highlights": ["Did the thing"]})
+
+    await client.post(
+        f"/profile/experiences/{role_id}/highlights",
+        headers=headers,
+        json={"context": "migrated the fleet off VMs"},
+    )
+
+    _system, user_prompt = fake_llm.calls[0]
+    assert "migrated the fleet off VMs" in user_prompt
+    assert "Platform Engineer" in user_prompt
+    assert "Zeta" in user_prompt
+
+
+async def test_highlights_reformat_an_existing_run_on_description(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """A CV import that flattened the bullets is the other half of this endpoint.
+
+    The stored description goes to the model as more notes, so the same call that
+    writes missing bullets also reformats the ones that arrived as one line.
+    """
+    headers = await register_and_login(client)
+    role_id = await add_experience(client, headers)
+    await client.patch(
+        f"/profile/experiences/{role_id}",
+        headers=headers,
+        json={"description": "Built the API • Owned deploys • Mentored two juniors"},
+    )
+    fake_llm.response = json.dumps({"highlights": ["Built the API"]})
+
+    await client.post(
+        f"/profile/experiences/{role_id}/highlights",
+        headers=headers,
+        json={"context": "tidy these up"},
+    )
+
+    _system, user_prompt = fake_llm.calls[0]
+    assert "Mentored two juniors" in user_prompt
+
+
+async def test_highlights_strip_the_bullet_glyph_models_add(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """The glyph is the editor's job, not the data's — it would be stored twice over."""
+    headers = await register_and_login(client)
+    role_id = await add_experience(client, headers)
+    fake_llm.response = json.dumps({"highlights": ["- Ran billing", "• Fixed deploys"]})
+
+    response = await client.post(
+        f"/profile/experiences/{role_id}/highlights",
+        headers=headers,
+        json={"context": "billing and deploys"},
+    )
+
+    assert response.json()["highlights"] == ["Ran billing", "Fixed deploys"]
+
+
+async def test_highlights_reject_output_that_fails_validation_twice(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """An unusable draft is an error, not an empty list shown as a suggestion."""
+    headers = await register_and_login(client)
+    role_id = await add_experience(client, headers)
+    fake_llm.response = json.dumps({"highlights": []})
+
+    response = await client.post(
+        f"/profile/experiences/{role_id}/highlights",
+        headers=headers,
+        json={"context": "something"},
+    )
+
+    assert response.status_code == 502
+    assert len(fake_llm.calls) == 2
+
+
+async def test_highlights_refuse_another_users_role(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """Ownership is checked before the model is called, like every other role route."""
+    owner = await register_and_login(client)
+    role_id = await add_experience(client, owner)
+    intruder = await register_and_login(client, email="other@example.com")
+
+    response = await client.post(
+        f"/profile/experiences/{role_id}/highlights",
+        headers=intruder,
+        json={"context": "tell me about their job"},
+    )
+
+    assert response.status_code == 404
+    assert fake_llm.calls == []
+
+
 async def test_skill_evidence_can_be_set_after_the_fact(client: AsyncClient) -> None:
     """The gap that made "evidence N skills" an impossible task.
 

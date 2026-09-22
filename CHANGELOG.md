@@ -43,10 +43,13 @@ This file is the summary. Current state and what is left are in
 
 ### Added
 
-- **The app checks whether its model is usable.** A missing or unreachable model is
-  logged at start-up and explained on the AI Tools screen, instead of first appearing
-  as a failed review. `GET /health/llm` reports it.
-
+- **Bullet points per role, for the forms that ask for them.** LinkedIn, Welcome to the
+  Jungle and Wellfound all ask what you did in each role; a role imported from a CV that
+  never listed them had nothing to paste. The profile now reports roles with no
+  description as a gap, and `POST /profile/experiences/{id}/highlights` turns notes
+  about one role into bullets. The notes and the role's own description are the only
+  source — nothing is looked up, and no numbers are invented. A proposal like the rest
+  of the import path: the draft is editable and reaches the role only on save.
 - **The frontend has a linter.** `angular-eslint` with the recommended TypeScript,
   Angular and template-accessibility rules, wired to `npm run lint` and enforced in CI.
   Prettier was configured but nothing ran it, so 52 files had drifted; `npm run format`

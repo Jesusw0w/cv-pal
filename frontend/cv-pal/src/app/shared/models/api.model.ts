@@ -267,6 +267,22 @@ export interface ProfileSummaryResponse {
   summary: string;
 }
 
+/** What the user remembers about one role, as the notes a draft is written from. */
+export interface RoleHighlightsRequest {
+  context: string;
+}
+
+/**
+ * Drafted bullet points for one role.
+ *
+ * A proposal: they are saved through `PATCH /profile/experiences/{id}`, or discarded.
+ * Stored as one bullet per line, which is what the editor shows and what a job board's
+ * "describe this role" box expects pasted in.
+ */
+export interface RoleHighlightsResponse {
+  highlights: string[];
+}
+
 // --- Career goals: what the user is looking for, as opposed to what they have done. ---
 
 export type WorkRegime = 'remote' | 'hybrid' | 'on_site';

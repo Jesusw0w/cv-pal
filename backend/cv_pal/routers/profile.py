@@ -16,6 +16,8 @@ from cv_pal.schemas import (
     ExperienceResponse,
     ExperienceUpdate,
     ProfileSummaryResponse,
+    RoleHighlightsRequest,
+    RoleHighlightsResponse,
     SkillCreate,
     SkillResponse,
     SkillUpdate,
@@ -107,7 +109,11 @@ async def update_profile(
 
 @router.post("/import-from-cv/{cv_id}", response_model=CvExtractionResponse)
 async def import_from_cv(
-    cv_id: int, current_user: CurrentUser, db: DbSession
+    cv_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+    client: LLMClientDep,
+    enrich: bool = True,
 ) -> CvExtractionResponse:
     """Read structured records out of an uploaded CV, without storing any of them.
 
@@ -116,19 +122,23 @@ async def import_from_cv(
     `/profile/experiences`, `/profile/educations` and `/profile/skills` endpoints. No
     extraction result reaches the profile without a person agreeing to it.
 
-    Runs with no language model configured — it is a deterministic pass over the
-    extracted text.
+    Runs with no language model configured — the deterministic pass is the answer, and
+    the model only ever complements it. This endpoint therefore never fails because of
+    the model: `enriched` in the response says whether one contributed.
 
     Args:
         cv_id: The CV to read.
         current_user: The authenticated user.
         db: Async database session.
+        client: The configured language model client.
+        enrich: Whether to let a model complement the deterministic read. Pass false
+            to force the deterministic pass alone — it is faster and reproducible.
 
     Returns:
         The extracted proposal.
     """
     extracted = await profile_service.extract_from_cv(
-        db, user_id=current_user.id, cv_id=cv_id
+        db, user_id=current_user.id, cv_id=cv_id, client=client if enrich else None
     )
     return CvExtractionResponse.model_validate(extracted)
 
@@ -244,6 +254,47 @@ async def update_experience(
         db, user_id=current_user.id, experience_id=experience_id, payload=payload
     )
     return ExperienceResponse.model_validate(experience)
+
+
+@router.post(
+    "/experiences/{experience_id}/highlights", response_model=RoleHighlightsResponse
+)
+async def draft_highlights(
+    experience_id: int,
+    payload: RoleHighlightsRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+    client: LLMClientDep,
+) -> RoleHighlightsResponse:
+    """Turn notes about one role into bullet points for it.
+
+    A **proposal**, like `/summary`: nothing is stored, and keeping the bullets is an
+    ordinary `PATCH /profile/experiences/{id}`. Needs a model configured.
+
+    Written from the notes and the role's own description and nothing else — this does
+    not research the employer or fill in what a role like that usually involves.
+
+    Args:
+        experience_id: The role to write about.
+        payload: What the user remembers about the role.
+        current_user: The authenticated user.
+        db: Async database session.
+        client: The configured language model client.
+
+    Returns:
+        The proposed bullet points.
+
+    Raises:
+        NotFoundError: If the role is not on this user's profile.
+        LLMError: If the model is unreachable or its output is unusable.
+    """
+    return await profile_service.draft_highlights(
+        db,
+        user_id=current_user.id,
+        experience_id=experience_id,
+        context=payload.context,
+        client=client,
+    )
 
 
 @router.delete("/experiences/{experience_id}", status_code=status.HTTP_204_NO_CONTENT)
