@@ -25,7 +25,8 @@ from cv_pal.main import app
 from cv_pal.mcp.app import mcp_app
 from cv_pal.mcp.runtime import hooks
 from cv_pal.models import ApiToken
-from tests.helpers import DEFAULT_TEST_PASSWORD, register_and_login
+from tests.conftest import FakeLLMClient
+from tests.helpers import DEFAULT_TEST_PASSWORD, register_and_login, upload_cv
 
 POSTING = {
     "title": "Backend Engineer",
@@ -428,6 +429,26 @@ async def test_export_returns_a_docx_file(
     [content] = result.content
     assert isinstance(content, EmbeddedResource)
     assert content.resource.mime_type == DEFAULT_DOCX_MEDIA_TYPE
+
+
+async def test_cv_tools_read_an_uploaded_cv(
+    client: AsyncClient, mcp_client: ClientFor, fake_llm: FakeLLMClient
+) -> None:
+    """Checking and reading a CV work, and never run CV Pal's own model."""
+    headers = await register_and_login(client)
+    cv_id = await upload_cv(client, headers)
+    token = await issue_token(client, headers)
+
+    async with mcp_client(token) as agent:
+        checked = await agent.call_tool(
+            "check_cv", {"cv_id": cv_id, "job_description": POSTING["description"]}
+        )
+        proposed = await agent.call_tool("propose_profile_from_cv", {"cv_id": cv_id})
+
+    assert checked.structured_content is not None
+    assert checked.structured_content["coverage"] is not None
+    assert proposed.structured_content is not None
+    assert fake_llm.calls == []
 
 
 async def test_another_users_posting_does_not_exist(

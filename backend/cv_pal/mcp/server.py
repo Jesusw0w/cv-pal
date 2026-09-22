@@ -58,7 +58,7 @@ from cv_pal.schemas import (
     ParseabilityResponse,
     TailoredCvResponse,
 )
-from cv_pal.services import job_service, tailoring_service
+from cv_pal.services import job_service, profile_service, tailoring_service
 
 INSTRUCTIONS = """\
 CV Pal holds the user's career profile, goals, CVs, saved job postings and applications,
@@ -279,10 +279,14 @@ async def propose_profile_from_cv(
     """Read roles, education and skills out of an uploaded CV.
 
     A proposal only: nothing is saved, and the user adds what is right in the CV Pal
-    app.
+    app. Deterministic: the agent calling this brings its own model, so CV Pal's is
+    not run on top of it.
     """
     async with caller() as (user, db):
-        return await profile.import_from_cv(cv_id=cv_id, current_user=user, db=db)
+        extracted = await profile_service.extract_from_cv(
+            db, user_id=user.id, cv_id=cv_id, client=None
+        )
+        return CvExtractionResponse.model_validate(extracted)
 
 
 @mcp.tool(auth=READ, annotations=PURE, tags={"read"})
