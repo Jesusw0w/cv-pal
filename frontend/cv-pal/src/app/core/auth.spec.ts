@@ -74,6 +74,25 @@ describe('authInterceptor', () => {
     expect(auth.isAuthenticated()).toBe(false);
   });
 
+  it('keeps the session when the replayed request itself is refused', () => {
+    let failed = false;
+    http.patch('/users/me/password', {}).subscribe({ error: () => (failed = true) });
+
+    backend
+      .expectOne('/users/me/password')
+      .flush({ detail: 'Not authenticated' }, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne((request) => request.url.endsWith('/auth/refresh'))
+      .flush({ access_token: null, refresh_token: null, token_type: 'cookie' });
+    // A wrong current password: the refresh worked, the request is still refused.
+    backend
+      .expectOne('/users/me/password')
+      .flush({ detail: 'Wrong password' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(failed).toBe(true);
+    expect(auth.isAuthenticated()).toBe(true);
+  });
+
   it('does not refresh on a failed login', () => {
     http.post('/auth/login', null).subscribe({ error: () => undefined });
 

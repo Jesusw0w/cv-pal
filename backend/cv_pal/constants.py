@@ -25,6 +25,27 @@ DEFAULT_TOKEN_TYPE_COOKIE: Final[str] = "cookie"  # noqa: S105  # a mode, not a 
 DEFAULT_SESSION_HEADER: Final[str] = "X-CV-Pal-Session"
 DEFAULT_ACCESS_COOKIE: Final[str] = "cv_pal_access"
 DEFAULT_REFRESH_COOKIE: Final[str] = "cv_pal_refresh"
+
+# Personal access tokens, for agents connecting over MCP. Scoped, expiring, and only
+# ever shown once; the prefix makes a leaked one recognisable to secret scanners.
+DEFAULT_API_TOKEN_PREFIX: Final[str] = "cvp_"  # noqa: S105  # a marker, not a secret
+DEFAULT_API_TOKEN_BYTES: Final[int] = 32
+DEFAULT_API_TOKEN_DISPLAY_CHARS: Final[int] = 8
+DEFAULT_API_TOKEN_NAME_MAX_LENGTH: Final[int] = 64
+DEFAULT_API_TOKEN_DEFAULT_DAYS: Final[int] = 90
+DEFAULT_API_TOKEN_MAX_DAYS: Final[int] = 365
+DEFAULT_API_TOKEN_MAX_PER_USER: Final[int] = 10
+# Recording every use would write on every agent call; once a minute is enough to tell
+# a live token from a forgotten one.
+DEFAULT_API_TOKEN_TOUCH_SECONDS: Final[int] = 60
+SCOPE_READ: Final[str] = "cvpal:read"
+SCOPE_WRITE: Final[str] = "cvpal:write"
+# Messages, not secrets.
+DEFAULT_ERROR_API_TOKEN_NOT_FOUND: Final[str] = "Access token not found."  # noqa: S105
+DEFAULT_ERROR_API_TOKEN_LIMIT: Final[str] = (
+    "You already have {limit} active access tokens. "  # noqa: S105
+    "Revoke one you no longer use."
+)
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES: Final[int] = 30
 # Refresh tokens are opaque random strings rather than JWTs: revocation requires a
 # database lookup anyway, and an opaque token cannot leak claims if it is exposed.
@@ -527,6 +548,10 @@ DEFAULT_ERROR_LOCAL_ONLY_VIOLATION: Final[str] = (
 )
 DEFAULT_ERROR_LOCAL_ONLY_REMOTE_URL: Final[str] = (
     "local_only is enabled; llm_base_url {base_url} is not on this machine or network"
+)
+DEFAULT_ERROR_LOCAL_ONLY_MCP: Final[str] = (
+    "local_only is enabled; the MCP endpoint hands your data to whatever agent "
+    "connects, and that agent's model may be hosted. Disable one of the two."
 )
 DEFAULT_ERROR_API_KEY_REQUIRED: Final[str] = (
     "llm_api_key is required for provider {provider}"

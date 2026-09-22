@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
 
 from cv_pal.config import get_settings
@@ -13,6 +14,7 @@ from cv_pal.database import engine
 from cv_pal.dependencies import CurrentUser, LLMClientDep
 from cv_pal.error_handlers import register_error_handlers
 from cv_pal.llm import get_llm_client
+from cv_pal.mcp.app import MOUNT_PATH, EnabledGate, ExactMountPath, mcp_app
 from cv_pal.routers import (
     analysis,
     applications,
@@ -61,7 +63,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-app = FastAPI(title="CV Pal", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="CV Pal",
+    version="0.1.0",
+    lifespan=combine_lifespans(lifespan, mcp_app.lifespan),
+)
 
 _settings = get_settings()
 if _settings.cors_origins:
@@ -84,6 +90,9 @@ app.include_router(profile.router)
 app.include_router(jobs.router)
 app.include_router(applications.router)
 app.include_router(linkedin.router)
+# For agents, authenticated by personal access tokens. See cv_pal/mcp/server.py.
+app.mount(MOUNT_PATH, EnabledGate(mcp_app))
+app.add_middleware(ExactMountPath)
 
 
 @app.get("/health/live", tags=["health"])

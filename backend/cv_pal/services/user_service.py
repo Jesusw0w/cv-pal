@@ -19,6 +19,7 @@ from cv_pal.constants import DEFAULT_ERROR_WRONG_PASSWORD
 from cv_pal.exceptions import AuthenticationError
 from cv_pal.hashing import hash_password, verify_password
 from cv_pal.models import CV, Application, CareerProfile, Skill, User
+from cv_pal.services.api_token_service import revoke_all_tokens
 from cv_pal.services.auth_service import revoke_all_sessions
 
 
@@ -64,7 +65,9 @@ async def change_password(
     """Replace the account's password and end every session.
 
     Ending the sessions is the point: one that leaves the thief's refresh token working
-    has changed a string and nothing else. The caller's own session goes too.
+    has changed a string and nothing else. The caller's own session goes too, and so do
+    the agents' access tokens — a password change is what someone does when they think
+    the account is compromised.
 
     Args:
         db: Async database session.
@@ -78,6 +81,7 @@ async def change_password(
     _require_password(user, current_password)
 
     user.hashed_password = hash_password(new_password)
+    await revoke_all_tokens(db, user_id=user.id)
     await db.commit()
     await revoke_all_sessions(db, user_id=user.id)
 
@@ -101,6 +105,7 @@ def _account_query(user_id: int) -> Select[tuple[User]]:
         .options(
             selectinload(User.cvs).selectinload(CV.suggestions),
             selectinload(User.refresh_tokens),
+            selectinload(User.api_tokens),
             selectinload(User.career_profile).selectinload(CareerProfile.experiences),
             selectinload(User.career_profile).selectinload(CareerProfile.educations),
             selectinload(User.career_profile)

@@ -12,6 +12,7 @@ from cv_pal.constants import (
     DEFAULT_ANTHROPIC_MODEL,
     DEFAULT_ERROR_API_KEY_REQUIRED,
     DEFAULT_ERROR_BASE_URL_REQUIRED,
+    DEFAULT_ERROR_LOCAL_ONLY_MCP,
     DEFAULT_ERROR_LOCAL_ONLY_REMOTE_URL,
     DEFAULT_ERROR_LOCAL_ONLY_VIOLATION,
     DEFAULT_JWT_ALGORITHM,
@@ -79,6 +80,9 @@ class Settings(BaseSettings):
     # When true, no request may leave the machine: only local providers are allowed.
     local_only: bool = False
 
+    # The MCP endpoint for external agents. Off until asked for: it is a second way in.
+    mcp_enabled: bool = False
+
     @property
     def resolved_llm_model(self) -> str:
         """Return the configured model, falling back to the provider default.
@@ -118,6 +122,9 @@ class Settings(BaseSettings):
             ValueError: If the provider lacks a required credential or base URL, or if
                 a hosted provider is selected while ``local_only`` is enabled.
         """
+        if self.local_only and self.mcp_enabled:
+            raise ValueError(DEFAULT_ERROR_LOCAL_ONLY_MCP)
+
         if self.local_only and self.llm_provider is not LLMProvider.OLLAMA:
             raise ValueError(
                 DEFAULT_ERROR_LOCAL_ONLY_VIOLATION.format(provider=self.llm_provider)

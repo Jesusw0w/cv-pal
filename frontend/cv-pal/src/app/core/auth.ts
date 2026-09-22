@@ -32,13 +32,16 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       }
 
       return auth.refresh().pipe(
-        switchMap(() => next(withSession)),
+        // Only a failed *refresh* ends the session. Placed after the replay, this would
+        // also catch the replayed request's own error — so a wrong current password on
+        // "change password" (a 401) signed the user out.
         catchError((refreshError: unknown) => {
           // The refresh token is gone or was reused, so every session is now revoked.
           auth.clearSession();
           void router.navigate(['/login']);
           return throwError(() => refreshError);
         }),
+        switchMap(() => next(withSession)),
       );
     }),
   );
