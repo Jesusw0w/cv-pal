@@ -14,7 +14,7 @@ async def test_goals_are_created_empty_on_first_access(client: AsyncClient) -> N
     assert body["target_roles"] == []
     assert body["work_regimes"] == []
     assert body["regime_non_negotiable"] is False
-    assert body["min_salary"] is None
+    assert body["salary_expectations"] == []
 
 
 async def test_goals_require_authentication(client: AsyncClient) -> None:
@@ -33,8 +33,9 @@ async def test_goals_are_stored_and_returned(client: AsyncClient) -> None:
             "target_roles": ["Backend Engineer", "Platform Engineer"],
             "work_regimes": ["remote", "hybrid"],
             "regime_non_negotiable": True,
-            "min_salary": 65000,
-            "salary_currency": "eur",
+            "salary_expectations": [
+                {"employment_type": "full_time", "minimum": 65000, "currency": "eur"}
+            ],
             "salary_non_negotiable": False,
         },
     )
@@ -45,7 +46,15 @@ async def test_goals_are_stored_and_returned(client: AsyncClient) -> None:
     # Order is a preference, best first, so it must survive the round trip.
     assert body["work_regimes"] == ["remote", "hybrid"]
     assert body["regime_non_negotiable"] is True
-    assert body["salary_currency"] == "EUR"
+    assert body["salary_expectations"] == [
+        {
+            "employment_type": "full_time",
+            "minimum": 65000,
+            "target": None,
+            "currency": "EUR",
+            "period": "year",
+        }
+    ]
 
     assert (await client.get("/profile/goals", headers=headers)).json() == body
 
@@ -63,8 +72,9 @@ async def test_put_replaces_rather_than_merges(client: AsyncClient) -> None:
         headers=headers,
         json={
             "target_roles": ["Backend Engineer"],
-            "min_salary": 65000,
-            "salary_currency": "EUR",
+            "salary_expectations": [
+                {"employment_type": "full_time", "minimum": 65000, "currency": "EUR"}
+            ],
         },
     )
     response = await client.put(
@@ -74,8 +84,7 @@ async def test_put_replaces_rather_than_merges(client: AsyncClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["target_roles"] == []
-    assert body["min_salary"] is None
-    assert body["salary_currency"] is None
+    assert body["salary_expectations"] == []
 
 
 async def test_role_titles_are_trimmed_and_deduplicated(client: AsyncClient) -> None:
@@ -134,11 +143,81 @@ async def test_salary_without_currency_is_rejected(client: AsyncClient) -> None:
     headers = await register_and_login(client)
 
     response = await client.put(
-        "/profile/goals", headers=headers, json={"min_salary": 65000}
+        "/profile/goals",
+        headers=headers,
+        json={"salary_expectations": [{"employment_type": "full_time", "minimum": 1}]},
     )
 
     assert response.status_code == 422
     assert "currency" in response.text
+
+
+async def test_salary_expectations_differ_per_contract_type(
+    client: AsyncClient,
+) -> None:
+    """An annual employee floor and a contractor's day rate are kept side by side."""
+    headers = await register_and_login(client)
+
+    response = await client.put(
+        "/profile/goals",
+        headers=headers,
+        json={
+            "salary_expectations": [
+                {"employment_type": "full_time", "minimum": 50000, "currency": "GBP"},
+                {
+                    "employment_type": "contract",
+                    "minimum": 400,
+                    "target": 500,
+                    "currency": "GBP",
+                    "period": "day",
+                },
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    kinds = [
+        (e["employment_type"], e["period"], e["minimum"], e["target"])
+        for e in response.json()["salary_expectations"]
+    ]
+    assert kinds == [("full_time", "year", 50000, None), ("contract", "day", 400, 500)]
+
+
+async def test_the_same_contract_type_and_period_twice_is_rejected(
+    client: AsyncClient,
+) -> None:
+    """Two annual employee floors would leave matching to guess which one counts."""
+    headers = await register_and_login(client)
+    floor = {"employment_type": "full_time", "minimum": 50000, "currency": "GBP"}
+
+    response = await client.put(
+        "/profile/goals", headers=headers, json={"salary_expectations": [floor, floor]}
+    )
+
+    assert response.status_code == 422
+
+
+async def test_a_target_below_the_minimum_is_rejected(client: AsyncClient) -> None:
+    """A target under the floor is a typo, not a goal."""
+    headers = await register_and_login(client)
+
+    response = await client.put(
+        "/profile/goals",
+        headers=headers,
+        json={
+            "salary_expectations": [
+                {
+                    "employment_type": "contract",
+                    "minimum": 500,
+                    "target": 400,
+                    "currency": "GBP",
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 422
+    assert "target" in response.text
 
 
 async def test_duplicate_work_regimes_are_rejected(client: AsyncClient) -> None:

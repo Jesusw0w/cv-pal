@@ -152,8 +152,9 @@ def test_contact_details_are_read_and_not_confused_with_each_other() -> None:
 
     assert contact.email == "ada@example.com"
     assert contact.linkedin_url == "linkedin.com/in/adalovelace"
-    assert contact.website_url == "github.com/ada"
-    assert contact.website_url != "example.com"
+    assert contact.github_url == "github.com/ada"
+    # GitHub has its own field, and the email's domain is no website either.
+    assert contact.website_url is None
 
 
 def test_only_recognised_skills_are_proposed() -> None:

@@ -26,7 +26,7 @@ describe('WelcomeComponent', () => {
   });
 
   it('sends no salary floor when the field was left blank', () => {
-    // `min_salary` is `int | None` on the API and an empty input is the string "" —
+    // A salary minimum is an integer on the API and an empty input is the string "" —
     // which Number() turns into 0, a floor of zero rather than no floor at all.
     const component = TestBed.createComponent(WelcomeComponent).componentInstance;
 

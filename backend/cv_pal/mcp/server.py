@@ -32,6 +32,7 @@ from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cv_pal.analysis.matching import ranking_key
 from cv_pal.constants import (
     DEFAULT_DOCX_MEDIA_TYPE,
     DEFAULT_MAX_POSTING_LENGTH,
@@ -45,7 +46,15 @@ from cv_pal.generation.docx_export import render_docx
 from cv_pal.generation.pdf_export import render_pdf
 from cv_pal.mcp.runtime import hooks
 from cv_pal.models import User
-from cv_pal.routers import analysis, applications, cvs, jobs, linkedin, profile
+from cv_pal.routers import (
+    analysis,
+    applications,
+    cvs,
+    jobs,
+    linkedin,
+    platforms,
+    profile,
+)
 from cv_pal.schemas import (
     ApplicationCreate,
     ApplicationResponse,
@@ -66,6 +75,9 @@ from cv_pal.schemas import (
     ExperienceCreate,
     ExperienceResponse,
     ExperienceUpdate,
+    JobPlatformCreate,
+    JobPlatformResponse,
+    JobPlatformUpdate,
     JobPostingCreate,
     JobPostingImport,
     JobPostingResponse,
@@ -99,7 +111,13 @@ Rules for using it:
 - Nothing here sends an application. record_application only logs one the user sent.
 
 A typical flow: list_job_postings -> get_job_posting -> tailor_cv (read the gaps) ->
-export_tailored_cv -> draft_cover_letter -> the user applies -> record_application.
+export_tailored_cv -> draft_cover_letter -> the user applies -> record_application,
+with the platform it went through when there was one (list_platforms).
+
+When writing a CV yourself: include the GitHub link only for development roles,
+LinkedIn always. get_goals holds a salary expectation per contract type — employee,
+contract, freelance — each with its own period; quote the one that fits the role.
+list_platforms says which job platforms still show an older version of the profile.
 """
 
 
@@ -182,6 +200,8 @@ class PostingSummary(BaseModel):
     score: int
     blocked_by: str | None
     missing_required: list[str]
+    #: 0 offers the user's first-choice arrangement; listed in this order before score.
+    preference_rank: int
 
 
 class ScoredPosting(BaseModel):
@@ -210,6 +230,7 @@ class ApplicationSummary(BaseModel):
     posting_id: int
     title: str
     company: str | None
+    platform_id: int | None
 
 
 def _application_summary(item: ApplicationResponse) -> ApplicationSummary:
@@ -227,6 +248,7 @@ def _application_summary(item: ApplicationResponse) -> ApplicationSummary:
         posting_id=item.posting.id,
         title=item.posting.title,
         company=item.posting.company,
+        platform_id=item.platform_id,
     )
 
 
@@ -315,10 +337,12 @@ async def propose_profile_from_cv(
 
 @mcp.tool(auth=READ, annotations=PURE, tags={"read"})
 async def list_job_postings() -> list[PostingSummary]:
-    """The user's saved job postings, best match first.
+    """The user's saved job postings: preferred work arrangement first, then score.
 
-    A posting with `blocked_by` set breaks one of the user's non-negotiables and
-    should not be suggested.
+    Postings offering the user's first-choice arrangement (e.g. remote) come before
+    their second choice (e.g. hybrid), whatever the scores. A posting with
+    `blocked_by` set breaks one of the user's non-negotiables and should not be
+    suggested.
     """
     async with caller() as (user, db):
         scored = await jobs.list_jobs(current_user=user, db=db)
@@ -332,10 +356,11 @@ async def list_job_postings() -> list[PostingSummary]:
             score=item.match.score,
             blocked_by=item.match.blocked_by,
             missing_required=item.match.missing_required,
+            preference_rank=item.match.preference_rank,
         )
         for item in scored
     ]
-    return sorted(summaries, key=lambda s: (s.blocked_by is not None, -s.score))
+    return sorted(summaries, key=ranking_key)
 
 
 @mcp.tool(auth=READ, annotations=PURE, tags={"read"})
@@ -515,6 +540,10 @@ async def record_application(
         date | None, Field(description="When it was sent. Defaults to today.")
     ] = None,
     notes: str | None = None,
+    platform_id: Annotated[
+        int | None,
+        Field(description="The platform it was sent through, from list_platforms."),
+    ] = None,
 ) -> ApplicationSummary:
     """Log an application the user has already sent. This does not send anything."""
     async with caller() as (user, db):
@@ -524,6 +553,7 @@ async def record_application(
                 cv_id=cv_id,
                 applied_at=applied_at,
                 notes=notes,
+                platform_id=platform_id,
             ),
             current_user=user,
             db=db,
@@ -547,6 +577,10 @@ async def update_application(
     ],
     status: ApplicationStatus | None = None,
     notes: str | None = None,
+    platform_id: Annotated[
+        int | None,
+        Field(description="The platform it was sent through, from list_platforms."),
+    ] = None,
 ) -> ApplicationSummary:
     """Move an application along — e.g.
 
@@ -555,7 +589,11 @@ async def update_application(
     changes = ApplicationUpdate.model_validate(
         {
             key: value
-            for key, value in {"status": status, "notes": notes}.items()
+            for key, value in {
+                "status": status,
+                "notes": notes,
+                "platform_id": platform_id,
+            }.items()
             if value is not None
         }
     )
@@ -564,6 +602,74 @@ async def update_application(
             application_id=application_id, payload=changes, current_user=user, db=db
         )
     return _application_summary(item)
+
+
+# --- Job platforms --------------------------------------------------------------------
+
+PlatformId = Annotated[int, Field(description="A platform id from list_platforms.")]
+
+
+@mcp.tool(auth=READ, annotations=PURE, tags={"read"})
+async def list_platforms() -> list[JobPlatformResponse]:
+    """Job platforms the user keeps a profile on, and whether each is behind.
+
+    `outdated` means the career profile changed after the user last updated that
+    platform; `unknown` means they have not said when they did.
+    """
+    async with caller() as (user, db):
+        return await platforms.list_platforms(current_user=user, db=db)
+
+
+@mcp.tool(
+    auth=WRITE,
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, open_world_hint=False
+    ),
+    tags={"write"},
+)
+async def add_platform(platform: JobPlatformCreate) -> JobPlatformResponse:
+    """Start tracking a job platform the user has a profile on."""
+    async with caller() as (user, db):
+        return await platforms.add_platform(payload=platform, current_user=user, db=db)
+
+
+@mcp.tool(
+    auth=WRITE,
+    annotations=ToolAnnotations(
+        read_only_hint=False,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
+    tags={"write"},
+)
+async def update_platform(
+    platform_id: PlatformId, changes: JobPlatformUpdate
+) -> JobPlatformResponse:
+    """Amend a platform, e.g. set profile_updated_on after the user updated it."""
+    async with caller() as (user, db):
+        return await platforms.update_platform(
+            platform_id=platform_id, payload=changes, current_user=user, db=db
+        )
+
+
+@mcp.tool(
+    auth=WRITE,
+    annotations=ToolAnnotations(
+        read_only_hint=False,
+        destructive_hint=True,
+        idempotent_hint=True,
+        open_world_hint=False,
+    ),
+    tags={"write"},
+)
+async def delete_platform(platform_id: PlatformId) -> str:
+    """Stop tracking a platform. Ask the user first; applications keep, unlinked."""
+    async with caller() as (user, db):
+        await platforms.delete_platform(
+            platform_id=platform_id, current_user=user, db=db
+        )
+    return f"Platform {platform_id} deleted."
 
 
 # --- Editing the profile and goals ----------------------------------------------------

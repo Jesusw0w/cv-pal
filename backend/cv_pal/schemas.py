@@ -19,12 +19,14 @@ from cv_pal.constants import (
     DEFAULT_COMPANY_MAX_LENGTH,
     DEFAULT_CURRENCY_CODE_LENGTH,
     DEFAULT_ERROR_APPLIED_IN_FUTURE,
+    DEFAULT_ERROR_DUPLICATE_SALARY_EXPECTATION,
     DEFAULT_ERROR_DUPLICATE_WORK_REGIMES,
     DEFAULT_ERROR_END_BEFORE_START,
     DEFAULT_ERROR_PASSWORD_UNCHANGED,
     DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY,
-    DEFAULT_ERROR_SALARY_NEEDS_CURRENCY,
     DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY,
+    DEFAULT_ERROR_TARGET_BELOW_MINIMUM,
+    DEFAULT_ERROR_UPDATED_IN_FUTURE,
     DEFAULT_HIGHLIGHT_MAX_LENGTH,
     DEFAULT_LOCATION_MAX_LENGTH,
     DEFAULT_MAX_COVER_LETTER_LENGTH,
@@ -33,6 +35,7 @@ from cv_pal.constants import (
     DEFAULT_MAX_POSTING_LENGTH,
     DEFAULT_MAX_ROLE_HIGHLIGHTS,
     DEFAULT_MAX_SALARY,
+    DEFAULT_MAX_SALARY_EXPECTATIONS,
     DEFAULT_MAX_TARGET_ROLES,
     DEFAULT_MAX_WORK_LOCATIONS,
     DEFAULT_MIN_JOB_DESCRIPTION_LENGTH,
@@ -41,6 +44,7 @@ from cv_pal.constants import (
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_ORGANISATION_MAX_LENGTH,
     DEFAULT_PHONE_MAX_LENGTH,
+    DEFAULT_PLATFORM_NAME_MAX_LENGTH,
     DEFAULT_ROLE_CONTEXT_MAX_LENGTH,
     DEFAULT_SKILL_NAME_MAX_LENGTH,
     DEFAULT_SUMMARY_MAX_LENGTH,
@@ -56,7 +60,9 @@ from cv_pal.constants import (
     LinkedInSectionStatus,
     LinkedInSource,
     ParseabilitySeverity,
+    PlatformStatus,
     ProficiencyLevel,
+    SalaryPeriod,
     SuggestionType,
     WorkRegime,
 )
@@ -430,6 +436,8 @@ class CareerProfileUpdate(BaseModel):
     location: str | None = None
     phone: str | None = Field(default=None, max_length=DEFAULT_PHONE_MAX_LENGTH)
     website_url: str | None = None
+    #: Shown on a generated CV only for development roles.
+    github_url: str | None = None
     linkedin_url: str | None = None
 
 
@@ -596,6 +604,7 @@ class CareerProfileResponse(BaseModel):
     location: str | None
     phone: str | None
     website_url: str | None
+    github_url: str | None
     linkedin_url: str | None
     experiences: list[ExperienceResponse]
     educations: list[EducationResponse]
@@ -616,6 +625,51 @@ class EvidenceSuggestionResponse(BaseModel):
     experience_labels: list[str]
 
 
+class SalaryExpectation(BaseModel):
+    """What the user wants for one kind of contract.
+
+    Per contract type because the figures are not comparable: a contractor's day rate
+    pays for their own holidays, pension and the gaps between contracts.
+    """
+
+    employment_type: EmploymentType
+    minimum: int = Field(ge=0, le=DEFAULT_MAX_SALARY)
+    #: What they are aiming for, above the floor; optional.
+    target: int | None = Field(default=None, ge=0, le=DEFAULT_MAX_SALARY)
+    currency: str = Field(
+        min_length=DEFAULT_CURRENCY_CODE_LENGTH,
+        max_length=DEFAULT_CURRENCY_CODE_LENGTH,
+    )
+    period: SalaryPeriod = SalaryPeriod.YEAR
+
+    @field_validator("currency")
+    @classmethod
+    def normalise_currency(cls, currency: str) -> str:
+        """Upper-case the currency so "eur" and "EUR" are the same.
+
+        Args:
+            currency: The submitted ISO 4217 code.
+
+        Returns:
+            The upper-cased code.
+        """
+        return currency.upper()
+
+    @model_validator(mode="after")
+    def target_above_minimum(self) -> Self:
+        """Refuse a target below the floor.
+
+        Returns:
+            The validated expectation.
+
+        Raises:
+            ValueError: If the target is below the minimum.
+        """
+        if self.target is not None and self.target < self.minimum:
+            raise ValueError(DEFAULT_ERROR_TARGET_BELOW_MINIMUM)
+        return self
+
+
 class CareerGoalsUpdate(BaseModel):
     """What the user is looking for.
 
@@ -633,11 +687,8 @@ class CareerGoalsUpdate(BaseModel):
         default_factory=list, max_length=DEFAULT_MAX_WORK_LOCATIONS
     )
     location_non_negotiable: bool = False
-    min_salary: int | None = Field(default=None, ge=0, le=DEFAULT_MAX_SALARY)
-    salary_currency: str | None = Field(
-        default=None,
-        min_length=DEFAULT_CURRENCY_CODE_LENGTH,
-        max_length=DEFAULT_CURRENCY_CODE_LENGTH,
+    salary_expectations: list[SalaryExpectation] = Field(
+        default_factory=list, max_length=DEFAULT_MAX_SALARY_EXPECTATIONS
     )
     salary_non_negotiable: bool = False
 
@@ -700,19 +751,6 @@ class CareerGoalsUpdate(BaseModel):
                 cleaned.append(place)
         return cleaned
 
-    @field_validator("salary_currency")
-    @classmethod
-    def normalise_currency(cls, currency: str | None) -> str | None:
-        """Upper-case the currency so "eur" and "EUR" are the same floor.
-
-        Args:
-            currency: The submitted ISO 4217 code, or ``None``.
-
-        Returns:
-            The upper-cased code, or ``None``.
-        """
-        return currency.upper() if currency is not None else None
-
     @model_validator(mode="after")
     def validate_goals(self) -> Self:
         """Reject combinations that could never match anything.
@@ -725,17 +763,18 @@ class CareerGoalsUpdate(BaseModel):
             The validated payload.
 
         Raises:
-            ValueError: If a non-negotiable has no value, if a salary floor has no
-                currency, or if a work arrangement is listed twice.
+            ValueError: If a non-negotiable has no value, or if a work arrangement
+                or a contract type's salary is listed twice.
         """
         if len(set(self.work_regimes)) != len(self.work_regimes):
             raise ValueError(DEFAULT_ERROR_DUPLICATE_WORK_REGIMES)
         if self.regime_non_negotiable and not self.work_regimes:
             raise ValueError(DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY)
-        if self.salary_non_negotiable and self.min_salary is None:
+        if self.salary_non_negotiable and not self.salary_expectations:
             raise ValueError(DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY)
-        if self.min_salary is not None and self.salary_currency is None:
-            raise ValueError(DEFAULT_ERROR_SALARY_NEEDS_CURRENCY)
+        kinds = [(e.employment_type, e.period) for e in self.salary_expectations]
+        if len(set(kinds)) != len(kinds):
+            raise ValueError(DEFAULT_ERROR_DUPLICATE_SALARY_EXPECTATION)
         return self
 
 
@@ -750,8 +789,8 @@ class CareerGoalsResponse(BaseModel):
     regime_non_negotiable: bool
     work_locations: list[str]
     location_non_negotiable: bool
-    min_salary: int | None
-    salary_currency: str | None
+    #: One per contract type (and period), e.g. employee per year, contract per day.
+    salary_expectations: list[SalaryExpectation]
     salary_non_negotiable: bool
 
 
@@ -764,6 +803,7 @@ class ExtractedContactResponse(BaseModel):
     phone: str | None
     linkedin_url: str | None
     website_url: str | None
+    github_url: str | None
 
 
 class ExtractedEntryResponse(BaseModel):
@@ -858,6 +898,9 @@ class MatchScoreResponse(BaseModel):
     blocked_by: str | None
     reasons: list[MatchReasonResponse]
     missing_required: list[str]
+    #: Sorts before the score: 0 offers the user's first-choice arrangement. See
+    #: `analysis.matching.MatchScore`.
+    preference_rank: int = Field(ge=0)
 
 
 class ScoredPostingResponse(BaseModel):
@@ -905,6 +948,95 @@ class SyncResultResponse(BaseModel):
     error: str | None
 
 
+def _not_in_the_future(value: date | None) -> date | None:
+    """Reject a date that has not happened.
+
+    Args:
+        value: The submitted date.
+
+    Returns:
+        The date, unchanged.
+
+    Raises:
+        ValueError: If the date is after today.
+    """
+    if value is not None and value > date.today():
+        raise ValueError(DEFAULT_ERROR_UPDATED_IN_FUTURE)
+    return value
+
+
+class JobPlatformCreate(BaseModel):
+    """Start tracking a job platform the user keeps a profile on."""
+
+    name: str = Field(min_length=1, max_length=DEFAULT_PLATFORM_NAME_MAX_LENGTH)
+    profile_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    #: When the user last brought their profile there up to date.
+    profile_updated_on: Annotated[date | None, AfterValidator(_not_in_the_future)] = (
+        None
+    )
+    notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, name: str) -> str:
+        """Collapse whitespace so "Wellfound " and "Wellfound" are one platform.
+
+        Args:
+            name: The submitted name.
+
+        Returns:
+            The trimmed name.
+
+        Raises:
+            ValueError: If nothing is left.
+        """
+        cleaned = " ".join(name.split())
+        if not cleaned:
+            raise ValueError("A platform needs a name")
+        return cleaned
+
+
+class JobPlatformUpdate(BaseModel):
+    """Amend a tracked platform — most often, to say it was just updated."""
+
+    name: str | None = Field(
+        default=None, min_length=1, max_length=DEFAULT_PLATFORM_NAME_MAX_LENGTH
+    )
+    profile_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    profile_updated_on: Annotated[date | None, AfterValidator(_not_in_the_future)] = (
+        None
+    )
+    notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
+
+
+class JobPlatformResponse(BaseModel):
+    """A tracked platform, and whether its copy of the profile is behind."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    profile_url: str | None
+    profile_updated_on: date | None
+    notes: str | None
+    #: Compared against the last change to the career profile in CV Pal.
+    status: PlatformStatus
+
+
+class PlatformStatsResponse(BaseModel):
+    """How applications sent through one platform are going."""
+
+    #: None for applications recorded without a platform.
+    platform_id: int | None
+    name: str
+    total: int
+    replied: int
+    answerable: int
+    reply_rate: int | None
+    interviews: int
+    offers: int
+
+
 class ApplicationCreate(BaseModel):
     """Record that an application went out."""
 
@@ -916,6 +1048,8 @@ class ApplicationCreate(BaseModel):
     # Defaults to today rather than being required: the overwhelmingly common case is
     # recording an application as it is sent.
     applied_at: date | None = None
+    #: The platform it went through, for reply rates per platform.
+    platform_id: int | None = None
     notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
 
     @field_validator("applied_at")
@@ -943,6 +1077,7 @@ class ApplicationUpdate(BaseModel):
 
     status: ApplicationStatus | None = None
     cv_id: int | None = None
+    platform_id: int | None = None
     applied_at: date | None = None
     notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
 
@@ -957,6 +1092,7 @@ class ApplicationResponse(BaseModel):
     applied_at: date
     status_changed_at: date
     cv_id: int | None
+    platform_id: int | None
     notes: str | None
     posting: JobPostingResponse
     #: Days since it went out. Computed rather than stored — it changes without anything
@@ -982,6 +1118,8 @@ class ApplicationStatsResponse(BaseModel):
     answerable: int
     reply_rate: int | None
     needs_chasing: int
+    #: The same figures per platform, best reply rate first; "Not recorded" last.
+    by_platform: list[PlatformStatsResponse]
 
 
 class SurfacedFactResponse(BaseModel):

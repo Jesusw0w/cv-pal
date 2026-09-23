@@ -16,6 +16,7 @@ Two distinct mechanisms, and keeping them apart is the point (principle 8):
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import Protocol
 
 from cv_pal.analysis.keywords import analyse, canonical
 from cv_pal.constants import (
@@ -80,12 +81,18 @@ class MatchScore:
         blocked_by: The non-negotiable the posting breaks, or None.
         reasons: The components, best first.
         missing_required: Terms the posting requires that the profile cannot evidence.
+        preference_rank: Where the posting's arrangement sits in the user's ordered
+            work regimes, for sorting before the score: 0 offers their first choice,
+            1 their second, and so on; then postings that do not say; then ones that
+            offer only arrangements the user did not choose. 0 for everything when the
+            user has not chosen any.
     """
 
     score: int
     blocked_by: str | None = None
     reasons: tuple[MatchReason, ...] = field(default_factory=tuple)
     missing_required: tuple[str, ...] = field(default_factory=tuple)
+    preference_rank: int = 0
 
 
 def detect_regimes(text: str) -> frozenset[WorkRegime]:
@@ -312,6 +319,7 @@ def score_posting(
         return MatchScore(
             score=0,
             blocked_by=f"You ruled this out: the posting is {named}.",
+            preference_rank=len(work_regimes) + 1,
         )
 
     places = work_locations or []
@@ -326,22 +334,35 @@ def score_posting(
                 "You ruled this out: it requires "
                 f"{_readable(sorted(stated_places), stated_places)}."
             ),
+            preference_rank=len(work_regimes) + 1,
         )
 
     coverage = analyse(profile_text, description, company=company)
 
     regime_fit: float | None = None
     regime_detail = "The posting does not say how the work is arranged."
+    # Unstated sorts after every arrangement the user chose, not-chosen after that.
+    preference_rank = len(work_regimes) if work_regimes else 0
     if mentioned:
         if not work_regimes:
             regime_detail = "You have not said which arrangements suit you."
         elif mentioned & set(work_regimes):
-            matched = sorted(
-                r.value.replace("_", " ") for r in (mentioned & set(work_regimes))
+            preference_rank = min(
+                work_regimes.index(regime) for regime in mentioned & set(work_regimes)
             )
+            best = work_regimes[preference_rank].value.replace("_", " ")
             regime_fit = 1.0
-            regime_detail = f"Offers {', '.join(matched)}, which you said suits you."
+            if len(work_regimes) == 1:
+                regime_detail = f"Offers {best}, which you said suits you."
+            elif preference_rank == 0:
+                regime_detail = f"Offers {best}, your first choice."
+            else:
+                regime_detail = (
+                    f"Offers {best}, your {_ordinal(preference_rank + 1)} choice; "
+                    "postings offering one you prefer are listed first."
+                )
         else:
+            preference_rank = len(work_regimes) + 1
             regime_fit = 0.0
             regime_detail = "The arrangement is not one you said suits you."
 
@@ -397,7 +418,48 @@ def score_posting(
         score=_assessed_score(components),
         reasons=tuple(MatchReason(label=c.label, detail=c.detail) for c in components),
         missing_required=tuple(k.term for k in coverage.missing_required),
+        preference_rank=preference_rank,
     )
+
+
+def _ordinal(number: int) -> str:
+    """Spell a small position: 2 -> "second". There are only three regimes."""
+    return {1: "first", 2: "second", 3: "third"}.get(number, f"{number}th")
+
+
+class Ranked(Protocol):
+    """Anything carrying what postings are ordered by: a match, or a summary of one."""
+
+    @property
+    def blocked_by(self) -> str | None:
+        """The non-negotiable broken, if any."""
+        ...
+
+    @property
+    def preference_rank(self) -> int:
+        """See `MatchScore.preference_rank`."""
+        ...
+
+    @property
+    def score(self) -> int:
+        """0-100."""
+        ...
+
+
+def ranking_key(match: Ranked) -> tuple[bool, int, int]:
+    """Order postings: allowed first, preferred arrangement next, then best score.
+
+    The preference sorts before the score rather than being folded into it: someone who
+    said "remote, then hybrid" wants every remote posting above every hybrid one, and
+    a weight inside the score would let a strong hybrid match overtake a weak remote.
+
+    Args:
+        match: A posting's match.
+
+    Returns:
+        The sort key; smaller sorts first.
+    """
+    return (match.blocked_by is not None, match.preference_rank, -match.score)
 
 
 def _assessed_score(components: Sequence[_Component]) -> int:

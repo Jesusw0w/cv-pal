@@ -89,6 +89,45 @@ Roughly in priority order.
 
 ## Log
 
+### 2026-09-23 — Platforms, salary per contract type, GitHub link
+
+Migration `f9a0b1c2d3e4` (moves data; round-trip checked on a seeded scratch DB).
+
+- **Salary expectations per contract type** replace `min_salary`/`salary_currency`:
+  `career_goals.salary_expectations` is a JSON list of `{employment_type, minimum,
+  target, currency, period}`, unique per (type, period). An existing floor migrates to
+  full-time/year. The welcome wizard still asks one number and writes only that row,
+  carrying the others through. **Salary is still not used in matching** — it never
+  was; it is stored for the user, the export and the agent.
+- **Job platforms (optional)**: `job_platforms` + `/platforms` CRUD + a Platforms page
+  and sidebar entry. Status is `up_to_date` / `outdated` / `unknown`, comparing the
+  user-stated `profile_updated_on` with `career_profiles.updated_at` **by day**. For
+  that to mean anything, every role/education/skill mutation now bumps the profile's
+  `updated_at` (`profile_service._touch`) — before, only the profile's own fields did.
+- **Applications carry `platform_id`** (dropdown when recording, editable per row),
+  and stats gain `by_platform` (reply rate, interviews, offers; "Not recorded" last).
+  Deleting a platform nulls the link in code too: SQLite ignores `ON DELETE SET NULL`.
+- **`github_url` split from `website_url`** (migration moves github.com websites).
+  A tailored CV shows GitHub only for development roles: a title with a developer
+  word, or "Engineer" plus ≥ 3 *known* technology terms in the posting — plain
+  `extract_keywords` output is not technology-only ("sales", "account"…), which the
+  first version got wrong. LinkedIn is always shown. Extraction proposes GitHub apart.
+- MCP: `list_platforms` (read), `add/update/delete_platform` (write scope — search
+  activity, not profile), `platform_id` on record/update application; instructions
+  mention GitHub-for-dev-roles and per-contract salaries.
+- Conflicts are **400** in this app (`error_handlers.py`), not 409 — follow it.
+- **Work-regime order now sorts postings.** `work_regimes` was documented best-first
+  but only membership counted. `MatchScore.preference_rank` (0 = first choice, then
+  second…, then unstated, then not chosen) is a sort key *before* the score —
+  `matching.ranking_key`, used by the MCP list and mirrored in the frontend's
+  `rankMatches` — deliberately not a score weight, so a strong hybrid match can never
+  overtake a weak remote one. The score itself is unchanged; the reason text names
+  the choice ("your second choice").
+
+Verified: `uv run nox` green (new tests: platforms, per-platform stats, GitHub rule,
+salary validation); frontend lint, format, 72 tests, `ng build` and mock build green;
+containers rebuilt, migration applied to the live DB, live MCP lists 32 tools.
+
 ### 2026-09-23 — Agents may edit the profile (opt-in)
 
 - **Reversed a decision:** the MCP no longer refuses to edit the profile and goals.

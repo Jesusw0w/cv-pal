@@ -16,7 +16,8 @@ const SLOW_READ_MS = 6000;
 /** A value read from the CV that the profile does not have yet. */
 interface ProposedField {
   label: string;
-  field: 'linkedin_url' | 'website_url' | 'headline' | 'summary' | 'location' | 'phone';
+  field:
+    'linkedin_url' | 'website_url' | 'github_url' | 'headline' | 'summary' | 'location' | 'phone';
   value: string;
 }
 
@@ -510,6 +511,7 @@ export class ImportPanelComponent {
       ['phone', 'Phone', found.contact.phone],
       ['summary', 'Summary', found.summary],
       ['linkedin_url', 'LinkedIn', found.contact.linkedin_url],
+      ['github_url', 'GitHub', found.contact.github_url],
       ['website_url', 'Website', found.contact.website_url],
     ];
     return candidates

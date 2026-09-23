@@ -7,7 +7,7 @@ profile id from the caller.
 
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -60,6 +60,23 @@ from cv_pal.schemas import (
     SkillUpdate,
 )
 from cv_pal.services.cv_service import get_owned_cv
+
+
+async def _touch(db: AsyncSession, *, user_id: int) -> None:
+    """Mark the profile as changed, for a change to one of its roles, courses or skills.
+
+    `updated_at` moves on its own only when the profile row does. A new role changes
+    the profile as much as a new headline, and the platform tracker compares against it.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+    """
+    await db.execute(
+        update(CareerProfile)
+        .where(CareerProfile.user_id == user_id)
+        .values(updated_at=func.now())
+    )
 
 
 async def get_or_create_profile(db: AsyncSession, *, user_id: int) -> CareerProfile:
@@ -126,6 +143,7 @@ async def add_experience(
     profile = await get_or_create_profile(db, user_id=user_id)
     experience = Experience(profile_id=profile.id, **payload.model_dump())
     db.add(experience)
+    await _touch(db, user_id=user_id)
     await db.commit()
     await db.refresh(experience)
     return experience
@@ -190,6 +208,7 @@ async def update_experience(
 
     for field, value in changes.items():
         setattr(experience, field, value)
+    await _touch(db, user_id=user_id)
     await db.commit()
     await db.refresh(experience)
     return experience
@@ -212,6 +231,7 @@ async def delete_experience(
         db, user_id=user_id, experience_id=experience_id
     )
     await db.delete(experience)
+    await _touch(db, user_id=user_id)
     await db.commit()
 
 
@@ -231,6 +251,7 @@ async def add_education(
     profile = await get_or_create_profile(db, user_id=user_id)
     education = Education(profile_id=profile.id, **payload.model_dump())
     db.add(education)
+    await _touch(db, user_id=user_id)
     await db.commit()
     await db.refresh(education)
     return education
@@ -278,6 +299,7 @@ async def delete_education(
     """
     education = await _owned_education(db, user_id=user_id, education_id=education_id)
     await db.delete(education)
+    await _touch(db, user_id=user_id)
     await db.commit()
 
 
@@ -301,6 +323,7 @@ async def update_education(
     education = await _owned_education(db, user_id=user_id, education_id=education_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(education, field, value)
+    await _touch(db, user_id=user_id)
     await db.commit()
     await db.refresh(education)
     return education
@@ -340,6 +363,7 @@ async def add_skill(db: AsyncSession, *, user_id: int, payload: SkillCreate) -> 
     )
     db.add(skill)
     try:
+        await _touch(db, user_id=user_id)
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
@@ -390,6 +414,7 @@ async def delete_skill(db: AsyncSession, *, user_id: int, skill_id: int) -> None
     """
     skill = await _owned_skill(db, user_id=user_id, skill_id=skill_id)
     await db.delete(skill)
+    await _touch(db, user_id=user_id)
     await db.commit()
 
 
@@ -495,6 +520,7 @@ async def update_skill(
         setattr(skill, field, value)
 
     try:
+        await _touch(db, user_id=user_id)
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
@@ -552,8 +578,10 @@ async def replace_goals(
     goals.regime_non_negotiable = payload.regime_non_negotiable
     goals.work_locations = payload.work_locations
     goals.location_non_negotiable = payload.location_non_negotiable
-    goals.min_salary = payload.min_salary
-    goals.salary_currency = payload.salary_currency
+    goals.salary_expectations = [
+        expectation.model_dump(mode="json")
+        for expectation in payload.salary_expectations
+    ]
     goals.salary_non_negotiable = payload.salary_non_negotiable
 
     await db.commit()

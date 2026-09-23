@@ -49,6 +49,7 @@ _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 _LINKEDIN = re.compile(
     r"(?:https?://)?(?:www\.)?linkedin\.com/in/[\w-]+", re.IGNORECASE
 )
+_GITHUB = re.compile(r"(?:https?://)?(?:www\.)?github\.com/[\w-]+", re.IGNORECASE)
 _WEBSITE = re.compile(
     r"(?:https?://)?(?:www\.)?(?:github\.com/[\w-]+|[\w-]+\.(?:dev|io|me|com)/?[\w-]*)",
     re.IGNORECASE,
@@ -169,6 +170,7 @@ class ExtractedContact:
     phone: str | None = None
     linkedin_url: str | None = None
     website_url: str | None = None
+    github_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -906,11 +908,13 @@ def _contact(text: str, raw: str) -> ExtractedContact:
     # Emails removed first, or "name@gmail.com" yields "gmail.com" as their website.
     without_emails = _EMAIL.sub(" ", text)
 
+    github = _GITHUB.search(without_emails)
+
     website: str | None = None
     for candidate in _WEBSITE.finditer(without_emails):
         value = candidate.group(0)
-        # The LinkedIn URL matches the generic pattern too; it has its own field.
-        if "linkedin.com" not in value.lower():
+        # LinkedIn and GitHub match the generic pattern too; each has its own field.
+        if "linkedin.com" not in value.lower() and "github.com" not in value.lower():
             website = value
             break
 
@@ -919,6 +923,7 @@ def _contact(text: str, raw: str) -> ExtractedContact:
         phone=_phone(raw),
         linkedin_url=linkedin.group(0) if linkedin else None,
         website_url=website,
+        github_url=github.group(0) if github else None,
     )
 
 

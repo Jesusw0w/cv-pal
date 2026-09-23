@@ -42,6 +42,22 @@ describe('ApplicationsComponent', () => {
     const posted = http.expectOne(
       (request) => request.method === 'POST' && request.url.endsWith('/applications'),
     );
-    expect(posted.request.body).toEqual({ job_posting_id: 7 });
+    expect(posted.request.body).toEqual({ job_posting_id: 7, platform_id: null });
+  });
+
+  it('records the platform chosen, and keeps it for the next one', () => {
+    // Several applications in a row usually go through the same place.
+    const fixture = TestBed.createComponent(ApplicationsComponent);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    fixture.componentInstance.through = 3;
+
+    fixture.componentInstance.record(7);
+
+    const posted = http.expectOne(
+      (request) => request.method === 'POST' && request.url.endsWith('/applications'),
+    );
+    expect(posted.request.body).toEqual({ job_posting_id: 7, platform_id: 3 });
+    expect(fixture.componentInstance.through).toBe(3);
   });
 });

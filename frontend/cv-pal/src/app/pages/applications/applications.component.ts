@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApplicationService } from '../../core/services/application.service';
 import { AnalysisService } from '../../core/services/analysis.service';
+import { PlatformService } from '../../core/services/platform.service';
 import { ApplicationResponse, ApplicationStatus } from '../../shared/models/api.model';
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -86,6 +87,37 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
         </p>
       </section>
 
+      <!-- Only once something was sent through a named platform: a table of one
+           "Not recorded" row would say nothing. -->
+      @if (hasPlatformStats()) {
+        <section class="card">
+          <div class="card-header">
+            <h3>By platform</h3>
+            <span class="card-note">Which platforms get replies</span>
+          </div>
+          <div class="rows">
+            @for (row of applications.stats().by_platform; track row.name) {
+              <div class="chase-row">
+                <span class="chase-title">{{ row.name }}</span>
+                <span class="chase-org">
+                  {{ row.total }} sent &middot; {{ row.interviews }} interviewing
+                  @if (row.offers > 0) {
+                    &middot; {{ row.offers }} offer(s)
+                  }
+                </span>
+                <span class="chase-age">
+                  @if (row.reply_rate === null) {
+                    too early
+                  } @else {
+                    {{ row.reply_rate }}% replied
+                  }
+                </span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       @if (applications.needsChasing().length > 0) {
         <section class="card chase">
           <div class="card-header">
@@ -121,6 +153,20 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
             applications are recorded against one.
           </p>
         } @else {
+          <!-- Optional, and kept for the next click: several applications in a row
+               usually go through the same place. -->
+          <label class="body through">
+            Applied through
+            <select [(ngModel)]="through" aria-label="Platform the application went through">
+              <option [ngValue]="null">Not recorded</option>
+              @for (platform of platforms.platforms(); track platform.id) {
+                <option [ngValue]="platform.id">{{ platform.name }}</option>
+              }
+            </select>
+            @if (platforms.platforms().length === 0) {
+              <a routerLink="/platforms">Add the platforms you use</a>
+            }
+          </label>
           <div class="rows">
             @for (posting of applications.unapplied(); track posting.id) {
               <div class="chase-row">
@@ -167,6 +213,19 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
                   }
                 </span>
               </div>
+              @if (platforms.platforms().length > 0) {
+                <select
+                  [ngModel]="application.platform_id"
+                  (ngModelChange)="setPlatform(application, $event)"
+                  [disabled]="busy()"
+                  [attr.aria-label]="'Platform for ' + application.posting.title"
+                >
+                  <option [ngValue]="null">No platform</option>
+                  @for (platform of platforms.platforms(); track platform.id) {
+                    <option [ngValue]="platform.id">{{ platform.name }}</option>
+                  }
+                </select>
+              }
               <select
                 [ngModel]="application.status"
                 (ngModelChange)="setStatus(application, $event)"
@@ -367,6 +426,22 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
       .remove:disabled {
         opacity: 0.5;
       }
+      .through {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .through select {
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+      }
       .retry {
         font-size: 13px;
         font-weight: 600;
@@ -383,7 +458,15 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
 })
 export class ApplicationsComponent {
   readonly applications = inject(ApplicationService);
+  readonly platforms = inject(PlatformService);
   private readonly documents = inject(AnalysisService);
+
+  /** The platform the next "I applied" is recorded against. */
+  through: number | null = null;
+
+  readonly hasPlatformStats = computed(() =>
+    this.applications.stats().by_platform.some((row) => row.platform_id !== null),
+  );
 
   readonly statuses = STATUSES;
   readonly pipeline: ApplicationStatus[] = ['applied', 'interviewing', 'offer'];
@@ -409,7 +492,14 @@ export class ApplicationsComponent {
   }
 
   record(postingId: number): void {
-    this.run(this.applications.record({ job_posting_id: postingId }));
+    this.run(this.applications.record({ job_posting_id: postingId, platform_id: this.through }));
+  }
+
+  setPlatform(application: ApplicationResponse, platformId: number | null): void {
+    if (platformId === application.platform_id) {
+      return;
+    }
+    this.run(this.applications.update(application.id, { platform_id: platformId }));
   }
 
   setStatus(application: ApplicationResponse, status: ApplicationStatus): void {

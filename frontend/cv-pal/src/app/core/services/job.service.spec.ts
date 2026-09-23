@@ -5,7 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
 import { JobService, blockedOf, rankMatches } from './job.service';
 
-const scored = (id: number, score: number, blocked: string | null = null) => ({
+const scored = (id: number, score: number, blocked: string | null = null, rank = 0) => ({
   posting: {
     id,
     source: 'manual' as const,
@@ -17,7 +17,13 @@ const scored = (id: number, score: number, blocked: string | null = null) => ({
     employment_type: null,
     created_at: '2026-07-26T09:00:00Z',
   },
-  match: { score, blocked_by: blocked, reasons: [], missing_required: [] },
+  match: {
+    score,
+    blocked_by: blocked,
+    reasons: [],
+    missing_required: [],
+    preference_rank: rank,
+  },
 });
 
 describe('JobService', () => {
@@ -83,5 +89,16 @@ describe('ranking', () => {
 
     expect(rankMatches(all).map((e) => e.posting.id)).toEqual([3, 1]);
     expect(blockedOf(all).map((e) => e.posting.id)).toEqual([2]);
+  });
+
+  it('puts the preferred work arrangement first, whatever the score', () => {
+    // Remote-then-hybrid: every remote posting above every hybrid one, then by score.
+    const hybridStrong = scored(1, 90, null, 1);
+    const remoteWeak = scored(2, 40, null, 0);
+    const remoteStrong = scored(3, 70, null, 0);
+
+    expect(rankMatches([hybridStrong, remoteWeak, remoteStrong]).map((e) => e.posting.id)).toEqual([
+      3, 2, 1,
+    ]);
   });
 });

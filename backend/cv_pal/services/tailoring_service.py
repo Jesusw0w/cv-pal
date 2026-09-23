@@ -57,6 +57,7 @@ def profile_facts(profile: CareerProfile, user: User) -> ProfileFacts:
         location=profile.location,
         phone=profile.phone,
         website_url=profile.website_url,
+        github_url=profile.github_url,
         linkedin_url=profile.linkedin_url,
         experiences=tuple(
             ExperienceFact(
@@ -144,6 +145,7 @@ async def tailor_for_posting(
         profile_facts(profile, user),
         posting.description,
         company=posting.company,
+        title=posting.title,
     )
     return result, check_parseability(result.markdown)
 

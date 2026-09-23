@@ -64,6 +64,7 @@ def _profile_response(profile: CareerProfile) -> CareerProfileResponse:
         location=profile.location,
         phone=profile.phone,
         website_url=profile.website_url,
+        github_url=profile.github_url,
         linkedin_url=profile.linkedin_url,
         experiences=[ExperienceResponse.model_validate(e) for e in profile.experiences],
         educations=[EducationResponse.model_validate(e) for e in profile.educations],

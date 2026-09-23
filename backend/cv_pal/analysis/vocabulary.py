@@ -678,3 +678,24 @@ ROLE_MARKERS: Final[Set[str]] = frozenset(
         "writer",
     }
 )
+
+
+# Job-title words that on their own make a role a development one, so a generated CV
+# links the applicant's GitHub. "Engineer" is not here: a sales or civil engineer has no
+# use for it, and `tailored_cv` decides those from what the posting asks for instead.
+DEVELOPMENT_ROLE_MARKERS: Final[Set[str]] = frozenset(
+    {
+        "back-end",
+        "backend",
+        "developer",
+        "devops",
+        "front-end",
+        "frontend",
+        "full-stack",
+        "fullstack",
+        "programmer",
+        "sre",
+        "software",
+        "web",
+    }
+)

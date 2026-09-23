@@ -36,6 +36,7 @@ const EMPTY_PROFILE: CareerProfileResponse = {
   location: null,
   phone: null,
   website_url: null,
+  github_url: null,
   linkedin_url: null,
   experiences: [],
   educations: [],

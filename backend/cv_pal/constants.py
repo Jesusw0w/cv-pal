@@ -199,9 +199,14 @@ DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY: Final[str] = (
 DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY: Final[str] = (
     "Set a salary floor before making it a non-negotiable"
 )
-DEFAULT_ERROR_SALARY_NEEDS_CURRENCY: Final[str] = (
-    "A salary floor needs a currency, or the number cannot be compared to a posting"
+DEFAULT_ERROR_DUPLICATE_SALARY_EXPECTATION: Final[str] = (
+    "Each contract type can have one expectation per period"
 )
+DEFAULT_ERROR_TARGET_BELOW_MINIMUM: Final[str] = (
+    "The target cannot be below the minimum"
+)
+# Employee, part-time, contract, freelance — times a period or two.
+DEFAULT_MAX_SALARY_EXPECTATIONS: Final[int] = 8
 DEFAULT_ERROR_DUPLICATE_WORK_REGIMES: Final[str] = (
     "Each work arrangement can appear only once"
 )
@@ -281,6 +286,14 @@ DEFAULT_MAX_NOTES_LENGTH: Final[int] = 4_000
 DEFAULT_ERROR_APPLICATION_DUPLICATE: Final[str] = (
     "You have already recorded an application for that posting"
 )
+DEFAULT_ERROR_PLATFORM_NOT_FOUND: Final[str] = "Platform not found"
+# How the per-platform stats name applications recorded without one.
+DEFAULT_NO_PLATFORM_LABEL: Final[str] = "Not recorded"
+DEFAULT_ERROR_PLATFORM_DUPLICATE: Final[str] = (
+    "You already track a platform by that name"
+)
+DEFAULT_ERROR_PLATFORM_LIMIT: Final[str] = "You can track at most {limit} platforms"
+DEFAULT_ERROR_UPDATED_IN_FUTURE: Final[str] = "That date has not happened yet"
 DEFAULT_ERROR_APPLIED_IN_FUTURE: Final[str] = (
     "An application cannot have been sent in the future"
 )
@@ -367,6 +380,34 @@ REPLIED_APPLICATION_STATUSES: Final[frozenset[ApplicationStatus]] = frozenset(
 
 #: Days after which an application with no reply is worth chasing.
 DEFAULT_APPLICATION_STALE_DAYS: Final[int] = 14
+
+# How many technology terms a posting titled only "Engineer" must ask for before a
+# generated CV links the applicant's GitHub.
+DEFAULT_MIN_TECH_TERMS_FOR_CODE_LINKS: Final[int] = 3
+
+# Job platforms the user keeps a profile on: LinkedIn, Indeed, Wellfound...
+DEFAULT_PLATFORM_NAME_MAX_LENGTH: Final[int] = 64
+DEFAULT_MAX_PLATFORMS: Final[int] = 50
+
+
+class SalaryPeriod(StrEnum):
+    """What a salary figure is per. Contract work is quoted by the day or the hour."""
+
+    YEAR = "year"
+    MONTH = "month"
+    DAY = "day"
+    HOUR = "hour"
+
+
+class PlatformStatus(StrEnum):
+    """Whether a platform's copy of the profile is behind the profile in CV Pal."""
+
+    #: Updated on or after the profile's last change.
+    UP_TO_DATE = "up_to_date"
+    #: The profile has changed since the platform was last updated.
+    OUTDATED = "outdated"
+    #: The user has not said when they last updated it.
+    UNKNOWN = "unknown"
 
 
 class EmploymentType(StrEnum):

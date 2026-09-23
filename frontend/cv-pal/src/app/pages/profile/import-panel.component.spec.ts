@@ -11,6 +11,7 @@ const FOUND: CvExtractionResponse = {
     phone: '+351 912 345 678',
     linkedin_url: 'linkedin.com/in/ana',
     website_url: null,
+    github_url: 'github.com/sam',
   },
   headline: 'Senior Backend Engineer',
   summary: 'Nine years on payment systems.',
@@ -32,7 +33,14 @@ describe('ImportPanelComponent', () => {
 
     const fields = panel.proposedFields(FOUND).map((field) => field.field);
 
-    expect(fields).toEqual(['headline', 'location', 'phone', 'summary', 'linkedin_url']);
+    expect(fields).toEqual([
+      'headline',
+      'location',
+      'phone',
+      'summary',
+      'linkedin_url',
+      'github_url',
+    ]);
   });
 
   it('treats a header with nothing readable in it as an empty proposal', () => {
@@ -42,7 +50,13 @@ describe('ImportPanelComponent', () => {
 
     const nothing: CvExtractionResponse = {
       ...FOUND,
-      contact: { email: null, phone: null, linkedin_url: null, website_url: null },
+      contact: {
+        email: null,
+        phone: null,
+        linkedin_url: null,
+        website_url: null,
+        github_url: null,
+      },
       headline: null,
       summary: null,
       location: null,

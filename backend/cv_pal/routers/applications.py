@@ -9,7 +9,7 @@ from cv_pal.schemas import (
     ApplicationUpdate,
     JobPostingResponse,
 )
-from cv_pal.services import application_service
+from cv_pal.services import application_service, platform_service
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -32,6 +32,7 @@ def _response(application: Application) -> ApplicationResponse:
         applied_at=application.applied_at,
         status_changed_at=application.status_changed_at,
         cv_id=application.cv_id,
+        platform_id=application.platform_id,
         notes=application.notes,
         posting=JobPostingResponse.model_validate(application.posting),
         days_since_applied=application_service.days_since(application.applied_at),
@@ -68,8 +69,9 @@ async def application_stats(
     applications = await application_service.list_applications(
         db, user_id=current_user.id
     )
+    platforms = await platform_service.list_platforms(db, user_id=current_user.id)
     return ApplicationStatsResponse.model_validate(
-        application_service.summarise(applications)
+        application_service.summarise(applications, platforms)
     )
 
 

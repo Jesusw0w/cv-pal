@@ -8,7 +8,7 @@ import { AnalysisService, rejectUpload } from '../../core/services/analysis.serv
 import { AuthService } from '../../core/services/auth.service';
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import { GoalsService } from '../../core/services/goals.service';
-import { CareerProfileUpdate, WorkRegime } from '../../shared/models/api.model';
+import { CareerProfileUpdate, SalaryExpectation, WorkRegime } from '../../shared/models/api.model';
 import { ImportPanelComponent } from '../profile/import-panel.component';
 
 const REGIMES: { value: WorkRegime; label: string }[] = [
@@ -588,8 +588,9 @@ export class WelcomeComponent {
       for (const regime of goals.work_regimes) {
         this.regimes_.add(regime);
       }
-      this.minSalary.set(goals.min_salary?.toString() ?? '');
-      this.currency.set(goals.salary_currency ?? 'EUR');
+      const annual = goals.salary_expectations.find(isAnnualSalary);
+      this.minSalary.set(annual?.minimum.toString() ?? '');
+      this.currency.set(annual?.currency ?? 'EUR');
     });
   }
 
@@ -791,9 +792,25 @@ export class WelcomeComponent {
         regime_non_negotiable: regimes.length > 0 && stored.regime_non_negotiable,
         work_locations: stored.work_locations,
         location_non_negotiable: stored.location_non_negotiable,
-        min_salary: floor,
-        salary_currency: floor === null ? null : this.currency().trim() || 'EUR',
-        salary_non_negotiable: floor !== null && stored.salary_non_negotiable,
+        // The wizard asks for one figure: the employee annual salary. Expectations for
+        // other contract types, set on the goals screen, are carried through untouched.
+        salary_expectations: [
+          ...(floor === null
+            ? []
+            : [
+                {
+                  employment_type: 'full_time' as const,
+                  minimum: floor,
+                  target: stored.salary_expectations.find(isAnnualSalary)?.target ?? null,
+                  currency: this.currency().trim().toUpperCase() || 'EUR',
+                  period: 'year' as const,
+                },
+              ]),
+          ...stored.salary_expectations.filter((expectation) => !isAnnualSalary(expectation)),
+        ],
+        salary_non_negotiable:
+          (floor !== null || stored.salary_expectations.some((e) => !isAnnualSalary(e))) &&
+          stored.salary_non_negotiable,
       })
       .subscribe({
         next: () => {
@@ -826,4 +843,9 @@ function detailOf(error: unknown, fallback: string): string {
     }
   }
   return fallback;
+}
+
+/** The employee annual salary: the one figure the wizard asks for. */
+function isAnnualSalary(expectation: SalaryExpectation): boolean {
+  return expectation.employment_type === 'full_time' && expectation.period === 'year';
 }

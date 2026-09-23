@@ -52,12 +52,16 @@ READ_TOOLS = {
     "list_applications",
     "get_application_stats",
     "review_linkedin_profile",
+    "list_platforms",
 }
 WRITE_TOOLS = {
     "save_job_posting",
     "import_job_posting",
     "record_application",
     "update_application",
+    "add_platform",
+    "update_platform",
+    "delete_platform",
 }
 PROFILE_TOOLS = {
     "update_profile",
@@ -74,6 +78,7 @@ PROFILE_TOOLS = {
 }
 # Removing or overwriting what the user entered: a client should confirm these.
 DESTRUCTIVE_TOOLS = {
+    "delete_platform",
     "set_goals",
     "delete_experience",
     "delete_education",
@@ -420,7 +425,7 @@ async def test_tools_are_annotated_for_the_client(
         annotations = tools[name].annotations
         assert annotations is not None
         assert annotations.read_only_hint is False, name
-        assert annotations.destructive_hint is False, name
+        assert annotations.destructive_hint is (name in DESTRUCTIVE_TOOLS), name
 
 
 async def test_editing_tools_flag_what_destroys(

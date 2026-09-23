@@ -67,8 +67,13 @@ import { RoleHighlightsComponent } from './role-highlights.component';
               />
             </label>
             <label
+              >GitHub
+              <input name="github" [(ngModel)]="draft.github_url" placeholder="github.com/you" />
+              <span class="card-note">On generated CVs for development roles only.</span>
+            </label>
+            <label
               >Website
-              <input name="website" [(ngModel)]="draft.website_url" placeholder="github.com/you" />
+              <input name="website" [(ngModel)]="draft.website_url" placeholder="yoursite.dev" />
             </label>
             @if (saveError(); as message) {
               <p class="error" role="alert">{{ message }}</p>
@@ -873,6 +878,7 @@ export class ProfileComponent {
     summary: '',
     linkedin_url: '',
     website_url: '',
+    github_url: '',
   };
   roleDraft = emptyRole();
   roleEdit = emptyRole();
@@ -889,6 +895,7 @@ export class ProfileComponent {
       summary: profile.summary ?? '',
       linkedin_url: profile.linkedin_url ?? '',
       website_url: profile.website_url ?? '',
+      github_url: profile.github_url ?? '',
     };
     this.saveError.set(null);
     this.editing.set(true);
@@ -907,6 +914,7 @@ export class ProfileComponent {
         summary: this.draft.summary.trim() || null,
         linkedin_url: this.draft.linkedin_url.trim() || null,
         website_url: this.draft.website_url.trim() || null,
+        github_url: this.draft.github_url.trim() || null,
       })
       .subscribe({
         next: () => {

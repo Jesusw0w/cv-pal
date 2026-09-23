@@ -690,3 +690,39 @@ async def test_the_pdf_download_is_named_and_typed(client: AsyncClient) -> None:
         == 'attachment; filename="CV - Acme - Senior Backend Engineer.pdf"'
     )
     assert response.content.startswith(b"%PDF-")
+
+
+# --- Which links a CV carries ---------------------------------------------------------
+
+
+def test_github_is_linked_for_a_development_role() -> None:
+    """A developer's code is part of the application."""
+    profile = replace(facts(), github_url="github.com/ada")
+
+    result = tailor(profile, POSTING, title="Senior Backend Developer")
+
+    assert "github.com/ada" in result.markdown
+    assert "linkedin.com/in/ada" in result.markdown
+
+
+def test_github_is_left_off_for_a_role_that_does_not_write_code() -> None:
+    """A sales engineer's CV gains nothing from a repository list."""
+    profile = replace(facts(), github_url="github.com/ada")
+
+    result = tailor(
+        profile,
+        "Sales Engineer. Own the customer relationship and grow the account.",
+        title="Sales Engineer",
+    )
+
+    assert "github.com/ada" not in result.markdown
+    assert "linkedin.com/in/ada" in result.markdown
+
+
+def test_an_engineer_title_counts_when_the_posting_asks_for_code() -> None:
+    """A title of just "Engineer" is decided by what the posting asks for."""
+    profile = replace(facts(), github_url="github.com/ada")
+
+    result = tailor(profile, POSTING, title="Forward Deployed Engineer")
+
+    assert "github.com/ada" in result.markdown
