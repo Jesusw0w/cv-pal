@@ -8,6 +8,13 @@ import { detailOf } from '../../shared/http-error';
 /** The lifetimes offered. The API caps a token at a year; there is no "never". */
 const LIFETIMES = [30, 90, 365] as const;
 
+/** What each scope lets an agent do, in the words the token list uses. */
+const SCOPE_LABELS: Record<string, string> = {
+  'cvpal:read': 'read',
+  'cvpal:write': 'record applications',
+  'cvpal:profile': 'edit profile',
+};
+
 /**
  * Agent access: personal access tokens for the MCP endpoint.
  *
@@ -23,8 +30,8 @@ const LIFETIMES = [30, 90, 365] as const;
       <div class="body">
         <p class="hint">
           Let an AI agent you run — Claude Desktop, Claude Code, or any MCP client — read your
-          profile, score postings and tailor CVs. It cannot change your profile or goals, and
-          nothing it does sends an application.
+          profile, score postings and tailor CVs, and, if you allow it, record applications or fill
+          in your profile for you. Nothing it does sends an application.
         </p>
 
         @if (list(); as state) {
@@ -62,8 +69,7 @@ const LIFETIMES = [30, 90, 365] as const;
               <div class="token-info">
                 <span class="token-name">{{ token.name }}</span>
                 <span class="token-meta">
-                  cvp_{{ token.display_hint }}… ·
-                  {{ token.scopes.includes('cvpal:write') ? 'read and record' : 'read only' }} ·
+                  cvp_{{ token.display_hint }}… · {{ permissions(token) }} ·
                   @if (isExpired(token)) {
                     expired
                   } @else {
@@ -99,6 +105,23 @@ const LIFETIMES = [30, 90, 365] as const;
             <input type="checkbox" [checked]="write()" (change)="write.set(checked($event))" />
             <span>Also let it save postings and record applications</span>
           </label>
+          <label class="check">
+            <input
+              type="checkbox"
+              [checked]="editProfile()"
+              (change)="editProfile.set(checked($event))"
+            />
+            <span>Also let it edit your profile and goals</span>
+          </label>
+          @if (editProfile()) {
+            <p class="notice" role="note">
+              The agent will be able to add, change and delete your roles, education and skills, and
+              replace your goals. Every CV CV Pal generates is built from these, so a wrong entry
+              ends up on a CV. CV Pal tells the agent to write only what you said or what your own
+              documents say, but it cannot check — review your profile after the agent has been at
+              it, and revoke the token when you are done.
+            </p>
+          }
           <label class="field">
             <span>Expires after</span>
             <select [value]="days()" (change)="days.set(+value($event))">
@@ -273,6 +296,7 @@ export class AgentAccessComponent {
   readonly list = computed(() => this.tokens.tokens.value());
   readonly name = signal('');
   readonly write = signal(false);
+  readonly editProfile = signal(false);
   readonly days = signal<number>(90);
   readonly password = signal('');
   readonly busy = signal(false);
@@ -295,6 +319,7 @@ export class AgentAccessComponent {
         name: this.name().trim(),
         password: this.password(),
         write: this.write(),
+        edit_profile: this.editProfile(),
         expires_in_days: this.days(),
       })
       .subscribe({
@@ -304,6 +329,7 @@ export class AgentAccessComponent {
           this.name.set('');
           this.password.set('');
           this.write.set(false);
+          this.editProfile.set(false);
           this.busy.set(false);
         },
         error: (error: unknown) => {
@@ -322,6 +348,15 @@ export class AgentAccessComponent {
 
   copy(secret: string): void {
     void navigator.clipboard?.writeText(secret).then(() => this.copied.set(true));
+  }
+
+  /** "read, edit profile": what this token lets its agent do. */
+  permissions(token: ApiTokenResponse): string {
+    const scopes = token.scopes.split(' ');
+    if (scopes.length === 1) {
+      return 'read only';
+    }
+    return scopes.map((scope) => SCOPE_LABELS[scope] ?? scope).join(', ');
   }
 
   isExpired(token: ApiTokenResponse): boolean {

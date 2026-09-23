@@ -89,6 +89,28 @@ Roughly in priority order.
 
 ## Log
 
+### 2026-09-23 — Agents may edit the profile (opt-in)
+
+- **Reversed a decision:** the MCP no longer refuses to edit the profile and goals.
+  The maintainer's reasoning: self-hosted, the user's own data, and many people run
+  an agent on a subscription (Claude Pro etc.) rather than paying for API access to
+  CV Pal's model — so the agent *is* their model, and making them retype a CV it has
+  already read is the friction. The user decides; the app warns.
+- **New scope `cvpal:profile`**, its own checkbox (`edit_profile` on token create),
+  never implied by `write`. Existing tokens keep what they had; scopes are fixed at
+  creation, so granting it means a new token. The settings screen shows a disclaimer
+  when ticked and lists each token's permissions.
+- **11 tools** (`update_profile`, `set_goals`, add/update/delete for roles, education
+  and skills) take the same Pydantic bodies as the app's forms and call the same router
+  handlers — same validation, same ownership checks. Deletes and `set_goals` (a
+  replace) carry `destructive_hint` so clients confirm them.
+- *Never fabricate* is now enforced by instruction, not by code: the server
+  instructions tell the agent to write only what the user said or their documents
+  say, show what it will write, and ask before deleting or replacing goals.
+- **Timestamps were naive in every response** (SQLite drops the zone). Claude Code
+  rejected `list_cvs` outright because the schema says RFC 3339 `date-time`. Now a
+  shared `UtcDatetime` type marks them UTC.
+
 ### 2026-09-23 — MCP setup on a fresh machine
 
 - **Turning MCP on crashed the backend for anyone starting from the example `.env`.**

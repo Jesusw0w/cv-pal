@@ -40,6 +40,9 @@ DEFAULT_API_TOKEN_MAX_PER_USER: Final[int] = 10
 DEFAULT_API_TOKEN_TOUCH_SECONDS: Final[int] = 60
 SCOPE_READ: Final[str] = "cvpal:read"
 SCOPE_WRITE: Final[str] = "cvpal:write"
+# Edits the career profile and goals. Its own grant, never implied by write: the
+# profile is what every generated CV is built from.
+SCOPE_PROFILE: Final[str] = "cvpal:profile"
 # Messages, not secrets.
 DEFAULT_ERROR_API_TOKEN_NOT_FOUND: Final[str] = "Access token not found."  # noqa: S105
 DEFAULT_ERROR_API_TOKEN_LIMIT: Final[str] = (

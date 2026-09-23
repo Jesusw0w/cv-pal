@@ -488,7 +488,11 @@ export class MockBackend {
       id: this.apiTokenCounter,
       name: payload.name ?? 'agent',
       display_hint: secret.slice(0, 8),
-      scopes: payload.write ? 'cvpal:read cvpal:write' : 'cvpal:read',
+      scopes: [
+        'cvpal:read',
+        ...(payload.write ? ['cvpal:write'] : []),
+        ...(payload.edit_profile ? ['cvpal:profile'] : []),
+      ].join(' '),
       expires_at: new Date(Date.now() + (payload.expires_in_days ?? 90) * 86_400_000).toISOString(),
       last_used_at: null,
       created_at: new Date().toISOString(),

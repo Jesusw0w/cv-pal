@@ -23,6 +23,7 @@ from cv_pal.constants import (
     DEFAULT_ERROR_API_TOKEN_LIMIT,
     DEFAULT_ERROR_API_TOKEN_NOT_FOUND,
     DEFAULT_ERROR_WRONG_PASSWORD,
+    SCOPE_PROFILE,
     SCOPE_READ,
     SCOPE_WRITE,
 )
@@ -93,6 +94,7 @@ async def create_token(
     name: str,
     write: bool,
     expires_in_days: int,
+    edit_profile: bool = False,
 ) -> tuple[ApiToken, str]:
     """Issue a token. The plaintext is returned here and never again.
 
@@ -103,6 +105,7 @@ async def create_token(
         name: What the user calls it, e.g. the agent it is for.
         write: Whether it may record postings and applications, not only read.
         expires_in_days: How long it lives.
+        edit_profile: Whether it may change the career profile and goals.
 
     Returns:
         The stored token and its plaintext.
@@ -127,7 +130,11 @@ async def create_token(
 
     secret = secrets.token_urlsafe(DEFAULT_API_TOKEN_BYTES)
     plaintext = f"{DEFAULT_API_TOKEN_PREFIX}{secret}"
-    scopes = [SCOPE_READ, SCOPE_WRITE] if write else [SCOPE_READ]
+    scopes = [SCOPE_READ]
+    if write:
+        scopes.append(SCOPE_WRITE)
+    if edit_profile:
+        scopes.append(SCOPE_PROFILE)
     token = ApiToken(
         user_id=user.id,
         name=name,

@@ -30,7 +30,10 @@ export interface ApiTokenResponse {
   name: string;
   /** The first characters of the secret, to tell tokens apart. */
   display_hint: string;
-  /** Space-separated: `cvpal:read`, plus `cvpal:write` when it may record things. */
+  /**
+   * Space-separated: `cvpal:read`, plus `cvpal:write` when it may record postings and
+   * applications, and `cvpal:profile` when it may edit the profile and goals.
+   */
   scopes: string;
   expires_at: string;
   last_used_at: string | null;
@@ -52,6 +55,8 @@ export interface ApiTokenCreate {
   name: string;
   password: string;
   write: boolean;
+  /** Lets the agent add, change and delete profile entries and replace the goals. */
+  edit_profile: boolean;
   expires_in_days: number;
 }
 

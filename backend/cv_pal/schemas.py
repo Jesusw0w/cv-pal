@@ -179,6 +179,8 @@ class ApiTokenCreate(BaseModel):
     password: str
     #: Read-only unless asked for. Write lets an agent record postings and applications.
     write: bool = False
+    #: Lets an agent add, change and delete profile entries and replace the goals.
+    edit_profile: bool = False
     expires_in_days: int = Field(
         default=DEFAULT_API_TOKEN_DEFAULT_DAYS, ge=1, le=DEFAULT_API_TOKEN_MAX_DAYS
     )
