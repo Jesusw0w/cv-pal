@@ -33,6 +33,8 @@ def _response(application: Application) -> ApplicationResponse:
         status_changed_at=application.status_changed_at,
         cv_id=application.cv_id,
         platform_id=application.platform_id,
+        salary=application.salary,
+        next_step=application.next_step,
         notes=application.notes,
         posting=JobPostingResponse.model_validate(application.posting),
         days_since_applied=application_service.days_since(application.applied_at),

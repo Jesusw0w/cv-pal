@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import {
+  DatePrecision,
   EducationCreate,
   EducationResponse,
   EvidenceSuggestionResponse,
@@ -12,11 +13,20 @@ import {
   SkillResponse,
 } from '../../shared/models/api.model';
 import { ImportPanelComponent } from './import-panel.component';
+import { LanguagesCardComponent } from './languages-card.component';
+import { PortfolioCardComponent } from './portfolio-card.component';
 import { RoleHighlightsComponent } from './role-highlights.component';
 
 @Component({
   selector: 'app-profile',
-  imports: [DatePipe, FormsModule, ImportPanelComponent, RoleHighlightsComponent],
+  imports: [
+    DatePipe,
+    FormsModule,
+    ImportPanelComponent,
+    LanguagesCardComponent,
+    PortfolioCardComponent,
+    RoleHighlightsComponent,
+  ],
   template: `
     <div class="page">
       <!-- Without this a failed request is indistinguishable from an empty profile,
@@ -394,11 +404,36 @@ import { RoleHighlightsComponent } from './role-highlights.component';
             <div class="add-row">
               <label>Field<input name="field" [(ngModel)]="courseDraft.field_of_study" /></label>
               <label
-                >Started<input name="cstart" type="date" [(ngModel)]="courseDraft.start_date"
-              /></label>
-              <label
-                >Ended<input name="cend" type="date" [(ngModel)]="courseDraft.end_date"
-              /></label>
+                >Dates<select name="cprec" [(ngModel)]="courseDraft.date_precision">
+                  <option value="month">Month and year</option>
+                  <option value="year">Year only</option>
+                </select></label
+              >
+              @if (courseDraft.date_precision === 'year') {
+                <label
+                  >From<input
+                    name="cstart"
+                    inputmode="numeric"
+                    maxlength="4"
+                    placeholder="2016"
+                    [(ngModel)]="courseDraft.start_date"
+                /></label>
+                <label
+                  >To<input
+                    name="cend"
+                    inputmode="numeric"
+                    maxlength="4"
+                    placeholder="2018"
+                    [(ngModel)]="courseDraft.end_date"
+                /></label>
+              } @else {
+                <label
+                  >Started<input name="cstart" type="date" [(ngModel)]="courseDraft.start_date"
+                /></label>
+                <label
+                  >Ended<input name="cend" type="date" [(ngModel)]="courseDraft.end_date"
+                /></label>
+              }
             </div>
             <button type="submit" class="primary" [disabled]="busy()">Add qualification</button>
           </form>
@@ -425,11 +460,37 @@ import { RoleHighlightsComponent } from './role-highlights.component';
                       >Field<input name="field" [(ngModel)]="courseEdit.field_of_study"
                     /></label>
                     <label
-                      >Started<input name="cstart" type="date" [(ngModel)]="courseEdit.start_date"
-                    /></label>
-                    <label
-                      >Ended<input name="cend" type="date" [(ngModel)]="courseEdit.end_date"
-                    /></label>
+                      >Dates<select name="cprec" [(ngModel)]="courseEdit.date_precision">
+                        <option value="month">Month and year</option>
+                        <option value="year">Year only</option>
+                      </select></label
+                    >
+                    @if (courseEdit.date_precision === 'year') {
+                      <label
+                        >From<input
+                          name="cstart"
+                          inputmode="numeric"
+                          maxlength="4"
+                          [(ngModel)]="courseEdit.start_date"
+                      /></label>
+                      <label
+                        >To<input
+                          name="cend"
+                          inputmode="numeric"
+                          maxlength="4"
+                          [(ngModel)]="courseEdit.end_date"
+                      /></label>
+                    } @else {
+                      <label
+                        >Started<input
+                          name="cstart"
+                          type="date"
+                          [(ngModel)]="courseEdit.start_date"
+                      /></label>
+                      <label
+                        >Ended<input name="cend" type="date" [(ngModel)]="courseEdit.end_date"
+                      /></label>
+                    }
                   </div>
                   <div class="form-actions">
                     <button type="submit" class="primary" [disabled]="busy()">Save</button>
@@ -465,8 +526,7 @@ import { RoleHighlightsComponent } from './role-highlights.component';
                 </div>
                 <span class="entry-org">{{ course.institution }}</span>
                 <span class="entry-dates">
-                  {{ course.start_date ? (course.start_date | date: 'y') : '?' }} &ndash;
-                  {{ course.end_date ? (course.end_date | date: 'y') : 'present' }}
+                  {{ courseDates(course) }}
                   @if (course.grade) {
                     &middot; {{ course.grade }}
                   }
@@ -478,6 +538,8 @@ import { RoleHighlightsComponent } from './role-highlights.component';
           }
         </ol>
       </section>
+      <app-languages-card />
+      <app-portfolio-card />
     </div>
   `,
   styles: [
@@ -991,13 +1053,35 @@ export class ProfileComponent {
     });
   }
 
+  /** "2016 – 2018", "2018" for a one-year course, or months when they are known. */
+  courseDates(course: EducationResponse): string {
+    const year = (value: string | null) => value?.slice(0, 4) ?? null;
+    const month = (value: string | null) =>
+      value
+        ? new Date(value).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+        : null;
+    const show = course.date_precision === 'year' ? year : month;
+    const start = show(course.start_date);
+    const end = show(course.end_date);
+    if (!start) {
+      return end ?? '';
+    }
+    if (start === end) {
+      return start;
+    }
+    return `${start} – ${end ?? 'present'}`;
+  }
+
   startCourseEdit(course: EducationResponse): void {
+    const yearOnly = course.date_precision === 'year';
+    const shown = (value: string | null) => (value ? (yearOnly ? value.slice(0, 4) : value) : '');
     this.courseEdit = {
       institution: course.institution,
       qualification: course.qualification,
       field_of_study: course.field_of_study ?? '',
-      start_date: course.start_date ?? '',
-      end_date: course.end_date ?? '',
+      date_precision: course.date_precision,
+      start_date: shown(course.start_date),
+      end_date: shown(course.end_date),
     };
     this.editingCourse.set(course.id);
   }
@@ -1122,9 +1206,22 @@ function emptyCourse() {
     institution: '',
     qualification: '',
     field_of_study: '',
+    date_precision: 'month' as DatePrecision,
     start_date: '',
     end_date: '',
   };
+}
+
+/**
+ * A year typed on its own is stored as 1 January of that year: the API keeps whole
+ * dates, and `date_precision` is what stops the month from ever being shown.
+ */
+function asDate(value: string, precision: DatePrecision): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return precision === 'year' ? `${trimmed.slice(0, 4)}-01-01` : trimmed;
 }
 
 function coursePayload(draft: ReturnType<typeof emptyCourse>): EducationCreate {
@@ -1132,8 +1229,9 @@ function coursePayload(draft: ReturnType<typeof emptyCourse>): EducationCreate {
     institution: draft.institution.trim(),
     qualification: draft.qualification.trim(),
     field_of_study: draft.field_of_study.trim() || null,
-    start_date: draft.start_date || null,
-    end_date: draft.end_date || null,
+    date_precision: draft.date_precision,
+    start_date: asDate(draft.start_date, draft.date_precision),
+    end_date: asDate(draft.end_date, draft.date_precision),
   };
 }
 

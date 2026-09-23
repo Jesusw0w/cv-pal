@@ -7,7 +7,12 @@ import { Observable } from 'rxjs';
 import { ApplicationService } from '../../core/services/application.service';
 import { PlatformService } from '../../core/services/platform.service';
 import { detailOf } from '../../shared/http-error';
-import { JobPlatformResponse, PlatformStats, PlatformStatus } from '../../shared/models/api.model';
+import {
+  JobPlatformResponse,
+  PlatformState,
+  PlatformStats,
+  PlatformStatus,
+} from '../../shared/models/api.model';
 
 const STATUS_LABELS: Record<PlatformStatus, string> = {
   up_to_date: 'Up to date',
@@ -34,12 +39,27 @@ const SUGGESTIONS = [
 /** A platform being edited: every field as the form holds it. */
 interface Draft {
   name: string;
+  state: PlatformState;
   profile_url: string;
   profile_updated_on: string;
   notes: string;
 }
 
-const EMPTY_DRAFT: Draft = { name: '', profile_url: '', profile_updated_on: '', notes: '' };
+const EMPTY_DRAFT: Draft = {
+  name: '',
+  state: 'active',
+  profile_url: '',
+  profile_updated_on: '',
+  notes: '',
+};
+
+const STATES: { value: PlatformState; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'setting_up', label: 'Setting up' },
+  { value: 'not_started', label: 'Not started' },
+  { value: 'later', label: 'Later' },
+  { value: 'paused', label: 'Paused' },
+];
 
 /**
  * Job platforms the user keeps a profile on. Entirely optional.
@@ -110,9 +130,13 @@ const EMPTY_DRAFT: Draft = { name: '', profile_url: '', profile_updated_on: '', 
                       } @else {
                         {{ platform.name }}
                       }
-                      <span class="status" [class]="platform.status">{{
-                        label(platform.status)
-                      }}</span>
+                      @if (platform.state === 'active') {
+                        <span class="status" [class]="platform.status">{{
+                          label(platform.status)
+                        }}</span>
+                      } @else {
+                        <span class="status">{{ stateLabel(platform.state) }}</span>
+                      }
                     </span>
                     <span class="row-meta">
                       @if (platform.profile_updated_on) {
@@ -133,7 +157,7 @@ const EMPTY_DRAFT: Draft = { name: '', profile_url: '', profile_updated_on: '', 
                       }
                     </span>
                   </div>
-                  @if (platform.status !== 'up_to_date') {
+                  @if (platform.state === 'active' && platform.status !== 'up_to_date') {
                     <button
                       type="button"
                       class="link"
@@ -187,6 +211,14 @@ const EMPTY_DRAFT: Draft = { name: '', profile_url: '', profile_updated_on: '', 
       </datalist>
 
       <ng-template #fields let-draft="draft">
+        <label class="field">
+          <span>Stage</span>
+          <select [(ngModel)]="draft.state">
+            @for (option of states; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
         <label class="field">
           <span>Name</span>
           <input
@@ -325,6 +357,7 @@ export class PlatformsComponent {
   private readonly applications = inject(ApplicationService);
 
   readonly suggestions = SUGGESTIONS;
+  readonly states = STATES;
   readonly today = isoToday();
 
   readonly busy = signal(false);
@@ -355,6 +388,10 @@ export class PlatformsComponent {
     return STATUS_LABELS[status];
   }
 
+  stateLabel(state: PlatformState): string {
+    return STATES.find((option) => option.value === state)?.label ?? state;
+  }
+
   statsFor(platform: JobPlatformResponse): PlatformStats | undefined {
     return this.stats().get(platform.id);
   }
@@ -373,6 +410,7 @@ export class PlatformsComponent {
   edit(platform: JobPlatformResponse): void {
     this.edited = {
       name: platform.name,
+      state: platform.state,
       profile_url: platform.profile_url ?? '',
       profile_updated_on: platform.profile_updated_on ?? '',
       notes: platform.notes ?? '',
@@ -414,6 +452,7 @@ export class PlatformsComponent {
 function toPayload(draft: Draft) {
   return {
     name: draft.name.trim(),
+    state: draft.state,
     profile_url: draft.profile_url.trim() || null,
     profile_updated_on: draft.profile_updated_on || null,
     notes: draft.notes.trim() || null,

@@ -328,6 +328,7 @@ async def test_import_from_cv_proposes_without_persisting(client: AsyncClient) -
         "experiences",
         "educations",
         "skills",
+        "languages",
     }
 
     # The blank test PDF yields nothing, which is a valid outcome — and either way the

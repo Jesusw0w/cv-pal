@@ -24,11 +24,15 @@ from cv_pal.constants import (
     REPLIED_APPLICATION_STATUSES,
     ApplicationStatus,
 )
-from cv_pal.exceptions import ApplicationNotFoundError, DuplicateApplicationError
+from cv_pal.exceptions import (
+    ApplicationNotFoundError,
+    DuplicateApplicationError,
+    PostingNotFoundError,
+)
 from cv_pal.models import Application, JobPlatform, JobPosting
 from cv_pal.schemas import ApplicationCreate, ApplicationUpdate
 from cv_pal.services.cv_service import get_owned_cv
-from cv_pal.services.job_service import get_posting
+from cv_pal.services.job_service import get_posting, save_role
 from cv_pal.services.platform_service import get_owned_platform
 
 
@@ -131,18 +135,28 @@ async def record_application(
         PlatformNotFoundError: If the platform is not this user's.
         DuplicateApplicationError: If this posting was already applied for.
     """
-    await get_posting(db, user_id=user_id, posting_id=payload.job_posting_id)
     if payload.cv_id is not None:
         await get_owned_cv(db, cv_id=payload.cv_id, user_id=user_id)
     if payload.platform_id is not None:
         await get_owned_platform(db, user_id=user_id, platform_id=payload.platform_id)
+    if payload.role is not None:
+        posting = await save_role(db, user_id=user_id, role=payload.role)
+    elif payload.job_posting_id is not None:
+        posting = await get_posting(
+            db, user_id=user_id, posting_id=payload.job_posting_id
+        )
+    else:  # pragma: no cover - ApplicationCreate refuses a payload with neither
+        raise PostingNotFoundError
+    posting_id = posting.id
 
     applied_at = payload.applied_at or date.today()
     application = Application(
         user_id=user_id,
-        job_posting_id=payload.job_posting_id,
+        job_posting_id=posting_id,
         cv_id=payload.cv_id,
         platform_id=payload.platform_id,
+        salary=payload.salary,
+        next_step=payload.next_step,
         status=ApplicationStatus.APPLIED,
         applied_at=applied_at,
         # Nothing has moved yet, so the status is as old as the application.

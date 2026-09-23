@@ -179,6 +179,31 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
             }
           </div>
         }
+        <!-- A recruiter's call or a referral often leaves no posting to save; the
+             role, company and what was offered are still worth recording. -->
+        <details class="body manual">
+          <summary>Applied without a saved posting?</summary>
+          <form class="manual-form" (ngSubmit)="recordRole()">
+            <input name="title" placeholder="Role" maxlength="255" [(ngModel)]="manual.title" />
+            <input name="company" placeholder="Company" [(ngModel)]="manual.company" />
+            <input name="url" placeholder="Link (optional)" [(ngModel)]="manual.url" />
+            <input
+              name="salary"
+              placeholder="Salary offered (optional)"
+              [(ngModel)]="manual.salary"
+            />
+            <input name="next" placeholder="Next step (optional)" [(ngModel)]="manual.next" />
+            <select name="through" [(ngModel)]="through" aria-label="Applied through">
+              <option [ngValue]="null">No platform</option>
+              @for (platform of platforms.platforms(); track platform.id) {
+                <option [ngValue]="platform.id">{{ platform.name }}</option>
+              }
+            </select>
+            <button type="submit" class="link" [disabled]="busy() || !manual.title.trim()">
+              Record it
+            </button>
+          </form>
+        </details>
         @if (error(); as message) {
           <p class="error" role="alert">{{ message }}</p>
         }
@@ -211,8 +236,28 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
                     &middot;
                     <span class="warn">quiet {{ application.days_since_applied }} days</span>
                   }
+                  @if (application.salary) {
+                    &middot; {{ application.salary }}
+                  }
                 </span>
+                @if (application.next_step) {
+                  <span class="entry-meta">Next: {{ application.next_step }}</span>
+                }
+                @if (editing() === application.id) {
+                  <form class="manual-form" (ngSubmit)="saveDetails(application)">
+                    <input
+                      name="salary"
+                      placeholder="Salary offered"
+                      [(ngModel)]="details.salary"
+                    />
+                    <input name="next" placeholder="Next step" [(ngModel)]="details.next" />
+                    <input name="notes" placeholder="Notes" [(ngModel)]="details.notes" />
+                    <button type="submit" class="link" [disabled]="busy()">Save</button>
+                    <button type="button" class="remove" (click)="editing.set(null)">Cancel</button>
+                  </form>
+                }
               </div>
+              <button type="button" class="remove" (click)="editDetails(application)">Edit</button>
               @if (platforms.platforms().length > 0) {
                 <select
                   [ngModel]="application.platform_id"
@@ -426,6 +471,27 @@ const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'reje
       .remove:disabled {
         opacity: 0.5;
       }
+      .manual summary {
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .manual-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding-top: 8px;
+      }
+      .manual-form input,
+      .manual-form select {
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+      }
       .through {
         display: flex;
         flex-wrap: wrap;
@@ -464,6 +530,13 @@ export class ApplicationsComponent {
   /** The platform the next "I applied" is recorded against. */
   through: number | null = null;
 
+  /** An application recorded from the role alone, with no saved posting. */
+  manual = { title: '', company: '', url: '', salary: '', next: '' };
+
+  /** The application whose salary, next step and notes are open for editing. */
+  readonly editing = signal<number | null>(null);
+  details = { salary: '', next: '', notes: '' };
+
   readonly hasPlatformStats = computed(() =>
     this.applications.stats().by_platform.some((row) => row.platform_id !== null),
   );
@@ -495,6 +568,43 @@ export class ApplicationsComponent {
     this.run(this.applications.record({ job_posting_id: postingId, platform_id: this.through }));
   }
 
+  recordRole(): void {
+    const form = this.manual;
+    this.run(
+      this.applications.record({
+        role: {
+          title: form.title.trim(),
+          company: form.company.trim() || null,
+          source_url: form.url.trim() || null,
+        },
+        platform_id: this.through,
+        salary: form.salary.trim() || null,
+        next_step: form.next.trim() || null,
+      }),
+      () => (this.manual = { title: '', company: '', url: '', salary: '', next: '' }),
+    );
+  }
+
+  editDetails(application: ApplicationResponse): void {
+    this.details = {
+      salary: application.salary ?? '',
+      next: application.next_step ?? '',
+      notes: application.notes ?? '',
+    };
+    this.editing.set(application.id);
+  }
+
+  saveDetails(application: ApplicationResponse): void {
+    this.run(
+      this.applications.update(application.id, {
+        salary: this.details.salary.trim() || null,
+        next_step: this.details.next.trim() || null,
+        notes: this.details.notes.trim() || null,
+      }),
+      () => this.editing.set(null),
+    );
+  }
+
   setPlatform(application: ApplicationResponse, platformId: number | null): void {
     if (platformId === application.platform_id) {
       return;
@@ -513,11 +623,14 @@ export class ApplicationsComponent {
     this.run(this.applications.remove(id));
   }
 
-  private run(request: { subscribe: (o: object) => void }): void {
+  private run(request: { subscribe: (o: object) => void }, onDone?: () => void): void {
     this.busy.set(true);
     this.error.set(null);
     request.subscribe({
-      next: () => this.busy.set(false),
+      next: () => {
+        this.busy.set(false);
+        onDone?.();
+      },
       error: (error: unknown) => {
         this.busy.set(false);
         this.error.set(detailOf(error, 'That could not be saved.'));

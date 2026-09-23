@@ -132,6 +132,24 @@ class EducationFact:
     start_date: date | None = None
     end_date: date | None = None
     grade: str | None = None
+    year_only: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class LanguageFact:
+    """A language the user speaks."""
+
+    name: str
+    level: str
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioFact:
+    """Something the user made."""
+
+    title: str
+    url: str | None = None
+    description: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +173,8 @@ class ProfileFacts:
     experiences: tuple[ExperienceFact, ...] = field(default_factory=tuple)
     educations: tuple[EducationFact, ...] = field(default_factory=tuple)
     skills: tuple[SkillFact, ...] = field(default_factory=tuple)
+    languages: tuple[LanguageFact, ...] = field(default_factory=tuple)
+    portfolio: tuple[PortfolioFact, ...] = field(default_factory=tuple)
 
 
 class BlockKind(StrEnum):
@@ -275,8 +295,8 @@ def _month_year(value: date) -> str:
     return f"{_MONTHS[value.month - 1]} {value.year}"
 
 
-def _span(start: date | None, end: date | None) -> str:
-    """Render a date range, treating an absent end as ongoing.
+def _year_span(start: date | None, end: date | None) -> str:
+    """Render a range whose months are not known: "2016 - 2018", or "2018".
 
     Args:
         start: When it began.
@@ -285,6 +305,26 @@ def _span(start: date | None, end: date | None) -> str:
     Returns:
         The range, or an empty string when neither date is known.
     """
+    if start is None:
+        return str(end.year) if end else ""
+    if end is not None and end.year == start.year:
+        return str(start.year)
+    return f"{start.year} {_RANGE} {end.year if end else 'Present'}"
+
+
+def _span(start: date | None, end: date | None, *, year_only: bool = False) -> str:
+    """Render a date range, treating an absent end as ongoing.
+
+    Args:
+        start: When it began.
+        end: When it ended, or None for current.
+        year_only: Whether only the years are known, so no month may be printed.
+
+    Returns:
+        The range, or an empty string when neither date is known.
+    """
+    if year_only:
+        return _year_span(start, end)
     if start is None and end is None:
         return ""
     if start is None:
@@ -615,7 +655,11 @@ def _blocks(
             meta = [
                 part
                 for part in (
-                    _span(education.start_date, education.end_date),
+                    _span(
+                        education.start_date,
+                        education.end_date,
+                        year_only=education.year_only,
+                    ),
                     education.field_of_study,
                     education.grade,
                 )
@@ -623,6 +667,28 @@ def _blocks(
             ]
             if meta:
                 blocks.append(Block(BlockKind.META, _SEPARATOR.join(meta)))
+
+    if facts.portfolio:
+        blocks.append(Block(BlockKind.SECTION, "Portfolio"))
+        for item in facts.portfolio:
+            blocks.append(Block(BlockKind.ENTRY, item.title))
+            if item.url:
+                blocks.append(Block(BlockKind.META, item.url))
+            if item.description:
+                blocks.append(Block(BlockKind.BODY, item.description))
+
+    # Last, as a CV lists them: they matter to some roles, and every role reads them.
+    if facts.languages:
+        blocks += [
+            Block(BlockKind.SECTION, "Languages"),
+            Block(
+                BlockKind.BODY,
+                _SEPARATOR.join(
+                    f"{language.name} ({language.level})"
+                    for language in facts.languages
+                ),
+            ),
+        ]
 
     return tuple(blocks)
 
@@ -699,6 +765,12 @@ def content_values(facts: ProfileFacts) -> set[str]:
             if value
         )
     values.update(skill.name for skill in facts.skills)
+    for language in facts.languages:
+        values.update((language.name, language.level))
+    for item in facts.portfolio:
+        values.update(
+            value for value in (item.title, item.url, item.description) if value
+        )
     return values
 
 

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, status
 
+from cv_pal.constants import PlatformState
 from cv_pal.dependencies import CurrentUser, DbSession
 from cv_pal.models import JobPlatform
 from cv_pal.schemas import JobPlatformCreate, JobPlatformResponse, JobPlatformUpdate
@@ -27,6 +28,7 @@ def _response(
     return JobPlatformResponse(
         id=platform.id,
         name=platform.name,
+        state=PlatformState(platform.state),
         profile_url=platform.profile_url,
         profile_updated_on=platform.profile_updated_on,
         notes=platform.notes,

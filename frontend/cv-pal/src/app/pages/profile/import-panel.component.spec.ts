@@ -19,6 +19,7 @@ const FOUND: CvExtractionResponse = {
   experiences: [],
   educations: [],
   skills: [],
+  languages: [{ name: 'Dutch', level: 'native' }],
 };
 
 describe('ImportPanelComponent', () => {
@@ -60,6 +61,7 @@ describe('ImportPanelComponent', () => {
       headline: null,
       summary: null,
       location: null,
+      languages: [],
     };
 
     expect(panel.isEmpty(nothing)).toBe(true);
@@ -102,5 +104,11 @@ describe('ImportPanelComponent', () => {
 
     expect(panel.error()).toContain('Add that role by hand');
     expect(panel.busy()).toBe(false);
+  });
+
+  it('offers only the languages the profile does not list yet', () => {
+    const panel = TestBed.createComponent(ImportPanelComponent).componentInstance;
+
+    expect(panel.newLanguages(FOUND).map((language) => language.name)).toEqual(['Dutch']);
   });
 });

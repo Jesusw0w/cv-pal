@@ -15,6 +15,7 @@ from cv_pal.constants import (
     DEFAULT_API_TOKEN_DEFAULT_DAYS,
     DEFAULT_API_TOKEN_MAX_DAYS,
     DEFAULT_API_TOKEN_NAME_MAX_LENGTH,
+    DEFAULT_APPLICATION_SALARY_MAX_LENGTH,
     DEFAULT_BOARD_IDENTIFIER_PATTERN,
     DEFAULT_COMPANY_MAX_LENGTH,
     DEFAULT_CURRENCY_CODE_LENGTH,
@@ -23,11 +24,13 @@ from cv_pal.constants import (
     DEFAULT_ERROR_DUPLICATE_WORK_REGIMES,
     DEFAULT_ERROR_END_BEFORE_START,
     DEFAULT_ERROR_PASSWORD_UNCHANGED,
+    DEFAULT_ERROR_POSTING_OR_ROLE,
     DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY,
     DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY,
     DEFAULT_ERROR_TARGET_BELOW_MINIMUM,
     DEFAULT_ERROR_UPDATED_IN_FUTURE,
     DEFAULT_HIGHLIGHT_MAX_LENGTH,
+    DEFAULT_LANGUAGE_NAME_MAX_LENGTH,
     DEFAULT_LOCATION_MAX_LENGTH,
     DEFAULT_MAX_COVER_LETTER_LENGTH,
     DEFAULT_MAX_LINKEDIN_PASTE_LENGTH,
@@ -54,12 +57,15 @@ from cv_pal.constants import (
     DEFAULT_URL_MAX_LENGTH,
     DEFAULT_WORK_LOCATION_MAX_LENGTH,
     ApplicationStatus,
+    DatePrecision,
     EmploymentType,
     JobSource,
+    LanguageLevel,
     LinkedInIssueKind,
     LinkedInSectionStatus,
     LinkedInSource,
     ParseabilitySeverity,
+    PlatformState,
     PlatformStatus,
     ProficiencyLevel,
     SalaryPeriod,
@@ -518,6 +524,9 @@ class EducationCreate(_DatedEntry):
     field_of_study: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    #: ``year`` when only the years are known: the CV then prints "2016 - 2018", or
+    #: "2018" for a one-year course or a certification, and never an invented month.
+    date_precision: DatePrecision = DatePrecision.MONTH
     grade: str | None = None
 
 
@@ -532,6 +541,7 @@ class EducationResponse(BaseModel):
     field_of_study: str | None
     start_date: date | None
     end_date: date | None
+    date_precision: DatePrecision
     grade: str | None
 
 
@@ -547,7 +557,63 @@ class EducationUpdate(_DatedEntry):
     field_of_study: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    date_precision: DatePrecision | None = None
     grade: str | None = None
+
+
+class LanguageCreate(BaseModel):
+    """A language the user speaks."""
+
+    name: str = Field(min_length=1, max_length=DEFAULT_LANGUAGE_NAME_MAX_LENGTH)
+    level: LanguageLevel
+
+
+class LanguageUpdate(BaseModel):
+    """Amend a language. Omitted fields are left alone."""
+
+    name: str | None = Field(
+        default=None, min_length=1, max_length=DEFAULT_LANGUAGE_NAME_MAX_LENGTH
+    )
+    level: LanguageLevel | None = None
+
+
+class LanguageResponse(BaseModel):
+    """A language as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    level: LanguageLevel
+
+
+class PortfolioItemCreate(BaseModel):
+    """Something the user made: a project, a game, a design."""
+
+    title: str = Field(min_length=1, max_length=DEFAULT_TITLE_MAX_LENGTH)
+    url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    description: str | None = None
+
+
+class PortfolioItemUpdate(BaseModel):
+    """Amend a portfolio item. Omitted fields are left alone."""
+
+    title: str | None = Field(
+        default=None, min_length=1, max_length=DEFAULT_TITLE_MAX_LENGTH
+    )
+    url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    description: str | None = None
+
+
+class PortfolioItemResponse(BaseModel):
+    """A portfolio item as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    url: str | None
+    description: str | None
 
 
 class SkillCreate(BaseModel):
@@ -609,6 +675,8 @@ class CareerProfileResponse(BaseModel):
     experiences: list[ExperienceResponse]
     educations: list[EducationResponse]
     skills: list[SkillResponse]
+    languages: list[LanguageResponse]
+    portfolio: list[PortfolioItemResponse]
 
 
 class EvidenceSuggestionResponse(BaseModel):
@@ -819,6 +887,15 @@ class ExtractedEntryResponse(BaseModel):
     description: str | None
 
 
+class ExtractedLanguageResponse(BaseModel):
+    """A language read from a CV, with the level it stated."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    level: LanguageLevel
+
+
 class CvExtractionResponse(BaseModel):
     """What a deterministic pass over an uploaded CV could find.
 
@@ -838,6 +915,7 @@ class CvExtractionResponse(BaseModel):
     experiences: list[ExtractedEntryResponse]
     educations: list[ExtractedEntryResponse]
     skills: list[str]
+    languages: list[ExtractedLanguageResponse]
 
 
 class JobPostingCreate(BaseModel):
@@ -969,8 +1047,8 @@ class JobPlatformCreate(BaseModel):
     """Start tracking a job platform the user keeps a profile on."""
 
     name: str = Field(min_length=1, max_length=DEFAULT_PLATFORM_NAME_MAX_LENGTH)
+    state: PlatformState = PlatformState.ACTIVE
     profile_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
-    #: When the user last brought their profile there up to date.
     profile_updated_on: Annotated[date | None, AfterValidator(_not_in_the_future)] = (
         None
     )
@@ -1002,6 +1080,7 @@ class JobPlatformUpdate(BaseModel):
     name: str | None = Field(
         default=None, min_length=1, max_length=DEFAULT_PLATFORM_NAME_MAX_LENGTH
     )
+    state: PlatformState | None = None
     profile_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
     profile_updated_on: Annotated[date | None, AfterValidator(_not_in_the_future)] = (
         None
@@ -1016,6 +1095,7 @@ class JobPlatformResponse(BaseModel):
 
     id: int
     name: str
+    state: PlatformState
     profile_url: str | None
     profile_updated_on: date | None
     notes: str | None
@@ -1037,10 +1117,26 @@ class PlatformStatsResponse(BaseModel):
     offers: int
 
 
+class AppliedRole(BaseModel):
+    """The role applied for, when there is no saved posting to point at.
+
+    Recruiters call and interviews get booked without a posting anyone kept; refusing
+    to record those would leave the funnel and the reply rates short. The posting is
+    stored with no text, so it is scored on its title alone and says so.
+    """
+
+    title: str = Field(min_length=1, max_length=DEFAULT_TITLE_MAX_LENGTH)
+    company: str | None = Field(default=None, max_length=DEFAULT_COMPANY_MAX_LENGTH)
+    source_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    location: str | None = Field(default=None, max_length=DEFAULT_LOCATION_MAX_LENGTH)
+
+
 class ApplicationCreate(BaseModel):
     """Record that an application went out."""
 
-    job_posting_id: int
+    #: A saved posting — or `role` instead, when none was kept.
+    job_posting_id: int | None = None
+    role: AppliedRole | None = None
     # The CV that was sent, when one was. Optional because plenty of applications go
     # through a form that never took a file, and refusing those would bias the reply
     # rate this table exists to compute.
@@ -1048,9 +1144,26 @@ class ApplicationCreate(BaseModel):
     # Defaults to today rather than being required: the overwhelmingly common case is
     # recording an application as it is sent.
     applied_at: date | None = None
-    #: The platform it went through, for reply rates per platform.
     platform_id: int | None = None
+    salary: str | None = Field(
+        default=None, max_length=DEFAULT_APPLICATION_SALARY_MAX_LENGTH
+    )
+    next_step: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
     notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
+
+    @model_validator(mode="after")
+    def posting_or_role(self) -> Self:
+        """Require exactly one of a saved posting and a named role.
+
+        Returns:
+            The validated payload.
+
+        Raises:
+            ValueError: If both or neither are given.
+        """
+        if (self.job_posting_id is None) == (self.role is None):
+            raise ValueError(DEFAULT_ERROR_POSTING_OR_ROLE)
+        return self
 
     @field_validator("applied_at")
     @classmethod
@@ -1079,6 +1192,10 @@ class ApplicationUpdate(BaseModel):
     cv_id: int | None = None
     platform_id: int | None = None
     applied_at: date | None = None
+    salary: str | None = Field(
+        default=None, max_length=DEFAULT_APPLICATION_SALARY_MAX_LENGTH
+    )
+    next_step: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
     notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
 
 
@@ -1093,6 +1210,8 @@ class ApplicationResponse(BaseModel):
     status_changed_at: date
     cv_id: int | None
     platform_id: int | None
+    salary: str | None
+    next_step: str | None
     notes: str | None
     posting: JobPostingResponse
     #: Days since it went out. Computed rather than stored — it changes without anything

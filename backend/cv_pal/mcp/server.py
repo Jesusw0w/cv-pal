@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cv_pal.analysis.matching import ranking_key
 from cv_pal.constants import (
     DEFAULT_DOCX_MEDIA_TYPE,
+    DEFAULT_ERROR_POSTING_OR_ROLE,
     DEFAULT_MAX_POSTING_LENGTH,
     SCOPE_PROFILE,
     SCOPE_READ,
@@ -60,6 +61,7 @@ from cv_pal.schemas import (
     ApplicationResponse,
     ApplicationStatsResponse,
     ApplicationUpdate,
+    AppliedRole,
     CareerGoalsResponse,
     CareerGoalsUpdate,
     CareerProfileResponse,
@@ -81,9 +83,15 @@ from cv_pal.schemas import (
     JobPostingCreate,
     JobPostingImport,
     JobPostingResponse,
+    LanguageCreate,
+    LanguageResponse,
+    LanguageUpdate,
     LinkedInReviewResponse,
     MatchScoreResponse,
     ParseabilityResponse,
+    PortfolioItemCreate,
+    PortfolioItemResponse,
+    PortfolioItemUpdate,
     SkillCreate,
     SkillResponse,
     SkillUpdate,
@@ -231,6 +239,8 @@ class ApplicationSummary(BaseModel):
     title: str
     company: str | None
     platform_id: int | None
+    salary: str | None
+    next_step: str | None
 
 
 def _application_summary(item: ApplicationResponse) -> ApplicationSummary:
@@ -249,6 +259,8 @@ def _application_summary(item: ApplicationResponse) -> ApplicationSummary:
         title=item.posting.title,
         company=item.posting.company,
         platform_id=item.platform_id,
+        salary=item.salary,
+        next_step=item.next_step,
     )
 
 
@@ -532,7 +544,19 @@ async def import_job_posting(
     tags={"write"},
 )
 async def record_application(
-    posting_id: PostingId,
+    posting_id: Annotated[
+        int | None,
+        Field(description="A saved posting from list_job_postings — or give `role`."),
+    ] = None,
+    role: Annotated[
+        AppliedRole | None,
+        Field(
+            description=(
+                "The role applied for, when no posting was saved: title, company, "
+                "link. Use it rather than inventing posting text."
+            )
+        ),
+    ] = None,
     cv_id: Annotated[
         int | None, Field(description="The CV that was sent, from list_cvs.")
     ] = None,
@@ -544,16 +568,27 @@ async def record_application(
         int | None,
         Field(description="The platform it was sent through, from list_platforms."),
     ] = None,
+    salary: Annotated[
+        str | None, Field(description='What was offered, as written: "€50-60k".')
+    ] = None,
+    next_step: Annotated[
+        str | None, Field(description='What happens next: "Interview 25 Sep".')
+    ] = None,
 ) -> ApplicationSummary:
     """Log an application the user has already sent. This does not send anything."""
+    if (posting_id is None) == (role is None):
+        raise ToolError(DEFAULT_ERROR_POSTING_OR_ROLE)
     async with caller() as (user, db):
         item = await applications.record_application(
             payload=ApplicationCreate(
                 job_posting_id=posting_id,
+                role=role,
                 cv_id=cv_id,
                 applied_at=applied_at,
                 notes=notes,
                 platform_id=platform_id,
+                salary=salary,
+                next_step=next_step,
             ),
             current_user=user,
             db=db,
@@ -581,10 +616,12 @@ async def update_application(
         int | None,
         Field(description="The platform it was sent through, from list_platforms."),
     ] = None,
+    salary: str | None = None,
+    next_step: str | None = None,
 ) -> ApplicationSummary:
     """Move an application along — e.g.
 
-    to `interviewing` after a reply — or amend its notes.
+    to `interviewing` after a reply — or amend its notes, salary or next step.
     """
     changes = ApplicationUpdate.model_validate(
         {
@@ -593,6 +630,8 @@ async def update_application(
                 "status": status,
                 "notes": notes,
                 "platform_id": platform_id,
+                "salary": salary,
+                "next_step": next_step,
             }.items()
             if value is not None
         }
@@ -804,6 +843,64 @@ async def delete_skill(skill_id: SkillId) -> str:
     async with caller() as (user, db):
         await profile.delete_skill(skill_id=skill_id, current_user=user, db=db)
     return f"Skill {skill_id} deleted."
+
+
+LanguageId = Annotated[int, Field(description="A language id from get_profile.")]
+PortfolioItemId = Annotated[
+    int, Field(description="A portfolio item id from get_profile.")
+]
+
+
+@mcp.tool(auth=PROFILE, annotations=ADDS, tags={"profile"})
+async def add_language(language: LanguageCreate) -> LanguageResponse:
+    """Add a language the user speaks, at the level they state."""
+    async with caller() as (user, db):
+        return await profile.add_language(payload=language, current_user=user, db=db)
+
+
+@mcp.tool(auth=PROFILE, annotations=EDITS, tags={"profile"})
+async def update_language(
+    language_id: LanguageId, changes: LanguageUpdate
+) -> LanguageResponse:
+    """Amend a language. Only the fields given change."""
+    async with caller() as (user, db):
+        return await profile.update_language(
+            language_id=language_id, payload=changes, current_user=user, db=db
+        )
+
+
+@mcp.tool(auth=PROFILE, annotations=DESTROYS, tags={"profile"})
+async def delete_language(language_id: LanguageId) -> str:
+    """Delete a language. Ask the user first."""
+    async with caller() as (user, db):
+        await profile.delete_language(language_id=language_id, current_user=user, db=db)
+    return f"Language {language_id} deleted."
+
+
+@mcp.tool(auth=PROFILE, annotations=ADDS, tags={"profile"})
+async def add_portfolio_item(item: PortfolioItemCreate) -> PortfolioItemResponse:
+    """Add something the user made — a project, a game, a design — with its link."""
+    async with caller() as (user, db):
+        return await profile.add_portfolio_item(payload=item, current_user=user, db=db)
+
+
+@mcp.tool(auth=PROFILE, annotations=EDITS, tags={"profile"})
+async def update_portfolio_item(
+    item_id: PortfolioItemId, changes: PortfolioItemUpdate
+) -> PortfolioItemResponse:
+    """Amend a portfolio item. Only the fields given change."""
+    async with caller() as (user, db):
+        return await profile.update_portfolio_item(
+            item_id=item_id, payload=changes, current_user=user, db=db
+        )
+
+
+@mcp.tool(auth=PROFILE, annotations=DESTROYS, tags={"profile"})
+async def delete_portfolio_item(item_id: PortfolioItemId) -> str:
+    """Delete a portfolio item. Ask the user first."""
+    async with caller() as (user, db):
+        await profile.delete_portfolio_item(item_id=item_id, current_user=user, db=db)
+    return f"Portfolio item {item_id} deleted."
 
 
 # --- Prompts ------------------------------------------------------------------------

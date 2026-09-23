@@ -35,7 +35,10 @@ export class PlatformService {
 
   /** Platforms whose copy of the profile is behind, for a nudge elsewhere in the app. */
   readonly outdated = computed(() =>
-    this.platforms().filter((platform) => platform.status === 'outdated'),
+    this.platforms().filter(
+      // Only a live profile can be behind; one not started yet has nothing to update.
+      (platform) => platform.state === 'active' && platform.status === 'outdated',
+    ),
   );
 
   /** Statuses are computed against the profile, so a profile edit makes them stale. */

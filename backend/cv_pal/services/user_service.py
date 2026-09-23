@@ -108,6 +108,8 @@ def _account_query(user_id: int) -> Select[tuple[User]]:
             selectinload(User.api_tokens),
             selectinload(User.career_profile).selectinload(CareerProfile.experiences),
             selectinload(User.career_profile).selectinload(CareerProfile.educations),
+            selectinload(User.career_profile).selectinload(CareerProfile.languages),
+            selectinload(User.career_profile).selectinload(CareerProfile.portfolio),
             selectinload(User.career_profile)
             .selectinload(CareerProfile.skills)
             .selectinload(Skill.evidence),
@@ -189,8 +191,11 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
                 "field_of_study",
                 "start_date",
                 "end_date",
+                "date_precision",
                 "grade",
             ),
+            "languages": _rows(profile.languages, "name", "level"),
+            "portfolio": _rows(profile.portfolio, "title", "url", "description"),
             "skills": [
                 {
                     "name": skill.name,
@@ -257,12 +262,19 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
                 "applied_at": application.applied_at,
                 "status_changed_at": application.status_changed_at,
                 "platform": application.platform.name if application.platform else None,
+                "salary": application.salary,
+                "next_step": application.next_step,
                 "notes": application.notes,
             }
             for application in account.applications
         ],
         "job_platforms": _rows(
-            account.job_platforms, "name", "profile_url", "profile_updated_on", "notes"
+            account.job_platforms,
+            "name",
+            "state",
+            "profile_url",
+            "profile_updated_on",
+            "notes",
         ),
         "job_board_connections": _rows(
             account.job_board_connections, "source", "identifier", "label"

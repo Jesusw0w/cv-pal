@@ -123,6 +123,11 @@ DEFAULT_ERROR_PROFILE_NOT_FOUND: Final[str] = "Career profile not found"
 DEFAULT_ERROR_EXPERIENCE_NOT_FOUND: Final[str] = "Experience not found"
 DEFAULT_ERROR_SKILL_NOT_FOUND: Final[str] = "Skill not found"
 DEFAULT_ERROR_EDUCATION_NOT_FOUND: Final[str] = "Education entry not found"
+DEFAULT_ERROR_LANGUAGE_NOT_FOUND: Final[str] = "Language not found"
+DEFAULT_ERROR_LANGUAGE_DUPLICATE: Final[str] = (
+    "That language is already on your profile"
+)
+DEFAULT_ERROR_PORTFOLIO_NOT_FOUND: Final[str] = "Portfolio item not found"
 DEFAULT_ERROR_SKILL_DUPLICATE: Final[str] = "That skill is already on your profile"
 DEFAULT_ERROR_END_BEFORE_START: Final[str] = (
     "The end date cannot precede the start date"
@@ -259,6 +264,35 @@ class ParseabilitySeverity(StrEnum):
         return {"error": 25, "warning": 10, "info": 3}[self.value]
 
 
+class DatePrecision(StrEnum):
+    """How much of an education entry's dates the user actually knows."""
+
+    #: "Sep 2016 - Jul 2018".
+    MONTH = "month"
+    #: "2016 - 2018": a CV that gives years only must not gain invented months.
+    YEAR = "year"
+
+
+class LanguageLevel(StrEnum):
+    """How well the user speaks a language, in the words CVs use."""
+
+    NATIVE = "native"
+    FLUENT = "fluent"
+    ADVANCED = "advanced"
+    INTERMEDIATE = "intermediate"
+    BASIC = "basic"
+
+
+class PlatformState(StrEnum):
+    """Where the user's profile on a job platform stands."""
+
+    NOT_STARTED = "not_started"
+    SETTING_UP = "setting_up"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    LATER = "later"
+
+
 class ProficiencyLevel(StrEnum):
     """Self-assessed command of a skill."""
 
@@ -287,6 +321,9 @@ DEFAULT_ERROR_APPLICATION_DUPLICATE: Final[str] = (
     "You have already recorded an application for that posting"
 )
 DEFAULT_ERROR_PLATFORM_NOT_FOUND: Final[str] = "Platform not found"
+DEFAULT_ERROR_POSTING_OR_ROLE: Final[str] = (
+    "Name either a saved posting or the role applied for, not both"
+)
 # How the per-platform stats name applications recorded without one.
 DEFAULT_NO_PLATFORM_LABEL: Final[str] = "Not recorded"
 DEFAULT_ERROR_PLATFORM_DUPLICATE: Final[str] = (
@@ -387,6 +424,10 @@ DEFAULT_MIN_TECH_TERMS_FOR_CODE_LINKS: Final[int] = 3
 
 # Job platforms the user keeps a profile on: LinkedIn, Indeed, Wellfound...
 DEFAULT_PLATFORM_NAME_MAX_LENGTH: Final[int] = 64
+DEFAULT_LANGUAGE_NAME_MAX_LENGTH: Final[int] = 64
+DEFAULT_LEVEL_MAX_LENGTH: Final[int] = 16
+# "€3.1-3.3k/month", "$53k-216k band": what was offered, as the user wrote it.
+DEFAULT_APPLICATION_SALARY_MAX_LENGTH: Final[int] = 128
 DEFAULT_MAX_PLATFORMS: Final[int] = 50
 
 

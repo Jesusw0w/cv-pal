@@ -89,6 +89,36 @@ Roughly in priority order.
 
 ## Log
 
+### 2026-09-23 — Languages, portfolio, year-only education, application details
+
+Migration `a0b1c2d3e4f5` (schema only; defaults fill existing rows, then drop).
+
+- **Education `date_precision`** (`month` | `year`). Dates stay whole dates; `year`
+  means the month is not real, so the CV prints "2016 - 2018", or "2018" when start
+  and end share a year (courses, certifications). Found while importing a real CV that
+  gives years only: the app would otherwise print invented months. The form stores a
+  typed year as 1 January.
+- **Languages** (`profile_languages`, name + level: native/fluent/advanced/
+  intermediate/basic) and **Portfolio** (`portfolio_items`: title, url, description —
+  general so art works as well as code). Both on the profile page (own components, to
+  keep `profile.component` off its CSS budget), in generated CVs, in the export, and
+  as MCP tools under the `profile` scope. CV import reads languages from a
+  "Languages:" line or section — only entries with a stated level, so "Languages:
+  Python, Go" is not proposed; text is NFKC-normalised first (PDF ligatures: "ﬂuent").
+- **Duplicate-language bug caught by a test:** `_touch`'s UPDATE autoflushes the new
+  row, so the IntegrityError fired before the `try` around the commit. `_touch` now
+  sits inside it.
+- **Applications without a saved posting:** `ApplicationCreate` takes exactly one of
+  `job_posting_id` or `role` {title, company, source_url, location}; a role is stored
+  as a manual posting with an empty description. Plus `salary` and `next_step` (free
+  text). Driven by the maintainer's claude.ai tracker artifact, which had both and had
+  applications with no posting text.
+- **Platform `state`** (not_started / setting_up / active / paused / later), because
+  the same tracker kept one; "behind your profile" is shown only for active ones.
+
+Verified: `uv run nox` green; frontend lint, format, 76 tests, both builds green;
+containers rebuilt, migration applied, live MCP lists 38 tools.
+
 ### 2026-09-23 — Platforms, salary per contract type, GitHub link
 
 Migration `f9a0b1c2d3e4` (moves data; round-trip checked on a seeded scratch DB).

@@ -171,3 +171,43 @@ async def test_deleting_a_platform_keeps_its_applications(client: AsyncClient) -
 
     assert deleted.status_code == 204
     assert [(a["id"], a["platform_id"]) for a in kept] == [(application["id"], None)]
+
+
+async def test_a_platform_records_where_setting_it_up_stands(
+    client: AsyncClient,
+) -> None:
+    """Not started, later, active: part of the tracker, not only the update date."""
+    headers = await register_and_login(client)
+
+    later = await add(client, headers, name="Hired Hands", state="later")
+    default = await add(client, headers, name="Job Hub")
+
+    assert later["state"] == "later"
+    assert default["state"] == "active"
+
+
+async def test_an_application_without_a_saved_posting(client: AsyncClient) -> None:
+    """Recorded from the role alone, with what was offered and what comes next."""
+    headers = await register_and_login(client)
+
+    response = await client.post(
+        "/applications",
+        headers=headers,
+        json={
+            "role": {"title": "Python Developer", "company": "Initech"},
+            "salary": "€40-45k",
+            "next_step": "Technical interview",
+        },
+    )
+    both = await client.post(
+        "/applications",
+        headers=headers,
+        json={"job_posting_id": 1, "role": {"title": "Python Developer"}},
+    )
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["posting"]["title"] == "Python Developer"
+    assert body["posting"]["description"] == ""
+    assert (body["salary"], body["next_step"]) == ("€40-45k", "Technical interview")
+    assert both.status_code == 422

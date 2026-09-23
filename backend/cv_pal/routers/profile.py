@@ -15,6 +15,12 @@ from cv_pal.schemas import (
     ExperienceCreate,
     ExperienceResponse,
     ExperienceUpdate,
+    LanguageCreate,
+    LanguageResponse,
+    LanguageUpdate,
+    PortfolioItemCreate,
+    PortfolioItemResponse,
+    PortfolioItemUpdate,
     ProfileSummaryResponse,
     RoleHighlightsRequest,
     RoleHighlightsResponse,
@@ -69,6 +75,8 @@ def _profile_response(profile: CareerProfile) -> CareerProfileResponse:
         experiences=[ExperienceResponse.model_validate(e) for e in profile.experiences],
         educations=[EducationResponse.model_validate(e) for e in profile.educations],
         skills=[_skill_response(s) for s in profile.skills],
+        languages=[LanguageResponse.model_validate(lang) for lang in profile.languages],
+        portfolio=[PortfolioItemResponse.model_validate(p) for p in profile.portfolio],
     )
 
 
@@ -494,3 +502,123 @@ async def delete_skill(skill_id: int, current_user: CurrentUser, db: DbSession) 
         NotFoundError: If it is not on this user's profile.
     """
     await profile_service.delete_skill(db, user_id=current_user.id, skill_id=skill_id)
+
+
+@router.post(
+    "/languages", response_model=LanguageResponse, status_code=status.HTTP_201_CREATED
+)
+async def add_language(
+    payload: LanguageCreate, current_user: CurrentUser, db: DbSession
+) -> LanguageResponse:
+    """Add a language the user speaks.
+
+    Args:
+        payload: The language and level.
+        current_user: The authenticated user.
+        db: Async database session.
+
+    Returns:
+        The created language.
+    """
+    language = await profile_service.add_language(
+        db, user_id=current_user.id, payload=payload
+    )
+    return LanguageResponse.model_validate(language)
+
+
+@router.patch("/languages/{language_id}", response_model=LanguageResponse)
+async def update_language(
+    language_id: int, payload: LanguageUpdate, current_user: CurrentUser, db: DbSession
+) -> LanguageResponse:
+    """Amend a language.
+
+    Args:
+        language_id: The language to amend.
+        payload: The fields to change; omitted fields are left alone.
+        current_user: The authenticated user.
+        db: Async database session.
+
+    Returns:
+        The updated language.
+    """
+    language = await profile_service.update_language(
+        db, user_id=current_user.id, language_id=language_id, payload=payload
+    )
+    return LanguageResponse.model_validate(language)
+
+
+@router.delete("/languages/{language_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_language(
+    language_id: int, current_user: CurrentUser, db: DbSession
+) -> None:
+    """Remove a language from the profile.
+
+    Args:
+        language_id: The language to remove.
+        current_user: The authenticated user.
+        db: Async database session.
+    """
+    await profile_service.delete_language(
+        db, user_id=current_user.id, language_id=language_id
+    )
+
+
+@router.post(
+    "/portfolio",
+    response_model=PortfolioItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_portfolio_item(
+    payload: PortfolioItemCreate, current_user: CurrentUser, db: DbSession
+) -> PortfolioItemResponse:
+    """Add something the user made: a project, a game, a design.
+
+    Args:
+        payload: The item.
+        current_user: The authenticated user.
+        db: Async database session.
+
+    Returns:
+        The created item.
+    """
+    item = await profile_service.add_portfolio_item(
+        db, user_id=current_user.id, payload=payload
+    )
+    return PortfolioItemResponse.model_validate(item)
+
+
+@router.patch("/portfolio/{item_id}", response_model=PortfolioItemResponse)
+async def update_portfolio_item(
+    item_id: int, payload: PortfolioItemUpdate, current_user: CurrentUser, db: DbSession
+) -> PortfolioItemResponse:
+    """Amend a portfolio item.
+
+    Args:
+        item_id: The item to amend.
+        payload: The fields to change; omitted fields are left alone.
+        current_user: The authenticated user.
+        db: Async database session.
+
+    Returns:
+        The updated item.
+    """
+    item = await profile_service.update_portfolio_item(
+        db, user_id=current_user.id, item_id=item_id, payload=payload
+    )
+    return PortfolioItemResponse.model_validate(item)
+
+
+@router.delete("/portfolio/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_portfolio_item(
+    item_id: int, current_user: CurrentUser, db: DbSession
+) -> None:
+    """Remove a portfolio item.
+
+    Args:
+        item_id: The item to remove.
+        current_user: The authenticated user.
+        db: Async database session.
+    """
+    await profile_service.delete_portfolio_item(
+        db, user_id=current_user.id, item_id=item_id
+    )

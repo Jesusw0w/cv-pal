@@ -181,6 +181,7 @@ export const MOCK_CAREER_PROFILE: CareerProfileResponse = {
       field_of_study: 'Computer Science',
       start_date: '2014-09-01',
       end_date: '2017-07-31',
+      date_precision: 'month',
       grade: '16/20',
     },
   ],
@@ -244,6 +245,18 @@ export const MOCK_CAREER_PROFILE: CareerProfileResponse = {
       years: 1,
       is_evidenced: false,
       evidence_experience_ids: [],
+    },
+  ],
+  languages: [
+    { id: 1, name: 'Portuguese', level: 'native' },
+    { id: 2, name: 'English', level: 'fluent' },
+  ],
+  portfolio: [
+    {
+      id: 1,
+      title: 'Design system starter',
+      url: 'github.com/devuser/design-system',
+      description: 'Angular component library with visual regression tests.',
     },
   ],
 };
@@ -357,6 +370,11 @@ export const MOCK_EXTRACTION: CvExtractionResponse = {
     },
   ],
   skills: ['python', 'postgresql', 'docker', 'kubernetes'],
+  languages: [
+    { name: 'Portuguese', level: 'native' },
+    { name: 'English', level: 'fluent' },
+    { name: 'Spanish', level: 'intermediate' },
+  ],
 };
 
 /** `GET /profile/goals`. A remote-preferring backend engineer, with the floor set. */
@@ -388,6 +406,7 @@ export const MOCK_PLATFORMS: JobPlatformResponse[] = [
   {
     id: 1,
     name: 'LinkedIn',
+    state: 'active',
     profile_url: 'linkedin.com/in/devuser',
     profile_updated_on: '2026-01-15',
     notes: null,
@@ -396,6 +415,7 @@ export const MOCK_PLATFORMS: JobPlatformResponse[] = [
   {
     id: 2,
     name: 'Wellfound',
+    state: 'not_started',
     profile_url: null,
     profile_updated_on: null,
     notes: 'Set salary and remote filters',

@@ -222,6 +222,39 @@ interface ProposedField {
           </div>
         }
 
+        @if (newLanguages(found); as languages) {
+          @if (languages.length > 0) {
+            <div class="group">
+              <h4>
+                Languages
+                @if (languages.length > 1) {
+                  <button
+                    type="button"
+                    class="add"
+                    [disabled]="busy()"
+                    (click)="addLanguages(languages)"
+                  >
+                    Add all {{ languages.length }}
+                  </button>
+                }
+              </h4>
+              <div class="chips">
+                @for (language of languages; track language.name) {
+                  <button
+                    type="button"
+                    class="chip"
+                    [disabled]="busy()"
+                    (click)="addLanguages([language])"
+                  >
+                    {{ language.name }} &middot; {{ language.level }}
+                    <span aria-hidden="true">+</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+
         @if (found.skills.length > 0) {
           <div class="group">
             <h4>
@@ -429,6 +462,7 @@ export class ImportPanelComponent {
       found.experiences.length === 0 &&
       found.educations.length === 0 &&
       found.skills.length === 0 &&
+      found.languages.length === 0 &&
       this.proposedFields(found).length === 0
     );
   }
@@ -611,6 +645,22 @@ export class ImportPanelComponent {
         found ? { ...found, skills: found.skills.filter((s) => s !== name) } : found,
       );
     });
+  }
+
+  /** Languages read from the CV that the profile does not list yet. */
+  newLanguages(found: CvExtractionResponse): CvExtractionResponse['languages'] {
+    const known = new Set(
+      this.career.profile().languages.map((language) => language.name.toLowerCase()),
+    );
+    return found.languages.filter((language) => !known.has(language.name.toLowerCase()));
+  }
+
+  addLanguages(languages: CvExtractionResponse['languages']): void {
+    // Nothing to drop: newLanguages() filters out whatever the reloaded profile lists.
+    this.runAll(
+      languages.map((language) => this.career.addLanguage(language)),
+      () => undefined,
+    );
   }
 
   addAllSkills(names: string[]): void {

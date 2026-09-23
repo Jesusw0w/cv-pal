@@ -19,10 +19,12 @@ import re
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cv_pal.analysis.parseability import ParseabilityReport, check_parseability
-from cv_pal.constants import DEFAULT_DOWNLOAD_NAME_MAX_LENGTH
+from cv_pal.constants import DEFAULT_DOWNLOAD_NAME_MAX_LENGTH, DatePrecision
 from cv_pal.generation.tailored_cv import (
     EducationFact,
     ExperienceFact,
+    LanguageFact,
+    PortfolioFact,
     ProfileFacts,
     SkillFact,
     TailoredCv,
@@ -79,6 +81,7 @@ def profile_facts(profile: CareerProfile, user: User) -> ProfileFacts:
                 start_date=education.start_date,
                 end_date=education.end_date,
                 grade=education.grade,
+                year_only=education.date_precision == DatePrecision.YEAR,
             )
             for education in profile.educations
         ),
@@ -89,6 +92,14 @@ def profile_facts(profile: CareerProfile, user: User) -> ProfileFacts:
                 evidenced_by=frozenset(experience.id for experience in skill.evidence),
             )
             for skill in profile.skills
+        ),
+        languages=tuple(
+            LanguageFact(name=language.name, level=language.level)
+            for language in profile.languages
+        ),
+        portfolio=tuple(
+            PortfolioFact(title=item.title, url=item.url, description=item.description)
+            for item in profile.portfolio
         ),
     )
 

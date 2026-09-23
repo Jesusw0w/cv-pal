@@ -165,7 +165,38 @@ export interface EducationResponse {
   field_of_study: string | null;
   start_date: string | null;
   end_date: string | null;
+  /** `year` when only the years are known: shown as "2016 – 2018", never with months. */
+  date_precision: DatePrecision;
   grade: string | null;
+}
+
+export type DatePrecision = 'month' | 'year';
+
+export type LanguageLevel = 'native' | 'fluent' | 'advanced' | 'intermediate' | 'basic';
+
+export interface LanguageResponse {
+  id: number;
+  name: string;
+  level: LanguageLevel;
+}
+
+export interface LanguageCreate {
+  name: string;
+  level: LanguageLevel;
+}
+
+/** Something the user made — a project, a game, a design. General on purpose. */
+export interface PortfolioItemResponse {
+  id: number;
+  title: string;
+  url: string | null;
+  description: string | null;
+}
+
+export interface PortfolioItemCreate {
+  title: string;
+  url?: string | null;
+  description?: string | null;
 }
 
 export interface SkillResponse {
@@ -198,6 +229,8 @@ export interface CareerProfileResponse {
   experiences: ExperienceResponse[];
   educations: EducationResponse[];
   skills: SkillResponse[];
+  languages: LanguageResponse[];
+  portfolio: PortfolioItemResponse[];
 }
 
 // --- Request bodies. Mirror the Pydantic *Create/*Update models. ---
@@ -231,6 +264,7 @@ export interface EducationCreate {
   field_of_study?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  date_precision?: DatePrecision;
   grade?: string | null;
 }
 
@@ -287,6 +321,8 @@ export interface CvExtractionResponse {
   experiences: ExtractedEntryResponse[];
   educations: ExtractedEntryResponse[];
   skills: string[];
+  /** Only languages the CV gave a level for. */
+  languages: { name: string; level: LanguageLevel }[];
 }
 
 /**
@@ -520,6 +556,10 @@ export interface ApplicationResponse {
   cv_id: number | null;
   /** The platform it went through, when recorded. */
   platform_id: number | null;
+  /** What was offered, as written: "€3.1–3.3k/month". */
+  salary: string | null;
+  /** What happens next: "Interview 25 Sep". */
+  next_step: string | null;
   notes: string | null;
   posting: JobPostingResponse;
   /** Computed server-side: a stored copy would be wrong by morning. */
@@ -527,16 +567,28 @@ export interface ApplicationResponse {
   needs_chasing: boolean;
 }
 
+/** The role applied for, when no posting was saved. */
+export interface AppliedRole {
+  title: string;
+  company?: string | null;
+  source_url?: string | null;
+  location?: string | null;
+}
+
+/** Name either a saved posting or the role — exactly one. */
 export interface ApplicationCreate {
-  job_posting_id: number;
+  job_posting_id?: number;
+  role?: AppliedRole;
   cv_id?: number | null;
   platform_id?: number | null;
+  salary?: string | null;
+  next_step?: string | null;
   /** Omit for today, which is the overwhelmingly common case. */
   applied_at?: string | null;
   notes?: string | null;
 }
 
-export type ApplicationUpdate = Partial<Omit<ApplicationCreate, 'job_posting_id'>> & {
+export type ApplicationUpdate = Partial<Omit<ApplicationCreate, 'job_posting_id' | 'role'>> & {
   status?: ApplicationStatus;
 };
 
@@ -570,9 +622,13 @@ export interface PlatformStats {
 /** Whether a platform's copy of the profile is behind the profile in CV Pal. */
 export type PlatformStatus = 'up_to_date' | 'outdated' | 'unknown';
 
+/** Where setting a profile up stands; "later" is a decision, not a gap. */
+export type PlatformState = 'not_started' | 'setting_up' | 'active' | 'paused' | 'later';
+
 export interface JobPlatformResponse {
   id: number;
   name: string;
+  state: PlatformState;
   profile_url: string | null;
   /** ISO `YYYY-MM-DD`: when the user last brought their profile there up to date. */
   profile_updated_on: string | null;
@@ -582,6 +638,7 @@ export interface JobPlatformResponse {
 
 export interface JobPlatformCreate {
   name: string;
+  state?: PlatformState;
   profile_url?: string | null;
   profile_updated_on?: string | null;
   notes?: string | null;

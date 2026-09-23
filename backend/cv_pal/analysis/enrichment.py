@@ -157,6 +157,7 @@ def merge(base: ExtractedProfile, found: ImportedProfile) -> ExtractedProfile:
         experiences=experiences or base.experiences,
         educations=educations or base.educations,
         skills=_skills(base.skills, found.skills),
+        languages=base.languages,
         enriched=True,
     )
 

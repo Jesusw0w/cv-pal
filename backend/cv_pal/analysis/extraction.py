@@ -16,6 +16,7 @@ nothing. 74% of the lines in the document this was built against hold one word.
 """
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -35,6 +36,7 @@ from cv_pal.constants import (
     DEFAULT_LOCATION_MAX_LENGTH,
     DEFAULT_PHONE_MAX_LENGTH,
     DEFAULT_SUMMARY_MAX_LENGTH,
+    LanguageLevel,
 )
 
 # Extraction reads one section the parseability checker deliberately does not require.
@@ -195,6 +197,14 @@ class ExtractedEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class ExtractedLanguage:
+    """A language and how well it is spoken, as the CV put it."""
+
+    name: str
+    level: LanguageLevel
+
+
+@dataclass(frozen=True, slots=True)
 class ExtractedProfile:
     """Everything the deterministic pass could find. All of it is a proposal.
 
@@ -217,6 +227,7 @@ class ExtractedProfile:
     experiences: tuple[ExtractedEntry, ...] = field(default_factory=tuple)
     educations: tuple[ExtractedEntry, ...] = field(default_factory=tuple)
     skills: tuple[str, ...] = field(default_factory=tuple)
+    languages: tuple[ExtractedLanguage, ...] = field(default_factory=tuple)
     enriched: bool = False
 
 
@@ -844,6 +855,78 @@ def _entries(lines: list[str]) -> tuple[ExtractedEntry, ...]:
     return tuple(found)
 
 
+# How CVs word a level, mapped onto the five the profile keeps.
+_LEVEL_WORDS: dict[str, LanguageLevel] = {
+    "native": LanguageLevel.NATIVE,
+    "mother tongue": LanguageLevel.NATIVE,
+    "bilingual": LanguageLevel.NATIVE,
+    "fluent": LanguageLevel.FLUENT,
+    "proficient": LanguageLevel.FLUENT,
+    "c2": LanguageLevel.FLUENT,
+    "advanced": LanguageLevel.ADVANCED,
+    "c1": LanguageLevel.ADVANCED,
+    "upper intermediate": LanguageLevel.INTERMEDIATE,
+    "intermediate": LanguageLevel.INTERMEDIATE,
+    "b2": LanguageLevel.INTERMEDIATE,
+    "b1": LanguageLevel.INTERMEDIATE,
+    "basic": LanguageLevel.BASIC,
+    "beginner": LanguageLevel.BASIC,
+    "elementary": LanguageLevel.BASIC,
+    "a2": LanguageLevel.BASIC,
+    "a1": LanguageLevel.BASIC,
+}
+_LANGUAGE_ENTRY = re.compile(
+    r"^(?P<name>[A-Z][\w-]+(?: [A-Z][\w-]+)?)\s*\((?P<level>[^)]*)\)"
+)
+_LANGUAGES_LABEL = re.compile(r"^languages?\s*[:\-\u2013\u2014]\s*", re.IGNORECASE)
+
+
+def _level(text: str) -> LanguageLevel | None:
+    """Read a level out of what a CV put in brackets: "fluent, daily working language".
+
+    Args:
+        text: The bracketed text.
+
+    Returns:
+        The level, or None when the words say none.
+    """
+    lowered = text.casefold()
+    for words, level in _LEVEL_WORDS.items():
+        if re.search(rf"\b{re.escape(words)}\b", lowered):
+            return level
+    return None
+
+
+def _languages(lines: list[str]) -> tuple[ExtractedLanguage, ...]:
+    """Read languages from a "Languages: X (native), Y (fluent)" line or section.
+
+    Only entries that state a level are proposed: a bare word in a languages list is
+    as likely to be a programming language as a spoken one.
+
+    Args:
+        lines: The reflowed lines.
+
+    Returns:
+        The languages, in the order the CV lists them.
+    """
+    candidates: list[str] = []
+    for index, line in enumerate(lines):
+        labelled = _LANGUAGES_LABEL.match(line)
+        if labelled:
+            candidates.append(line[labelled.end() :])
+        elif _section_for(line) == "other" and line.casefold().startswith("language"):
+            candidates.extend(lines[index + 1 : index + 2])
+
+    found: list[ExtractedLanguage] = []
+    for text in candidates:
+        for fragment in _split_outside_parentheses(text, ","):
+            match = _LANGUAGE_ENTRY.match(fragment.strip())
+            level = _level(match.group("level")) if match else None
+            if match and level and match.group("name") not in {f.name for f in found}:
+                found.append(ExtractedLanguage(name=match.group("name"), level=level))
+    return tuple(found)
+
+
 def _skills(lines: list[str]) -> tuple[str, ...]:
     """Read skills from the skills section.
 
@@ -1049,6 +1132,8 @@ def extract_profile(cv_text: str) -> ExtractedProfile:
         A proposal for the user to confirm. Nothing is persisted, and an empty result is
         a normal outcome for a CV whose layout does not survive extraction.
     """
+    # PDF text keeps typographic ligatures: "ﬂuent" is not "fluent" to a regex.
+    cv_text = unicodedata.normalize("NFKC", cv_text)
     lines = _reflow(cv_text)
     sections = _split_sections(lines)
     flat = _WHITESPACE.sub(" ", cv_text)
@@ -1066,4 +1151,5 @@ def extract_profile(cv_text: str) -> ExtractedProfile:
         experiences=tuple(e for e in entries if not is_education(e)),
         educations=tuple(e for e in entries if is_education(e)),
         skills=_skills(sections.get("skills", [])),
+        languages=_languages(lines),
     )

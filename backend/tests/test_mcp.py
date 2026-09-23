@@ -75,9 +75,17 @@ PROFILE_TOOLS = {
     "add_skill",
     "update_skill",
     "delete_skill",
+    "add_language",
+    "update_language",
+    "delete_language",
+    "add_portfolio_item",
+    "update_portfolio_item",
+    "delete_portfolio_item",
 }
 # Removing or overwriting what the user entered: a client should confirm these.
 DESTRUCTIVE_TOOLS = {
+    "delete_language",
+    "delete_portfolio_item",
     "delete_platform",
     "set_goals",
     "delete_experience",
@@ -734,3 +742,27 @@ async def test_an_agent_cannot_delete_another_users_record(
             )
 
     assert len((await client.get("/profile", headers=owner)).json()["experiences"]) == 1
+
+
+async def test_an_application_can_be_recorded_without_a_saved_posting(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """A recruiter's call has no posting to save; the agent must not invent one."""
+    headers = await register_and_login(client)
+    token = await issue_token(client, headers, write=True)
+
+    async with mcp_client(token) as agent:
+        recorded = await agent.call_tool(
+            "record_application",
+            {
+                "role": {"title": "Python Developer", "company": "Initech"},
+                "salary": "€40-45k",
+                "next_step": "Technical interview",
+            },
+        )
+        with pytest.raises(ToolError, match="either a saved posting or the role"):
+            await agent.call_tool("record_application", {})
+
+    assert recorded.structured_content is not None
+    assert recorded.structured_content["title"] == "Python Developer"
+    assert recorded.structured_content["next_step"] == "Technical interview"

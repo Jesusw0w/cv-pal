@@ -14,6 +14,8 @@ import {
   JobBoardConnectionResponse,
   JobPlatformResponse,
   JobPostingResponse,
+  LanguageLevel,
+  PortfolioItemResponse,
   LinkedInProfileResponse,
   CoverLetterDraftResponse,
   ProfileSummaryResponse,
@@ -144,6 +146,7 @@ export class MockBackend {
       const created: JobPlatformResponse = {
         id: this.nextPlatformId++,
         name,
+        state: payload.state ?? 'active',
         profile_url: payload.profile_url ?? null,
         profile_updated_on: payload.profile_updated_on ?? null,
         notes: payload.notes ?? null,
@@ -427,6 +430,37 @@ export class MockBackend {
     }
     if (method === 'POST' && path === '/profile/skills') {
       return { status: 201, body: this.addSkill(request.body) };
+    }
+    if (method === 'POST' && path === '/profile/languages') {
+      const payload = (request.body ?? {}) as { name?: string; level?: LanguageLevel };
+      const name = (payload.name ?? '').trim();
+      if (this.profile.languages.some((l) => l.name.toLowerCase() === name.toLowerCase())) {
+        throw new MockHttpError(400, 'That language is already on your profile');
+      }
+      const created = { id: this.nextProfileChildId++, name, level: payload.level ?? 'fluent' };
+      this.profile = { ...this.profile, languages: [...this.profile.languages, created] };
+      return { status: 201, body: created };
+    }
+    if (method === 'POST' && path === '/profile/portfolio') {
+      const payload = (request.body ?? {}) as Partial<PortfolioItemResponse>;
+      const created: PortfolioItemResponse = {
+        id: this.nextProfileChildId++,
+        title: payload.title ?? '',
+        url: payload.url ?? null,
+        description: payload.description ?? null,
+      };
+      this.profile = { ...this.profile, portfolio: [...this.profile.portfolio, created] };
+      return { status: 201, body: created };
+    }
+    for (const key of ['languages', 'portfolio'] as const) {
+      const id = matchId(path, `/profile/${key}`);
+      if (id !== null && method === 'DELETE') {
+        this.profile = {
+          ...this.profile,
+          [key]: (this.profile[key] as { id: number }[]).filter((item) => item.id !== id),
+        };
+        return { status: 204, body: null };
+      }
     }
 
     for (const key of ['experiences', 'educations', 'skills'] as const) {
@@ -856,6 +890,7 @@ export class MockBackend {
       field_of_study: payload.field_of_study ?? null,
       start_date: payload.start_date ?? null,
       end_date: payload.end_date ?? null,
+      date_precision: payload.date_precision ?? 'month',
       grade: payload.grade ?? null,
     };
     this.profile = {
@@ -913,13 +948,44 @@ export class MockBackend {
     return cv;
   }
 
-  /** Record an application against a saved posting. */
+  /** Record an application against a saved posting, or the role alone. */
   private recordApplication(body: unknown): ApplicationResponse {
     const payload = (body ?? {}) as {
       job_posting_id?: number;
+      role?: { title: string; company?: string | null; source_url?: string | null };
       cv_id?: number | null;
       platform_id?: number | null;
+      salary?: string | null;
+      next_step?: string | null;
     };
+    if (payload.role) {
+      // The API stores the role as a posting with no text; so does the demo.
+      const posting: JobPostingResponse = {
+        id: this.nextJobId++,
+        source: 'manual',
+        source_url: payload.role.source_url ?? null,
+        title: payload.role.title,
+        company: payload.role.company ?? null,
+        location: null,
+        description: '',
+        employment_type: null,
+        created_at: new Date().toISOString(),
+      };
+      this.jobs = [
+        ...this.jobs,
+        {
+          posting,
+          match: {
+            score: 0,
+            blocked_by: null,
+            reasons: [],
+            missing_required: [],
+            preference_rank: 2,
+          },
+        },
+      ];
+      payload.job_posting_id = posting.id;
+    }
     const entry = this.jobs.find((e) => e.posting.id === payload.job_posting_id);
     if (!entry) {
       throw new MockHttpError(404, 'Job posting not found');
@@ -934,6 +1000,8 @@ export class MockBackend {
       status_changed_at: today(),
       cv_id: payload.cv_id ?? null,
       platform_id: payload.platform_id ?? null,
+      salary: payload.salary ?? null,
+      next_step: payload.next_step ?? null,
       notes: null,
       posting: entry.posting,
       days_since_applied: 0,

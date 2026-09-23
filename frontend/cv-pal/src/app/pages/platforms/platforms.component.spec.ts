@@ -12,6 +12,7 @@ import { PlatformsComponent } from './platforms.component';
 const BEHIND: JobPlatformResponse = {
   id: 1,
   name: 'Hired Hands',
+  state: 'active',
   profile_url: 'hiredhands.example/sam',
   profile_updated_on: '2026-01-15',
   notes: null,
@@ -64,6 +65,15 @@ describe('PlatformsComponent', () => {
     fixture.componentInstance.markUpdated(BEHIND);
 
     expect(updates).toEqual([[1, { profile_updated_on: fixture.componentInstance.today }]]);
+  });
+
+  it('shows the stage of a platform not set up yet, and no update button', () => {
+    const fixture = render([{ ...BEHIND, state: 'not_started', status: 'unknown' }]);
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(text).toContain('Not started');
+    expect(text).not.toContain('Updated today');
+    expect(text).toContain('None behind your profile');
   });
 
   it('is optional: with nothing tracked it only offers to add one', () => {

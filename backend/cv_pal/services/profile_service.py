@@ -26,6 +26,9 @@ from cv_pal.constants import (
     DEFAULT_ERROR_END_BEFORE_START,
     DEFAULT_ERROR_EVIDENCE_NOT_OWNED,
     DEFAULT_ERROR_EXPERIENCE_NOT_FOUND,
+    DEFAULT_ERROR_LANGUAGE_DUPLICATE,
+    DEFAULT_ERROR_LANGUAGE_NOT_FOUND,
+    DEFAULT_ERROR_PORTFOLIO_NOT_FOUND,
     DEFAULT_ERROR_SKILL_DUPLICATE,
     DEFAULT_ERROR_SKILL_NOT_FOUND,
     DEFAULT_MAX_ROLE_HIGHLIGHTS,
@@ -37,7 +40,15 @@ from cv_pal.exceptions import (
     ValidationError,
 )
 from cv_pal.llm import LLMClient, complete_validated
-from cv_pal.models import CareerGoals, CareerProfile, Education, Experience, Skill
+from cv_pal.models import (
+    CareerGoals,
+    CareerProfile,
+    Education,
+    Experience,
+    PortfolioItem,
+    ProfileLanguage,
+    Skill,
+)
 from cv_pal.parsing import extract_cv_text
 from cv_pal.prompts import (
     PROFILE_SUMMARY_RETRY_PROMPT,
@@ -54,6 +65,10 @@ from cv_pal.schemas import (
     EducationUpdate,
     ExperienceCreate,
     ExperienceUpdate,
+    LanguageCreate,
+    LanguageUpdate,
+    PortfolioItemCreate,
+    PortfolioItemUpdate,
     ProfileSummaryResponse,
     RoleHighlightsResponse,
     SkillCreate,
@@ -95,6 +110,8 @@ async def get_or_create_profile(db: AsyncSession, *, user_id: int) -> CareerProf
             selectinload(CareerProfile.experiences),
             selectinload(CareerProfile.educations),
             selectinload(CareerProfile.skills).selectinload(Skill.evidence),
+            selectinload(CareerProfile.languages),
+            selectinload(CareerProfile.portfolio),
         )
     )
     profile = result.scalar_one_or_none()
@@ -327,6 +344,198 @@ async def update_education(
     await db.commit()
     await db.refresh(education)
     return education
+
+
+async def _owned_child[Child: ProfileLanguage | PortfolioItem](
+    db: AsyncSession, model: type[Child], *, user_id: int, item_id: int, missing: str
+) -> Child:
+    """Fetch a language or portfolio item belonging to the user's profile.
+
+    Args:
+        db: Async database session.
+        model: The table to look in.
+        user_id: The owning user.
+        item_id: The row to fetch.
+        missing: The message when it is not there.
+
+    Returns:
+        The row.
+
+    Raises:
+        NotFoundError: If it does not exist on this user's profile.
+    """
+    item = await db.scalar(
+        select(model)
+        .join(CareerProfile, CareerProfile.id == model.profile_id)
+        .where(model.id == item_id, CareerProfile.user_id == user_id)
+    )
+    if item is None:
+        raise NotFoundError(missing)
+    return item
+
+
+async def _save_language(db: AsyncSession, *, user_id: int) -> None:
+    """Commit a language change, refusing a name already on the profile.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+
+    Raises:
+        ConflictError: If the profile already lists that language.
+    """
+    try:
+        # Inside the try: the touch's query flushes the row first, and a duplicate
+        # name fails there rather than at the commit.
+        await _touch(db, user_id=user_id)
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ConflictError(DEFAULT_ERROR_LANGUAGE_DUPLICATE) from exc
+
+
+async def add_language(
+    db: AsyncSession, *, user_id: int, payload: LanguageCreate
+) -> ProfileLanguage:
+    """Add a language the user speaks.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        payload: The language and level.
+
+    Returns:
+        The created language.
+    """
+    profile = await get_or_create_profile(db, user_id=user_id)
+    language = ProfileLanguage(
+        profile_id=profile.id, name=payload.name.strip(), level=payload.level
+    )
+    db.add(language)
+    await _save_language(db, user_id=user_id)
+    await db.refresh(language)
+    return language
+
+
+async def update_language(
+    db: AsyncSession, *, user_id: int, language_id: int, payload: LanguageUpdate
+) -> ProfileLanguage:
+    """Amend a language.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        language_id: The language to amend.
+        payload: The fields to change; omitted fields are left alone.
+
+    Returns:
+        The updated language.
+    """
+    language = await _owned_child(
+        db,
+        ProfileLanguage,
+        user_id=user_id,
+        item_id=language_id,
+        missing=DEFAULT_ERROR_LANGUAGE_NOT_FOUND,
+    )
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(language, field, value)
+    await _save_language(db, user_id=user_id)
+    await db.refresh(language)
+    return language
+
+
+async def delete_language(db: AsyncSession, *, user_id: int, language_id: int) -> None:
+    """Remove a language from the profile.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        language_id: The language to remove.
+    """
+    language = await _owned_child(
+        db,
+        ProfileLanguage,
+        user_id=user_id,
+        item_id=language_id,
+        missing=DEFAULT_ERROR_LANGUAGE_NOT_FOUND,
+    )
+    await db.delete(language)
+    await _touch(db, user_id=user_id)
+    await db.commit()
+
+
+async def add_portfolio_item(
+    db: AsyncSession, *, user_id: int, payload: PortfolioItemCreate
+) -> PortfolioItem:
+    """Add something the user made to their portfolio.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        payload: The item.
+
+    Returns:
+        The created item.
+    """
+    profile = await get_or_create_profile(db, user_id=user_id)
+    item = PortfolioItem(profile_id=profile.id, **payload.model_dump())
+    db.add(item)
+    await _touch(db, user_id=user_id)
+    await db.commit()
+    await db.refresh(item)
+    return item
+
+
+async def update_portfolio_item(
+    db: AsyncSession, *, user_id: int, item_id: int, payload: PortfolioItemUpdate
+) -> PortfolioItem:
+    """Amend a portfolio item.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        item_id: The item to amend.
+        payload: The fields to change; omitted fields are left alone.
+
+    Returns:
+        The updated item.
+    """
+    item = await _owned_child(
+        db,
+        PortfolioItem,
+        user_id=user_id,
+        item_id=item_id,
+        missing=DEFAULT_ERROR_PORTFOLIO_NOT_FOUND,
+    )
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+    await _touch(db, user_id=user_id)
+    await db.commit()
+    await db.refresh(item)
+    return item
+
+
+async def delete_portfolio_item(
+    db: AsyncSession, *, user_id: int, item_id: int
+) -> None:
+    """Remove a portfolio item.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        item_id: The item to remove.
+    """
+    item = await _owned_child(
+        db,
+        PortfolioItem,
+        user_id=user_id,
+        item_id=item_id,
+        missing=DEFAULT_ERROR_PORTFOLIO_NOT_FOUND,
+    )
+    await db.delete(item)
+    await _touch(db, user_id=user_id)
+    await db.commit()
 
 
 async def add_skill(db: AsyncSession, *, user_id: int, payload: SkillCreate) -> Skill:
