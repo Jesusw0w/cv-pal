@@ -30,7 +30,10 @@ export interface ApiTokenResponse {
   name: string;
   /** The first characters of the secret, to tell tokens apart. */
   display_hint: string;
-  /** Space-separated: `cvpal:read`, plus `cvpal:write` when it may record things. */
+  /**
+   * Space-separated: `cvpal:read`, plus `cvpal:write` when it may record postings and
+   * applications, and `cvpal:profile` when it may edit the profile and goals.
+   */
   scopes: string;
   expires_at: string;
   last_used_at: string | null;
@@ -52,6 +55,8 @@ export interface ApiTokenCreate {
   name: string;
   password: string;
   write: boolean;
+  /** Lets the agent add, change and delete profile entries and replace the goals. */
+  edit_profile: boolean;
   expires_in_days: number;
 }
 
@@ -160,7 +165,38 @@ export interface EducationResponse {
   field_of_study: string | null;
   start_date: string | null;
   end_date: string | null;
+  /** `year` when only the years are known: shown as "2016 – 2018", never with months. */
+  date_precision: DatePrecision;
   grade: string | null;
+}
+
+export type DatePrecision = 'month' | 'year';
+
+export type LanguageLevel = 'native' | 'fluent' | 'advanced' | 'intermediate' | 'basic';
+
+export interface LanguageResponse {
+  id: number;
+  name: string;
+  level: LanguageLevel;
+}
+
+export interface LanguageCreate {
+  name: string;
+  level: LanguageLevel;
+}
+
+/** Something the user made — a project, a game, a design. General on purpose. */
+export interface PortfolioItemResponse {
+  id: number;
+  title: string;
+  url: string | null;
+  description: string | null;
+}
+
+export interface PortfolioItemCreate {
+  title: string;
+  url?: string | null;
+  description?: string | null;
 }
 
 export interface SkillResponse {
@@ -187,10 +223,14 @@ export interface CareerProfileResponse {
   location: string | null;
   phone: string | null;
   website_url: string | null;
+  /** Put on a generated CV only for development roles; LinkedIn always is. */
+  github_url: string | null;
   linkedin_url: string | null;
   experiences: ExperienceResponse[];
   educations: EducationResponse[];
   skills: SkillResponse[];
+  languages: LanguageResponse[];
+  portfolio: PortfolioItemResponse[];
 }
 
 // --- Request bodies. Mirror the Pydantic *Create/*Update models. ---
@@ -202,6 +242,7 @@ export interface CareerProfileUpdate {
   location?: string | null;
   phone?: string | null;
   website_url?: string | null;
+  github_url?: string | null;
   linkedin_url?: string | null;
 }
 
@@ -223,6 +264,7 @@ export interface EducationCreate {
   field_of_study?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  date_precision?: DatePrecision;
   grade?: string | null;
 }
 
@@ -256,6 +298,7 @@ export interface ExtractedContactResponse {
   phone: string | null;
   linkedin_url: string | null;
   website_url: string | null;
+  github_url: string | null;
 }
 
 /** A dated entry read from a CV. Dates may be null when the layout hid them. */
@@ -278,6 +321,8 @@ export interface CvExtractionResponse {
   experiences: ExtractedEntryResponse[];
   educations: ExtractedEntryResponse[];
   skills: string[];
+  /** Only languages the CV gave a level for. */
+  languages: { name: string; level: LanguageLevel }[];
 }
 
 /**
@@ -334,9 +379,24 @@ export interface CareerGoalsResponse {
    */
   work_locations: string[];
   location_non_negotiable: boolean;
-  min_salary: number | null;
-  salary_currency: string | null;
+  /** One per contract type and period — an annual salary and a day rate side by side. */
+  salary_expectations: SalaryExpectation[];
   salary_non_negotiable: boolean;
+}
+
+/** What a salary figure is per. Contract work is quoted by the day or the hour. */
+export type SalaryPeriod = 'year' | 'month' | 'day' | 'hour';
+
+/** What the user wants for one kind of contract. */
+export interface SalaryExpectation {
+  employment_type: EmploymentType;
+  /** The floor. */
+  minimum: number;
+  /** What they are aiming for, above the floor. */
+  target: number | null;
+  /** ISO 4217, upper case. */
+  currency: string;
+  period: SalaryPeriod;
 }
 
 /** `PUT /profile/goals` replaces the record: an omitted preference is cleared. */
@@ -374,6 +434,11 @@ export interface MatchScoreResponse {
   blocked_by: string | null;
   reasons: MatchReasonResponse[];
   missing_required: string[];
+  /**
+   * Sorts before the score. 0 offers the user's first-choice work arrangement, 1 their
+   * second; then postings that do not say; then ones offering none the user chose.
+   */
+  preference_rank: number;
 }
 
 export interface ScoredPostingResponse {
@@ -489,6 +554,12 @@ export interface ApplicationResponse {
   status_changed_at: string;
   /** The CV that was sent, when one was. Null once that CV is deleted. */
   cv_id: number | null;
+  /** The platform it went through, when recorded. */
+  platform_id: number | null;
+  /** What was offered, as written: "€3.1–3.3k/month". */
+  salary: string | null;
+  /** What happens next: "Interview 25 Sep". */
+  next_step: string | null;
   notes: string | null;
   posting: JobPostingResponse;
   /** Computed server-side: a stored copy would be wrong by morning. */
@@ -496,15 +567,28 @@ export interface ApplicationResponse {
   needs_chasing: boolean;
 }
 
+/** The role applied for, when no posting was saved. */
+export interface AppliedRole {
+  title: string;
+  company?: string | null;
+  source_url?: string | null;
+  location?: string | null;
+}
+
+/** Name either a saved posting or the role — exactly one. */
 export interface ApplicationCreate {
-  job_posting_id: number;
+  job_posting_id?: number;
+  role?: AppliedRole;
   cv_id?: number | null;
+  platform_id?: number | null;
+  salary?: string | null;
+  next_step?: string | null;
   /** Omit for today, which is the overwhelmingly common case. */
   applied_at?: string | null;
   notes?: string | null;
 }
 
-export type ApplicationUpdate = Partial<Omit<ApplicationCreate, 'job_posting_id'>> & {
+export type ApplicationUpdate = Partial<Omit<ApplicationCreate, 'job_posting_id' | 'role'>> & {
   status?: ApplicationStatus;
 };
 
@@ -517,7 +601,50 @@ export interface ApplicationStatsResponse {
   /** Null until something is answerable — not the same as nobody having replied. */
   reply_rate: number | null;
   needs_chasing: number;
+  /** The same figures per platform, best reply rate first; "Not recorded" last. */
+  by_platform: PlatformStats[];
 }
+
+export interface PlatformStats {
+  /** Null for applications recorded without a platform. */
+  platform_id: number | null;
+  name: string;
+  total: number;
+  replied: number;
+  answerable: number;
+  reply_rate: number | null;
+  interviews: number;
+  offers: number;
+}
+
+// --- Job platforms the user keeps a profile on. Entirely optional. ---
+
+/** Whether a platform's copy of the profile is behind the profile in CV Pal. */
+export type PlatformStatus = 'up_to_date' | 'outdated' | 'unknown';
+
+/** Where setting a profile up stands; "later" is a decision, not a gap. */
+export type PlatformState = 'not_started' | 'setting_up' | 'active' | 'paused' | 'later';
+
+export interface JobPlatformResponse {
+  id: number;
+  name: string;
+  state: PlatformState;
+  profile_url: string | null;
+  /** ISO `YYYY-MM-DD`: when the user last brought their profile there up to date. */
+  profile_updated_on: string | null;
+  notes: string | null;
+  status: PlatformStatus;
+}
+
+export interface JobPlatformCreate {
+  name: string;
+  state?: PlatformState;
+  profile_url?: string | null;
+  profile_updated_on?: string | null;
+  notes?: string | null;
+}
+
+export type JobPlatformUpdate = Partial<JobPlatformCreate>;
 
 // --- LinkedIn: the profile the user exported themselves. ---
 // CV Pal never fetches linkedin.com — automated access is against LinkedIn's terms and

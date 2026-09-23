@@ -52,12 +52,45 @@ READ_TOOLS = {
     "list_applications",
     "get_application_stats",
     "review_linkedin_profile",
+    "list_platforms",
 }
 WRITE_TOOLS = {
     "save_job_posting",
     "import_job_posting",
     "record_application",
     "update_application",
+    "add_platform",
+    "update_platform",
+    "delete_platform",
+}
+PROFILE_TOOLS = {
+    "update_profile",
+    "set_goals",
+    "add_experience",
+    "update_experience",
+    "delete_experience",
+    "add_education",
+    "update_education",
+    "delete_education",
+    "add_skill",
+    "update_skill",
+    "delete_skill",
+    "add_language",
+    "update_language",
+    "delete_language",
+    "add_portfolio_item",
+    "update_portfolio_item",
+    "delete_portfolio_item",
+}
+# Removing or overwriting what the user entered: a client should confirm these.
+DESTRUCTIVE_TOOLS = {
+    "delete_language",
+    "delete_portfolio_item",
+    "delete_platform",
+    "set_goals",
+    "delete_experience",
+    "delete_education",
+    "delete_skill",
 }
 
 ClientFor = Callable[[str | None], Client[StreamableHttpTransport]]
@@ -135,13 +168,19 @@ async def issue_token(
     headers: dict[str, str],
     *,
     write: bool = False,
+    edit_profile: bool = False,
     password: str = DEFAULT_TEST_PASSWORD,
 ) -> str:
     """Create a personal access token through the API and return its secret."""
     response = await client.post(
         "/users/me/tokens",
         headers=headers,
-        json={"name": "agent", "password": password, "write": write},
+        json={
+            "name": "agent",
+            "password": password,
+            "write": write,
+            "edit_profile": edit_profile,
+        },
     )
     assert response.status_code == 201, response.text
     token: str = response.json()["token"]
@@ -341,6 +380,31 @@ async def test_write_token_sees_every_tool(
     assert names == READ_TOOLS | WRITE_TOOLS
 
 
+async def test_profile_token_adds_the_editing_tools(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """Profile editing is its own grant, not implied by write and not implying it."""
+    token = await issue_token(
+        client, await register_and_login(client), edit_profile=True
+    )
+
+    async with mcp_client(token) as agent:
+        names = {tool.name for tool in await agent.list_tools()}
+
+    assert names == READ_TOOLS | PROFILE_TOOLS
+
+
+async def test_write_token_cannot_edit_the_profile(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """Recording postings is not permission to change what CVs are built from."""
+    token = await issue_token(client, await register_and_login(client), write=True)
+
+    async with mcp_client(token) as agent:
+        with pytest.raises(ToolError):
+            await agent.call_tool("update_profile", {"changes": {"headline": "Hacked"}})
+
+
 async def test_read_token_cannot_call_a_write_tool(
     client: AsyncClient, mcp_client: ClientFor
 ) -> None:
@@ -369,7 +433,25 @@ async def test_tools_are_annotated_for_the_client(
         annotations = tools[name].annotations
         assert annotations is not None
         assert annotations.read_only_hint is False, name
-        assert annotations.destructive_hint is False, name
+        assert annotations.destructive_hint is (name in DESTRUCTIVE_TOOLS), name
+
+
+async def test_editing_tools_flag_what_destroys(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """Deleting a record or replacing the goals is marked for confirmation."""
+    token = await issue_token(
+        client, await register_and_login(client), edit_profile=True
+    )
+
+    async with mcp_client(token) as agent:
+        tools = {tool.name: tool for tool in await agent.list_tools()}
+
+    for name in PROFILE_TOOLS:
+        annotations = tools[name].annotations
+        assert annotations is not None
+        assert annotations.read_only_hint is False, name
+        assert annotations.destructive_hint is (name in DESTRUCTIVE_TOOLS), name
 
 
 # --- The tools ------------------------------------------------------------------------
@@ -451,6 +533,26 @@ async def test_cv_tools_read_an_uploaded_cv(
     assert fake_llm.calls == []
 
 
+async def test_timestamps_carry_their_zone(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """Tools declare RFC 3339 `date-time`, which needs an offset.
+
+    SQLite hands timestamps back naive; sent as they were, Claude Code rejected the
+    whole `list_cvs` answer, which left the agent without a CV id for any other tool.
+    """
+    headers = await register_and_login(client)
+    await upload_cv(client, headers)
+    token = await issue_token(client, headers)
+
+    async with mcp_client(token) as agent:
+        listed = await agent.call_tool("list_cvs", {})
+
+    assert listed.structured_content is not None
+    created = listed.structured_content["result"][0]["created_at"]
+    assert datetime.fromisoformat(created).tzinfo is not None
+
+
 async def test_another_users_posting_does_not_exist(
     client: AsyncClient, mcp_client: ClientFor
 ) -> None:
@@ -505,3 +607,162 @@ async def test_import_refuses_an_arbitrary_url(
             await agent.call_tool(
                 "import_job_posting", {"url": "http://169.254.169.254/latest/"}
             )
+
+
+# --- Editing the profile ------------------------------------------------------------
+
+
+async def test_an_agent_fills_in_the_profile_and_goals(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """What the agent writes is what the app shows: same handlers, same records."""
+    headers = await register_and_login(client)
+    token = await issue_token(client, headers, edit_profile=True)
+
+    async with mcp_client(token) as agent:
+        await agent.call_tool(
+            "update_profile", {"changes": {"headline": "Platform Engineer"}}
+        )
+        role = await agent.call_tool(
+            "add_experience",
+            {
+                "role": {
+                    "organisation": "Globex Corporation",
+                    "title": "Staff Engineer",
+                    "start_date": "2020-01-01",
+                    "description": "Runs the Go deployment tooling.",
+                }
+            },
+        )
+        assert role.structured_content is not None
+        role_id = role.structured_content["id"]
+        await agent.call_tool(
+            "add_skill", {"skill": {"name": "Go", "evidence_experience_ids": [role_id]}}
+        )
+        await agent.call_tool(
+            "add_education",
+            {"course": {"institution": "University of Leeds", "qualification": "BSc"}},
+        )
+        await agent.call_tool(
+            "set_goals",
+            {
+                "goals": {
+                    "target_roles": ["Platform Engineer"],
+                    "work_regimes": ["remote"],
+                }
+            },
+        )
+
+    profile = (await client.get("/profile", headers=headers)).json()
+    assert profile["headline"] == "Platform Engineer"
+    assert [e["title"] for e in profile["experiences"]] == ["Staff Engineer"]
+    assert profile["skills"][0]["evidence_experience_ids"] == [role_id]
+    assert profile["educations"][0]["institution"] == "University of Leeds"
+    goals = (await client.get("/profile/goals", headers=headers)).json()
+    assert goals["target_roles"] == ["Platform Engineer"]
+
+
+async def test_an_update_changes_only_the_fields_given(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """A partial update from an agent must not blank the fields it left out."""
+    headers = await register_and_login(client)
+    token = await issue_token(client, headers, edit_profile=True)
+
+    async with mcp_client(token) as agent:
+        role = await agent.call_tool(
+            "add_experience",
+            {
+                "role": {
+                    "organisation": "Initech",
+                    "title": "QA Tester",
+                    "start_date": "2010-06-01",
+                    "description": "Filed regressions.",
+                }
+            },
+        )
+        assert role.structured_content is not None
+        await agent.call_tool(
+            "update_experience",
+            {
+                "experience_id": role.structured_content["id"],
+                "changes": {"title": "Senior QA Tester"},
+            },
+        )
+
+    stored = (await client.get("/profile", headers=headers)).json()["experiences"][0]
+    assert stored["title"] == "Senior QA Tester"
+    assert stored["description"] == "Filed regressions."
+
+
+async def test_an_agent_is_held_to_the_apps_validation(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """A role that ends before it starts is refused here as it is in the form."""
+    token = await issue_token(
+        client, await register_and_login(client), edit_profile=True
+    )
+
+    async with mcp_client(token) as agent:
+        with pytest.raises(ToolError):
+            await agent.call_tool(
+                "add_experience",
+                {
+                    "role": {
+                        "organisation": "Initech",
+                        "title": "QA Tester",
+                        "start_date": "2012-01-01",
+                        "end_date": "2010-01-01",
+                    }
+                },
+            )
+
+
+async def test_an_agent_cannot_delete_another_users_record(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """Ownership is checked by the same handler as the app's."""
+    owner = await register_and_login(client)
+    created = await client.post(
+        "/profile/experiences",
+        headers=owner,
+        json={
+            "organisation": "Hooli",
+            "title": "Assistant",
+            "start_date": "2009-07-01",
+        },
+    )
+    intruder = await register_and_login(client, email="intruder@example.com")
+    token = await issue_token(client, intruder, edit_profile=True)
+
+    async with mcp_client(token) as agent:
+        with pytest.raises(ToolError, match="not found"):
+            await agent.call_tool(
+                "delete_experience", {"experience_id": created.json()["id"]}
+            )
+
+    assert len((await client.get("/profile", headers=owner)).json()["experiences"]) == 1
+
+
+async def test_an_application_can_be_recorded_without_a_saved_posting(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """A recruiter's call has no posting to save; the agent must not invent one."""
+    headers = await register_and_login(client)
+    token = await issue_token(client, headers, write=True)
+
+    async with mcp_client(token) as agent:
+        recorded = await agent.call_tool(
+            "record_application",
+            {
+                "role": {"title": "Python Developer", "company": "Initech"},
+                "salary": "€40-45k",
+                "next_step": "Technical interview",
+            },
+        )
+        with pytest.raises(ToolError, match="either a saved posting or the role"):
+            await agent.call_tool("record_application", {})
+
+    assert recorded.structured_content is not None
+    assert recorded.structured_content["title"] == "Python Developer"
+    assert recorded.structured_content["next_step"] == "Technical interview"

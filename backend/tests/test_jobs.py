@@ -2,7 +2,7 @@ import httpx
 import pytest
 from httpx import AsyncClient
 
-from cv_pal.analysis.matching import MatchScore, score_posting
+from cv_pal.analysis.matching import MatchScore, ranking_key, score_posting
 from cv_pal.constants import WorkRegime
 from cv_pal.dependencies import get_http_client
 from cv_pal.integrations.job_boards import board_for, strip_html
@@ -267,6 +267,52 @@ def test_a_posting_that_does_not_state_its_arrangement_is_not_blocked() -> None:
 
     assert result.blocked_by is None
     assert result.score > 0
+
+
+def _scored(description: str, profile_text: str = "Python PostgreSQL") -> MatchScore:
+    """Score a posting for someone who wants remote first, hybrid second."""
+    return score_posting(
+        title="Backend Engineer",
+        description=description,
+        location=None,
+        profile_text=profile_text,
+        target_roles=["Backend Engineer"],
+        work_regimes=[WorkRegime.REMOTE, WorkRegime.HYBRID],
+        regime_non_negotiable=False,
+    )
+
+
+def test_the_first_choice_arrangement_sorts_first_whatever_the_score() -> None:
+    """Remote-then-hybrid means every remote posting above every hybrid one.
+
+    A weight inside the score would let a strong hybrid match overtake a weak remote
+    one, so the preference is a sort key of its own.
+    """
+    strong_hybrid = _scored(
+        "Hybrid, two days a week. Requirements: Python, PostgreSQL."
+    )
+    weak_remote = _scored("Fully remote. Requirements: Rust, Haskell, Erlang, OCaml.")
+    assert strong_hybrid.score > weak_remote.score
+
+    ordered = sorted([strong_hybrid, weak_remote], key=ranking_key)
+
+    assert ordered == [weak_remote, strong_hybrid]
+
+
+def test_unstated_sorts_after_chosen_arrangements_and_before_the_rest() -> None:
+    """Silence is not a mismatch, but it is not a first choice either."""
+    remote = _scored("Fully remote. Requirements: Python.")
+    hybrid = _scored("Hybrid role. Requirements: Python.")
+    unstated = _scored("Requirements: Python.")
+    on_site = _scored("On-site in the office. Requirements: Python.")
+
+    assert [m.preference_rank for m in (remote, hybrid, unstated, on_site)] == [
+        0,
+        1,
+        2,
+        3,
+    ]
+    assert "second choice" in " ".join(r.detail for r in hybrid.reasons)
 
 
 def test_unstated_target_roles_do_not_penalise_every_posting() -> None:

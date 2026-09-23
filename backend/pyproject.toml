@@ -84,6 +84,8 @@ ignore = [
 # spaces included — they are what the parser has to survive, so normalising them
 # out would hide the bug they caused.
 "tests/test_linkedin_parsing.py" = ["S101", "ASYNC240", "RUF001"]
+# CV fixtures: the en dashes and middle dots are the layouts being parsed.
+"tests/test_analysis_extraction.py" = ["S101", "ASYNC240", "RUF001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

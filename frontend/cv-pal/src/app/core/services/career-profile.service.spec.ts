@@ -174,6 +174,7 @@ describe('CareerProfileService on a brand-new account', () => {
         summary: null,
         location: null,
         website_url: null,
+        github_url: null,
         linkedin_url: null,
         experiences: [],
         educations: [],

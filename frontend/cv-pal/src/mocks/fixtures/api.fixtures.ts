@@ -1,5 +1,6 @@
 import {
   CareerGoalsResponse,
+  JobPlatformResponse,
   CareerProfileResponse,
   CoverageResponse,
   CvExtractionResponse,
@@ -131,6 +132,7 @@ export const MOCK_CAREER_PROFILE: CareerProfileResponse = {
   location: 'Lisbon, Portugal',
   phone: null,
   website_url: null,
+  github_url: null,
   linkedin_url: null,
   experiences: [
     {
@@ -179,6 +181,7 @@ export const MOCK_CAREER_PROFILE: CareerProfileResponse = {
       field_of_study: 'Computer Science',
       start_date: '2014-09-01',
       end_date: '2017-07-31',
+      date_precision: 'month',
       grade: '16/20',
     },
   ],
@@ -242,6 +245,18 @@ export const MOCK_CAREER_PROFILE: CareerProfileResponse = {
       years: 1,
       is_evidenced: false,
       evidence_experience_ids: [],
+    },
+  ],
+  languages: [
+    { id: 1, name: 'Portuguese', level: 'native' },
+    { id: 2, name: 'English', level: 'fluent' },
+  ],
+  portfolio: [
+    {
+      id: 1,
+      title: 'Design system starter',
+      url: 'github.com/devuser/design-system',
+      description: 'Angular component library with visual regression tests.',
     },
   ],
 };
@@ -311,7 +326,8 @@ export const MOCK_EXTRACTION: CvExtractionResponse = {
     email: 'dev@cvpal.test',
     phone: '+351 912 345 678',
     linkedin_url: 'linkedin.com/in/devuser',
-    website_url: 'github.com/devuser',
+    website_url: null,
+    github_url: 'github.com/devuser',
   },
   headline: 'Senior Backend Engineer',
   summary:
@@ -354,6 +370,11 @@ export const MOCK_EXTRACTION: CvExtractionResponse = {
     },
   ],
   skills: ['python', 'postgresql', 'docker', 'kubernetes'],
+  languages: [
+    { name: 'Portuguese', level: 'native' },
+    { name: 'English', level: 'fluent' },
+    { name: 'Spanish', level: 'intermediate' },
+  ],
 };
 
 /** `GET /profile/goals`. A remote-preferring backend engineer, with the floor set. */
@@ -364,10 +385,43 @@ export const MOCK_GOALS: CareerGoalsResponse = {
   regime_non_negotiable: false,
   work_locations: ['Portugal', 'Europe', 'EU'],
   location_non_negotiable: false,
-  min_salary: 65000,
-  salary_currency: 'EUR',
+  salary_expectations: [
+    {
+      employment_type: 'full_time',
+      minimum: 65000,
+      target: 75000,
+      currency: 'EUR',
+      period: 'year',
+    },
+    { employment_type: 'contract', minimum: 450, target: null, currency: 'EUR', period: 'day' },
+  ],
   salary_non_negotiable: false,
 };
+
+/**
+ * `GET /platforms`, seeded. One behind the profile and one never marked, because those
+ * two states are what the screen exists to show.
+ */
+export const MOCK_PLATFORMS: JobPlatformResponse[] = [
+  {
+    id: 1,
+    name: 'LinkedIn',
+    state: 'active',
+    profile_url: 'linkedin.com/in/devuser',
+    profile_updated_on: '2026-01-15',
+    notes: null,
+    status: 'outdated',
+  },
+  {
+    id: 2,
+    name: 'Wellfound',
+    state: 'not_started',
+    profile_url: null,
+    profile_updated_on: null,
+    notes: 'Set salary and remote filters',
+    status: 'unknown',
+  },
+];
 
 /**
  * `GET /jobs` — postings with their scores.
@@ -395,13 +449,14 @@ export const MOCK_SCORED_JOBS: readonly ScoredPostingResponse[] = [
     match: {
       score: 78,
       blocked_by: null,
+      preference_rank: 0,
       reasons: [
         { label: 'Skills 74/100', detail: 'Your profile evidences 6 of 9 terms it uses.' },
         {
           label: 'Title 100/100',
           detail: '"Senior Backend Engineer" against the roles you are targeting.',
         },
-        { label: 'Work arrangement', detail: 'Offers remote, which you said suits you.' },
+        { label: 'Work arrangement', detail: 'Offers remote, your first choice.' },
       ],
       missing_required: ['kubernetes'],
     },
@@ -421,6 +476,7 @@ export const MOCK_SCORED_JOBS: readonly ScoredPostingResponse[] = [
     match: {
       score: 0,
       blocked_by: 'You ruled this out: the posting is on site.',
+      preference_rank: 3,
       reasons: [],
       missing_required: [],
     },
@@ -442,13 +498,14 @@ export const MOCK_SCORED_JOBS: readonly ScoredPostingResponse[] = [
     match: {
       score: 71,
       blocked_by: null,
+      preference_rank: 0,
       reasons: [
         { label: 'Skills 68/100', detail: 'Your profile evidences 5 of 8 terms it uses.' },
         {
           label: 'Title 95/100',
           detail: '"Senior Full Stack Engineer" against the roles you are targeting.',
         },
-        { label: 'Work arrangement', detail: 'Offers remote, which you said suits you.' },
+        { label: 'Work arrangement', detail: 'Offers remote, your first choice.' },
       ],
       missing_required: ['graphql'],
     },

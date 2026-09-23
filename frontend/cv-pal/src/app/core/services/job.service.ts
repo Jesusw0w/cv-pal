@@ -166,15 +166,20 @@ export class JobService {
 }
 
 /**
- * Postings that survived the non-negotiables, best score first.
+ * Postings that survived the non-negotiables: preferred work arrangement first, then
+ * best score.
  *
  * A blocked posting is removed from the ranking rather than sorted to the bottom: a
- * non-negotiable is a filter, and mixing the two makes the ordering meaningless.
+ * non-negotiable is a filter, and mixing the two makes the ordering meaningless. The
+ * arrangement sorts before the score because "remote, then hybrid" means every remote
+ * posting above every hybrid one — the same order the API gives an agent.
  */
 export function rankMatches(all: ScoredPostingResponse[]): ScoredPostingResponse[] {
   return all
     .filter((entry) => entry.match.blocked_by === null)
-    .sort((a, b) => b.match.score - a.match.score);
+    .sort(
+      (a, b) => a.match.preference_rank - b.match.preference_rank || b.match.score - a.match.score,
+    );
 }
 
 /** The postings a non-negotiable ruled out, still shown so the rule can be revisited. */

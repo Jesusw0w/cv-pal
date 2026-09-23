@@ -170,6 +170,7 @@ async def create_token(
         name=payload.name,
         write=payload.write,
         expires_in_days=payload.expires_in_days,
+        edit_profile=payload.edit_profile,
     )
     return ApiTokenCreatedResponse(
         **ApiTokenResponse.model_validate(token).model_dump(), token=plaintext

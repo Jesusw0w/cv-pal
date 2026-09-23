@@ -25,7 +25,7 @@ from cv_pal.exceptions import (
 )
 from cv_pal.integrations.job_boards import board_by_source, board_for
 from cv_pal.models import CareerProfile, JobBoardConnection, JobPosting
-from cv_pal.schemas import JobBoardConnectionCreate, JobPostingCreate
+from cv_pal.schemas import AppliedRole, JobBoardConnectionCreate, JobPostingCreate
 from cv_pal.services.profile_service import get_or_create_goals, get_or_create_profile
 
 # How much of a target role's wording a posting's title has to carry before a filtered
@@ -139,6 +139,36 @@ async def save_pasted(
         company=payload.company,
         location=payload.location,
         description=payload.description,
+    )
+
+
+async def save_role(db: AsyncSession, *, user_id: int, role: AppliedRole) -> JobPosting:
+    """Save the role behind an application that has no posting text.
+
+    Stored as a manual posting with an empty description, so it is scored on its title
+    alone — and the score's reasons say the skills could not be judged.
+
+    Args:
+        db: Async database session.
+        user_id: The owning user.
+        role: The title, company and link that are known.
+
+    Returns:
+        The stored posting.
+
+    Raises:
+        DuplicatePostingError: If the same role is already saved.
+    """
+    return await _store(
+        db,
+        user_id=user_id,
+        source=JobSource.MANUAL,
+        external_id=None,
+        source_url=role.source_url,
+        title=role.title,
+        company=role.company,
+        location=role.location,
+        description="",
     )
 
 

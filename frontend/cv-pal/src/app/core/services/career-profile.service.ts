@@ -14,6 +14,10 @@ import {
   ExperienceCreate,
   ExperienceResponse,
   ExperienceUpdate,
+  LanguageCreate,
+  LanguageResponse,
+  PortfolioItemCreate,
+  PortfolioItemResponse,
   ProfileSummaryResponse,
   RoleHighlightsResponse,
   SkillCreate,
@@ -36,10 +40,13 @@ const EMPTY_PROFILE: CareerProfileResponse = {
   location: null,
   phone: null,
   website_url: null,
+  github_url: null,
   linkedin_url: null,
   experiences: [],
   educations: [],
   skills: [],
+  languages: [],
+  portfolio: [],
 };
 
 /** Below this, keyword coverage against a posting is too thin to be worth scoring. */
@@ -250,6 +257,25 @@ export class CareerProfileService {
 
   deleteEducation(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/profile/educations/${id}`);
+  }
+
+  addLanguage(payload: LanguageCreate): Observable<LanguageResponse> {
+    return this.http.post<LanguageResponse>(`${environment.apiUrl}/profile/languages`, payload);
+  }
+
+  deleteLanguage(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/profile/languages/${id}`);
+  }
+
+  addPortfolioItem(payload: PortfolioItemCreate): Observable<PortfolioItemResponse> {
+    return this.http.post<PortfolioItemResponse>(
+      `${environment.apiUrl}/profile/portfolio`,
+      payload,
+    );
+  }
+
+  deletePortfolioItem(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/profile/portfolio/${id}`);
   }
 
   addSkill(payload: SkillCreate): Observable<SkillResponse> {

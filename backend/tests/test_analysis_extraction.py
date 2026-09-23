@@ -152,8 +152,9 @@ def test_contact_details_are_read_and_not_confused_with_each_other() -> None:
 
     assert contact.email == "ada@example.com"
     assert contact.linkedin_url == "linkedin.com/in/adalovelace"
-    assert contact.website_url == "github.com/ada"
-    assert contact.website_url != "example.com"
+    assert contact.github_url == "github.com/ada"
+    # GitHub has its own field, and the email's domain is no website either.
+    assert contact.website_url is None
 
 
 def test_only_recognised_skills_are_proposed() -> None:
@@ -176,3 +177,140 @@ def test_an_unparseable_document_returns_an_empty_proposal() -> None:
 def test_extraction_is_deterministic() -> None:
     """The same document always yields the same proposal."""
     assert extract_profile(TWO_COLUMN_CV) == extract_profile(TWO_COLUMN_CV)
+
+
+# One column with the dates at the end of each heading line, several roles grouped under
+# one employer, and both `Title, Employer` and `Employer · Title`. Every role in a CV
+# laid out like this used to come back dateless, with its fields swapped.
+DATES_ON_THE_HEADING_CV = """Sam Taylor
+Platform Engineer
+sam@example.com
+
+EXPERIENCE
+Globex Corporation, Leeds Mar 2012 – Present
+Staff Engineer (Platform) Jan 2020 – Present
+• Runs the deployment tooling.
+Stack: Go, Terraform
+Support Engineer (Tooling & Automation) Mar 2012 – Jan 2020
+• Wrote the on-call runbooks.
+QA Tester, Initech Labs Jun 2010 – Mar 2012
+• Filed regressions found in 2010 – 2011.
+Hooli, Cardiff · Warehouse Assistant (summer placement) Jul 2009 – Sep 2009
+PROJECTS
+• A chess engine, written in Rust.
+EDUCATION
+BSc Physics · University of Leeds · thesis on crystal growth 2006 – 2009
+BTEC Engineering · Northfield College, Bristol 2004 – 2006
+"""
+
+
+def test_reads_dates_written_at_the_end_of_the_heading_line() -> None:
+    """The range's own dash is not the separator between employer and title."""
+    roles = extract_profile(DATES_ON_THE_HEADING_CV).experiences
+
+    assert [(r.start_date, r.end_date) for r in roles] == [
+        (date(2020, 1, 1), None),
+        (date(2012, 3, 1), date(2020, 1, 1)),
+        (date(2010, 6, 1), date(2012, 3, 1)),
+        (date(2009, 7, 1), date(2009, 9, 1)),
+    ]
+
+
+def test_roles_grouped_under_an_employer_take_its_name() -> None:
+    """The employer line is not a role of its own; the roles under it belong to it."""
+    roles = extract_profile(DATES_ON_THE_HEADING_CV).experiences
+
+    assert [(r.organisation, r.title) for r in roles[:2]] == [
+        ("Globex Corporation", "Staff Engineer (Platform)"),
+        ("Globex Corporation", "Support Engineer (Tooling & Automation)"),
+    ]
+    assert roles[0].location == "Leeds"
+
+
+def test_tells_title_from_employer_by_what_the_words_say() -> None:
+    """`Title, Employer` and `Employer, City · Title` both come out right."""
+    roles = extract_profile(DATES_ON_THE_HEADING_CV).experiences
+
+    assert (roles[2].organisation, roles[2].title) == ("Initech Labs", "QA Tester")
+    assert (roles[3].organisation, roles[3].title, roles[3].location) == (
+        "Hooli",
+        "Warehouse Assistant (summer placement)",
+        "Cardiff",
+    )
+
+
+def test_a_bullet_ending_in_a_date_range_is_not_a_heading() -> None:
+    """A list item that happens to end in a date range belongs to the role above."""
+    roles = extract_profile(DATES_ON_THE_HEADING_CV).experiences
+
+    assert len(roles) == 4
+    assert "regressions" in (roles[2].description or "")
+
+
+def test_a_later_section_heading_ends_the_last_role() -> None:
+    """Projects after the last job are not that job's description."""
+    last = extract_profile(DATES_ON_THE_HEADING_CV).experiences[-1]
+
+    assert "chess" not in (last.description or "")
+
+
+def test_a_long_education_line_keeps_its_note_out_of_the_fields() -> None:
+    """Qualification · Institution · note: the note is description, not the name."""
+    courses = extract_profile(DATES_ON_THE_HEADING_CV).educations
+
+    assert [(c.title, c.organisation) for c in courses] == [
+        ("BSc Physics", "University of Leeds"),
+        ("BTEC Engineering", "Northfield College"),
+    ]
+    assert courses[0].description == "thesis on crystal growth"
+    assert courses[1].location == "Bristol"
+
+
+def test_a_place_before_a_year_is_not_read_as_a_month() -> None:
+    """`Bristol 2004 - 2006` starts in 2004, not in a month called Bristol."""
+    course = extract_profile(DATES_ON_THE_HEADING_CV).educations[1]
+
+    assert course.start_date == date(2004, 1, 1)
+    assert course.end_date == date(2006, 12, 1)
+
+
+# Title and employer on lines of their own, the dates below them — or above.
+STACKED_CV = """EXPERIENCE
+Software Engineer
+Umbrella Ltd
+03/2014 – 11/2016
+• Shipped the billing service.
+Jan 2017 – now
+Staff Engineer at Initech
+• Leads the platform team.
+"""
+
+
+def test_reads_a_heading_stacked_over_its_dates() -> None:
+    """`Title` / `Employer` / `03/2014 - 11/2016`, numeric months included."""
+    first = extract_profile(STACKED_CV).experiences[0]
+
+    assert (first.title, first.organisation) == ("Software Engineer", "Umbrella Ltd")
+    assert (first.start_date, first.end_date) == (date(2014, 3, 1), date(2016, 11, 1))
+
+
+def test_reads_dates_written_above_the_heading() -> None:
+    """Dates first, then `Title at Employer`."""
+    second = extract_profile(STACKED_CV).experiences[1]
+
+    assert (second.title, second.organisation) == ("Staff Engineer", "Initech")
+    assert (second.start_date, second.end_date) == (date(2017, 1, 1), None)
+
+
+def test_rejoins_a_heading_that_wrapped_onto_the_dates_line() -> None:
+    """A narrow column wraps a long title onto the line that carries the dates."""
+    text = """EXPERIENCE
+Initech Labs, York — Principal Platform
+Engineer (Infrastructure) MAR 2021 - PRESENT
+Built things.
+"""
+    role = extract_profile(text).experiences[0]
+
+    assert role.organisation == "Initech Labs"
+    assert role.title == "Principal Platform Engineer (Infrastructure)"
+    assert role.start_date == date(2021, 3, 1)

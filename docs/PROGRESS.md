@@ -89,6 +89,145 @@ Roughly in priority order.
 
 ## Log
 
+### 2026-09-23 — Languages, portfolio, year-only education, application details
+
+Migration `a0b1c2d3e4f5` (schema only; defaults fill existing rows, then drop).
+
+- **Education `date_precision`** (`month` | `year`). Dates stay whole dates; `year`
+  means the month is not real, so the CV prints "2016 - 2018", or "2018" when start
+  and end share a year (courses, certifications). Found while importing a real CV that
+  gives years only: the app would otherwise print invented months. The form stores a
+  typed year as 1 January.
+- **Languages** (`profile_languages`, name + level: native/fluent/advanced/
+  intermediate/basic) and **Portfolio** (`portfolio_items`: title, url, description —
+  general so art works as well as code). Both on the profile page (own components, to
+  keep `profile.component` off its CSS budget), in generated CVs, in the export, and
+  as MCP tools under the `profile` scope. CV import reads languages from a
+  "Languages:" line or section — only entries with a stated level, so "Languages:
+  Python, Go" is not proposed; text is NFKC-normalised first (PDF ligatures: "ﬂuent").
+- **Duplicate-language bug caught by a test:** `_touch`'s UPDATE autoflushes the new
+  row, so the IntegrityError fired before the `try` around the commit. `_touch` now
+  sits inside it.
+- **Applications without a saved posting:** `ApplicationCreate` takes exactly one of
+  `job_posting_id` or `role` {title, company, source_url, location}; a role is stored
+  as a manual posting with an empty description. Plus `salary` and `next_step` (free
+  text). Driven by the maintainer's claude.ai tracker artifact, which had both and had
+  applications with no posting text.
+- **Platform `state`** (not_started / setting_up / active / paused / later), because
+  the same tracker kept one; "behind your profile" is shown only for active ones.
+
+Verified: `uv run nox` green; frontend lint, format, 76 tests, both builds green;
+containers rebuilt, migration applied, live MCP lists 38 tools.
+
+### 2026-09-23 — Platforms, salary per contract type, GitHub link
+
+Migration `f9a0b1c2d3e4` (moves data; round-trip checked on a seeded scratch DB).
+
+- **Salary expectations per contract type** replace `min_salary`/`salary_currency`:
+  `career_goals.salary_expectations` is a JSON list of `{employment_type, minimum,
+  target, currency, period}`, unique per (type, period). An existing floor migrates to
+  full-time/year. The welcome wizard still asks one number and writes only that row,
+  carrying the others through. **Salary is still not used in matching** — it never
+  was; it is stored for the user, the export and the agent.
+- **Job platforms (optional)**: `job_platforms` + `/platforms` CRUD + a Platforms page
+  and sidebar entry. Status is `up_to_date` / `outdated` / `unknown`, comparing the
+  user-stated `profile_updated_on` with `career_profiles.updated_at` **by day**. For
+  that to mean anything, every role/education/skill mutation now bumps the profile's
+  `updated_at` (`profile_service._touch`) — before, only the profile's own fields did.
+- **Applications carry `platform_id`** (dropdown when recording, editable per row),
+  and stats gain `by_platform` (reply rate, interviews, offers; "Not recorded" last).
+  Deleting a platform nulls the link in code too: SQLite ignores `ON DELETE SET NULL`.
+- **`github_url` split from `website_url`** (migration moves github.com websites).
+  A tailored CV shows GitHub only for development roles: a title with a developer
+  word, or "Engineer" plus ≥ 3 *known* technology terms in the posting — plain
+  `extract_keywords` output is not technology-only ("sales", "account"…), which the
+  first version got wrong. LinkedIn is always shown. Extraction proposes GitHub apart.
+- MCP: `list_platforms` (read), `add/update/delete_platform` (write scope — search
+  activity, not profile), `platform_id` on record/update application; instructions
+  mention GitHub-for-dev-roles and per-contract salaries.
+- Conflicts are **400** in this app (`error_handlers.py`), not 409 — follow it.
+- **Work-regime order now sorts postings.** `work_regimes` was documented best-first
+  but only membership counted. `MatchScore.preference_rank` (0 = first choice, then
+  second…, then unstated, then not chosen) is a sort key *before* the score —
+  `matching.ranking_key`, used by the MCP list and mirrored in the frontend's
+  `rankMatches` — deliberately not a score weight, so a strong hybrid match can never
+  overtake a weak remote one. The score itself is unchanged; the reason text names
+  the choice ("your second choice").
+
+Verified: `uv run nox` green (new tests: platforms, per-platform stats, GitHub rule,
+salary validation); frontend lint, format, 72 tests, `ng build` and mock build green;
+containers rebuilt, migration applied to the live DB, live MCP lists 32 tools.
+
+### 2026-09-23 — Agents may edit the profile (opt-in)
+
+- **Reversed a decision:** the MCP no longer refuses to edit the profile and goals.
+  The maintainer's reasoning: self-hosted, the user's own data, and many people run
+  an agent on a subscription (Claude Pro etc.) rather than paying for API access to
+  CV Pal's model — so the agent *is* their model, and making them retype a CV it has
+  already read is the friction. The user decides; the app warns.
+- **New scope `cvpal:profile`**, its own checkbox (`edit_profile` on token create),
+  never implied by `write`. Existing tokens keep what they had; scopes are fixed at
+  creation, so granting it means a new token. The settings screen shows a disclaimer
+  when ticked and lists each token's permissions.
+- **11 tools** (`update_profile`, `set_goals`, add/update/delete for roles, education
+  and skills) take the same Pydantic bodies as the app's forms and call the same router
+  handlers — same validation, same ownership checks. Deletes and `set_goals` (a
+  replace) carry `destructive_hint` so clients confirm them.
+- *Never fabricate* is now enforced by instruction, not by code: the server
+  instructions tell the agent to write only what the user said or their documents
+  say, show what it will write, and ask before deleting or replacing goals.
+- **Timestamps were naive in every response** (SQLite drops the zone). Claude Code
+  rejected `list_cvs` outright because the schema says RFC 3339 `date-time`. Now a
+  shared `UtcDatetime` type marks them UTC.
+
+### 2026-09-23 — MCP setup on a fresh machine
+
+- **Turning MCP on crashed the backend for anyone starting from the example `.env`.**
+  `.env.docker.example` ships `CV_PAL_LOCAL_ONLY=true`, and `mcp_enabled` with
+  `local_only` is refused at start-up — the container restart-loops and the frontend
+  waits on it. The example now has a commented `--- Agents (MCP) ---` block that names
+  the endpoint, where to create a token, and the local-only conflict.
+- **The MCP is not in the published images** (ghcr is 0.1.0). Until the next release,
+  using it means the build overlay:
+  `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
+- **CV import rewritten for single-column layouts.** The parser anchored on
+  `Employer, City — Title`, and on a CV with dates at the end of the heading line the
+  only dash was the date range's own: every role came back as title "Present", no
+  dates, and a later course's dates leaked into the last role. `_entries` now finds
+  headings first (`_find_headings`), in four layouts — dates at either end of the
+  heading line, on the line after it, under a stacked `Title` / `Employer`, or above
+  it — plus a heading that wrapped onto the dates line. `_resolve` then tells employer
+  from title by marker words (`ROLE_MARKERS`, `ORGANISATION_MARKERS`,
+  `INSTITUTION_MARKERS` in vocabulary) and falls back on position only when the words
+  say nothing. An employer-only heading above title-only headings is a group and
+  lends them its name. New section headings (`OTHER_HEADINGS`: projects, languages…)
+  end a role's text.
+- **Reflow now merges only one-word lines** (was ≤ 2 words). Two-word lines such as a
+  job title on its own line were being glued to the employer below. The two-column
+  CV the reflow exists for still reads the same.
+- **English only, deliberately.** Month names, "present" words and separators are
+  English. Institution markers keep the non-English names that were already there
+  ("universidade"…), because English CVs name foreign institutions.
+- **Extraction probes the model before enriching.** An unreachable model used to be
+  retried (3 attempts, each allowed the full completion timeout) before the
+  deterministic answer came back; now one 5 s probe decides.
+- **Import UI:** spinner and `aria-busy` while reading, "still reading" after 6 s;
+  the wizard's Next is disabled while the read runs; a one-line summary when dates or
+  names are missing; rows missing an employer/title are refused like undated ones
+  (the API would 422); education rows show dates.
+- **Test fixtures must be fictional.** No names, places, employers, degrees or date
+  patterns taken from the maintainer's own CV. Older fixtures still use Lisbon /
+  Porto / Portugal; replacing them is an open decision.
+
+Verified: `uv run nox` green; frontend lint, format check, 66 tests, `ng build` green
+(the profile and job-search style-budget warnings are pre-existing). Run against the
+real CVs this was reported on, locally, both layouts correct. Containers rebuilt;
+not yet re-imported through the UI.
+
+- Next: `docs/self-hosting.md` and the README do not mention the MCP at all; a
+  dogfooding session through the MCP (profile/goals are read-only there by design);
+  let a row be edited before it is added (today: add, then fix on the profile).
+
 ### 2026-09-22 — Audit, session hardening, doc clean-up
 
 - **Sessions moved to HttpOnly cookies.** The container build is same-origin, so the

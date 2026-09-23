@@ -54,10 +54,15 @@ from datetime import date
 from enum import StrEnum
 
 from cv_pal.analysis.keywords import Keyword, canonical, extract_keywords
-from cv_pal.analysis.vocabulary import SKILL_ALIASES
+from cv_pal.analysis.vocabulary import (
+    DEVELOPMENT_ROLE_MARKERS,
+    KNOWN_TERMS,
+    SKILL_ALIASES,
+)
 from cv_pal.constants import (
     DEFAULT_MAX_REPORTED_GAPS,
     DEFAULT_MAX_SURFACED_SKILLS_PER_ROLE,
+    DEFAULT_MIN_TECH_TERMS_FOR_CODE_LINKS,
 )
 
 # Case-preserving, because transform 2 quotes the posting's own spelling back. Mirrors
@@ -127,6 +132,24 @@ class EducationFact:
     start_date: date | None = None
     end_date: date | None = None
     grade: str | None = None
+    year_only: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class LanguageFact:
+    """A language the user speaks."""
+
+    name: str
+    level: str
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioFact:
+    """Something the user made."""
+
+    title: str
+    url: str | None = None
+    description: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,10 +168,13 @@ class ProfileFacts:
     location: str | None = None
     phone: str | None = None
     website_url: str | None = None
+    github_url: str | None = None
     linkedin_url: str | None = None
     experiences: tuple[ExperienceFact, ...] = field(default_factory=tuple)
     educations: tuple[EducationFact, ...] = field(default_factory=tuple)
     skills: tuple[SkillFact, ...] = field(default_factory=tuple)
+    languages: tuple[LanguageFact, ...] = field(default_factory=tuple)
+    portfolio: tuple[PortfolioFact, ...] = field(default_factory=tuple)
 
 
 class BlockKind(StrEnum):
@@ -269,8 +295,8 @@ def _month_year(value: date) -> str:
     return f"{_MONTHS[value.month - 1]} {value.year}"
 
 
-def _span(start: date | None, end: date | None) -> str:
-    """Render a date range, treating an absent end as ongoing.
+def _year_span(start: date | None, end: date | None) -> str:
+    """Render a range whose months are not known: "2016 - 2018", or "2018".
 
     Args:
         start: When it began.
@@ -279,6 +305,26 @@ def _span(start: date | None, end: date | None) -> str:
     Returns:
         The range, or an empty string when neither date is known.
     """
+    if start is None:
+        return str(end.year) if end else ""
+    if end is not None and end.year == start.year:
+        return str(start.year)
+    return f"{start.year} {_RANGE} {end.year if end else 'Present'}"
+
+
+def _span(start: date | None, end: date | None, *, year_only: bool = False) -> str:
+    """Render a date range, treating an absent end as ongoing.
+
+    Args:
+        start: When it began.
+        end: When it ended, or None for current.
+        year_only: Whether only the years are known, so no month may be printed.
+
+    Returns:
+        The range, or an empty string when neither date is known.
+    """
+    if year_only:
+        return _year_span(start, end)
     if start is None and end is None:
         return ""
     if start is None:
@@ -395,8 +441,35 @@ def _rank(skill: SkillFact, wanted: dict[str, Keyword]) -> tuple[int, float, str
     return (0, -keyword.weight, skill.name.casefold())
 
 
+def is_development_role(title: str | None, keywords: Sequence[Keyword]) -> bool:
+    """Decide whether a posting is for a role where a GitHub link belongs on the CV.
+
+    A title that says so settles it. "Engineer" alone does not — a sales or a civil
+    engineer has no use for one — so for those the posting's own demands decide: a
+    posting asking for several technologies the vocabulary knows is hiring someone who
+    writes code.
+
+    Args:
+        title: The posting's job title.
+        keywords: What the posting asks for, from `extract_keywords`.
+
+    Returns:
+        True when the CV should link the applicant's code.
+    """
+    words = set((title or "").casefold().replace("/", " ").split())
+    if words & DEVELOPMENT_ROLE_MARKERS:
+        return True
+    engineering = any(word.startswith("engineer") for word in words)
+    technologies = sum(1 for keyword in keywords if keyword.term in KNOWN_TERMS)
+    return engineering and technologies >= DEFAULT_MIN_TECH_TERMS_FOR_CODE_LINKS
+
+
 def tailor(
-    facts: ProfileFacts, job_description: str, *, company: str | None = None
+    facts: ProfileFacts,
+    job_description: str,
+    *,
+    company: str | None = None,
+    title: str | None = None,
 ) -> TailoredCv:
     """Render the profile as a CV aimed at one posting.
 
@@ -407,6 +480,8 @@ def tailor(
             list. A posting repeats the employer's name throughout, and the extractor
             has no way to know `A.Team` is a company rather than a technology — but the
             caller does, because it is a stored field.
+        title: The posting's job title, which decides whether the GitHub link is
+            shown. LinkedIn always is.
 
     Returns:
         The document, what was surfaced, and what is missing.
@@ -458,7 +533,9 @@ def tailor(
         if keyword.term not in covered and keyword.term not in ignored
     )[:DEFAULT_MAX_REPORTED_GAPS]
 
-    blocks = _blocks(facts, rendered, wanted)
+    blocks = _blocks(
+        facts, rendered, wanted, code_links=is_development_role(title, keywords)
+    )
     return TailoredCv(
         markdown=render_markdown(blocks),
         blocks=blocks,
@@ -473,6 +550,8 @@ def _blocks(
     facts: ProfileFacts,
     rendered: Sequence[tuple[SkillFact, str]],
     wanted: dict[str, Keyword],
+    *,
+    code_links: bool = False,
 ) -> tuple[Block, ...]:
     """Lay the facts out as a sequence of semantic blocks.
 
@@ -491,6 +570,7 @@ def _blocks(
         rendered: Evidenced skills in this posting's order, each with the wording to use
             — which is the user's own unless transform 2 substituted the posting's.
         wanted: The posting's terms, for choosing what to surface per role.
+        code_links: Whether to include the GitHub link.
 
     Returns:
         The document.
@@ -508,6 +588,7 @@ def _blocks(
             facts.email,
             facts.phone,
             facts.linkedin_url,
+            facts.github_url if code_links else None,
             facts.website_url,
         )
         if part
@@ -574,7 +655,11 @@ def _blocks(
             meta = [
                 part
                 for part in (
-                    _span(education.start_date, education.end_date),
+                    _span(
+                        education.start_date,
+                        education.end_date,
+                        year_only=education.year_only,
+                    ),
                     education.field_of_study,
                     education.grade,
                 )
@@ -582,6 +667,28 @@ def _blocks(
             ]
             if meta:
                 blocks.append(Block(BlockKind.META, _SEPARATOR.join(meta)))
+
+    if facts.portfolio:
+        blocks.append(Block(BlockKind.SECTION, "Portfolio"))
+        for item in facts.portfolio:
+            blocks.append(Block(BlockKind.ENTRY, item.title))
+            if item.url:
+                blocks.append(Block(BlockKind.META, item.url))
+            if item.description:
+                blocks.append(Block(BlockKind.BODY, item.description))
+
+    # Last, as a CV lists them: they matter to some roles, and every role reads them.
+    if facts.languages:
+        blocks += [
+            Block(BlockKind.SECTION, "Languages"),
+            Block(
+                BlockKind.BODY,
+                _SEPARATOR.join(
+                    f"{language.name} ({language.level})"
+                    for language in facts.languages
+                ),
+            ),
+        ]
 
     return tuple(blocks)
 
@@ -630,6 +737,7 @@ def content_values(facts: ProfileFacts) -> set[str]:
             facts.summary,
             facts.location,
             facts.website_url,
+            facts.github_url,
             facts.linkedin_url,
         )
         if value
@@ -657,6 +765,12 @@ def content_values(facts: ProfileFacts) -> set[str]:
             if value
         )
     values.update(skill.name for skill in facts.skills)
+    for language in facts.languages:
+        values.update((language.name, language.level))
+    for item in facts.portfolio:
+        values.update(
+            value for value in (item.title, item.url, item.description) if value
+        )
     return values
 
 

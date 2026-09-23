@@ -23,6 +23,7 @@ const EMPTY_STATS: ApplicationStatsResponse = {
   answerable: 0,
   reply_rate: null,
   needs_chasing: 0,
+  by_platform: [],
 };
 
 /**

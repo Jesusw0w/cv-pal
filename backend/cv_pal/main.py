@@ -22,6 +22,7 @@ from cv_pal.routers import (
     cvs,
     jobs,
     linkedin,
+    platforms,
     profile,
     reviews,
     users,
@@ -89,6 +90,7 @@ app.include_router(analysis.router)
 app.include_router(profile.router)
 app.include_router(jobs.router)
 app.include_router(applications.router)
+app.include_router(platforms.router)
 app.include_router(linkedin.router)
 # For agents, authenticated by personal access tokens. See cv_pal/mcp/server.py.
 app.mount(MOUNT_PATH, EnabledGate(mcp_app))

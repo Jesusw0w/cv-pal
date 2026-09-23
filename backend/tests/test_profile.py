@@ -328,6 +328,7 @@ async def test_import_from_cv_proposes_without_persisting(client: AsyncClient) -
         "experiences",
         "educations",
         "skills",
+        "languages",
     }
 
     # The blank test PDF yields nothing, which is a valid outcome — and either way the
@@ -336,6 +337,20 @@ async def test_import_from_cv_proposes_without_persisting(client: AsyncClient) -
     assert profile["experiences"] == []
     assert profile["educations"] == []
     assert profile["skills"] == []
+
+
+async def test_import_from_cv_does_not_wait_on_an_unavailable_model(
+    client: AsyncClient, fake_llm: FakeLLMClient
+) -> None:
+    """A model that fails its probe is not asked; the deterministic read comes back."""
+    fake_llm.unavailable = "The model provider could not be reached."
+    headers = await register_and_login(client)
+    cv_id = await upload_cv(client, headers)
+
+    response = await client.post(f"/profile/import-from-cv/{cv_id}", headers=headers)
+
+    assert response.status_code == 200
+    assert fake_llm.calls == []
 
 
 async def test_summary_is_a_proposal_and_is_not_saved(

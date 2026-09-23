@@ -77,4 +77,35 @@ describe('AgentAccessComponent', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('cvp_secret-value');
   });
+
+  it('warns before granting profile editing, and asks for it only when ticked', async () => {
+    const fixture = await render(true);
+    const component = fixture.componentInstance;
+    const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text()).not.toContain('a wrong entry ends up on a CV');
+
+    component.editProfile.set(true);
+    fixture.detectChanges();
+    expect(text()).toContain('a wrong entry ends up on a CV');
+
+    component.name.set('laptop');
+    component.password.set('a-long-enough-password');
+    component.create();
+    const request = http.expectOne((sent) => sent.method === 'POST');
+    expect(request.request.body).toMatchObject({ edit_profile: true, write: false });
+    request.flush({ ...LISTED, id: 2, scopes: 'cvpal:read cvpal:profile', token: 'cvp_x' });
+    TestBed.tick();
+    http
+      .expectOne((sent) => sent.url.endsWith('/users/me/tokens'))
+      .flush({ mcp_enabled: true, tokens: [LISTED] });
+    expect(component.editProfile()).toBe(false);
+  });
+
+  it('names every permission a token holds', async () => {
+    const fixture = await render(true);
+
+    expect(
+      fixture.componentInstance.permissions({ ...LISTED, scopes: 'cvpal:read cvpal:profile' }),
+    ).toBe('read, edit profile');
+  });
 });

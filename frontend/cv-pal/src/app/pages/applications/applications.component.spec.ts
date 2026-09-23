@@ -42,6 +42,48 @@ describe('ApplicationsComponent', () => {
     const posted = http.expectOne(
       (request) => request.method === 'POST' && request.url.endsWith('/applications'),
     );
-    expect(posted.request.body).toEqual({ job_posting_id: 7 });
+    expect(posted.request.body).toEqual({ job_posting_id: 7, platform_id: null });
+  });
+
+  it('records the platform chosen, and keeps it for the next one', () => {
+    // Several applications in a row usually go through the same place.
+    const fixture = TestBed.createComponent(ApplicationsComponent);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    fixture.componentInstance.through = 3;
+
+    fixture.componentInstance.record(7);
+
+    const posted = http.expectOne(
+      (request) => request.method === 'POST' && request.url.endsWith('/applications'),
+    );
+    expect(posted.request.body).toEqual({ job_posting_id: 7, platform_id: 3 });
+    expect(fixture.componentInstance.through).toBe(3);
+  });
+
+  it('records a role with no saved posting, with what was offered', () => {
+    // A recruiter's call leaves no posting behind; the application still counts.
+    const fixture = TestBed.createComponent(ApplicationsComponent);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    fixture.componentInstance.manual = {
+      title: 'Python Developer',
+      company: 'Initech',
+      url: '',
+      salary: '€40-45k',
+      next: 'Technical interview',
+    };
+
+    fixture.componentInstance.recordRole();
+
+    const posted = http.expectOne(
+      (request) => request.method === 'POST' && request.url.endsWith('/applications'),
+    );
+    expect(posted.request.body).toEqual({
+      role: { title: 'Python Developer', company: 'Initech', source_url: null },
+      platform_id: null,
+      salary: '€40-45k',
+      next_step: 'Technical interview',
+    });
   });
 });

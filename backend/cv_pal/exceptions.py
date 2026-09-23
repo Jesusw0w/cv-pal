@@ -13,6 +13,8 @@ from cv_pal.constants import (
     DEFAULT_ERROR_LINKEDIN_UNREADABLE,
     DEFAULT_ERROR_LLM_INVALID_RESPONSE,
     DEFAULT_ERROR_LLM_UNAVAILABLE,
+    DEFAULT_ERROR_PLATFORM_DUPLICATE,
+    DEFAULT_ERROR_PLATFORM_NOT_FOUND,
     DEFAULT_ERROR_POSTING_DUPLICATE,
     DEFAULT_ERROR_POSTING_NOT_FOUND,
     DEFAULT_ERROR_PROFILE_TOO_EMPTY,
@@ -179,6 +181,18 @@ class DuplicateApplicationError(ConflictError):
     """The user already recorded an application for this posting."""
 
     message = DEFAULT_ERROR_APPLICATION_DUPLICATE
+
+
+class PlatformNotFoundError(NotFoundError):
+    """No such job platform for this user."""
+
+    message = DEFAULT_ERROR_PLATFORM_NOT_FOUND
+
+
+class DuplicatePlatformError(ConflictError):
+    """The user already tracks a platform with this name."""
+
+    message = DEFAULT_ERROR_PLATFORM_DUPLICATE
 
 
 class UnsupportedJobUrlError(ValidationError):

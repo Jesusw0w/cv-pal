@@ -8,7 +8,7 @@ import { AnalysisService, rejectUpload } from '../../core/services/analysis.serv
 import { AuthService } from '../../core/services/auth.service';
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import { GoalsService } from '../../core/services/goals.service';
-import { CareerProfileUpdate, WorkRegime } from '../../shared/models/api.model';
+import { CareerProfileUpdate, SalaryExpectation, WorkRegime } from '../../shared/models/api.model';
 import { ImportPanelComponent } from '../profile/import-panel.component';
 
 const REGIMES: { value: WorkRegime; label: string }[] = [
@@ -126,7 +126,16 @@ const ROLE_SUGGESTIONS = 2;
 
             <div class="actions">
               <button type="button" class="ghost" (click)="step.set(1)">Back</button>
-              <button type="button" class="primary" (click)="toAboutYou()">Next</button>
+              <!-- Held while the CV is read: moving on early carries an empty read into
+                   the next step, and the user never sees what was found. -->
+              <button
+                type="button"
+                class="primary"
+                [disabled]="importPanel()?.reading()"
+                (click)="toAboutYou()"
+              >
+                {{ importPanel()?.reading() ? 'Reading…' : 'Next' }}
+              </button>
             </div>
           </section>
         }
@@ -508,7 +517,7 @@ export class WelcomeComponent {
   readonly profile = inject(CareerProfileService);
 
   /** Step 2's panel, read on the way out so step 3 starts from what the CV said. */
-  private readonly importPanel = viewChild(ImportPanelComponent);
+  protected readonly importPanel = viewChild(ImportPanelComponent);
 
   readonly steps = [0, 1, 2, 3, 4];
   readonly regimes = REGIMES;
@@ -579,8 +588,9 @@ export class WelcomeComponent {
       for (const regime of goals.work_regimes) {
         this.regimes_.add(regime);
       }
-      this.minSalary.set(goals.min_salary?.toString() ?? '');
-      this.currency.set(goals.salary_currency ?? 'EUR');
+      const annual = goals.salary_expectations.find(isAnnualSalary);
+      this.minSalary.set(annual?.minimum.toString() ?? '');
+      this.currency.set(annual?.currency ?? 'EUR');
     });
   }
 
@@ -782,9 +792,25 @@ export class WelcomeComponent {
         regime_non_negotiable: regimes.length > 0 && stored.regime_non_negotiable,
         work_locations: stored.work_locations,
         location_non_negotiable: stored.location_non_negotiable,
-        min_salary: floor,
-        salary_currency: floor === null ? null : this.currency().trim() || 'EUR',
-        salary_non_negotiable: floor !== null && stored.salary_non_negotiable,
+        // The wizard asks for one figure: the employee annual salary. Expectations for
+        // other contract types, set on the goals screen, are carried through untouched.
+        salary_expectations: [
+          ...(floor === null
+            ? []
+            : [
+                {
+                  employment_type: 'full_time' as const,
+                  minimum: floor,
+                  target: stored.salary_expectations.find(isAnnualSalary)?.target ?? null,
+                  currency: this.currency().trim().toUpperCase() || 'EUR',
+                  period: 'year' as const,
+                },
+              ]),
+          ...stored.salary_expectations.filter((expectation) => !isAnnualSalary(expectation)),
+        ],
+        salary_non_negotiable:
+          (floor !== null || stored.salary_expectations.some((e) => !isAnnualSalary(e))) &&
+          stored.salary_non_negotiable,
       })
       .subscribe({
         next: () => {
@@ -817,4 +843,9 @@ function detailOf(error: unknown, fallback: string): string {
     }
   }
   return fallback;
+}
+
+/** The employee annual salary: the one figure the wizard asks for. */
+function isAnnualSalary(expectation: SalaryExpectation): boolean {
+  return expectation.employment_type === 'full_time' && expectation.period === 'year';
 }

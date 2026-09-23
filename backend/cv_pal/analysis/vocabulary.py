@@ -394,6 +394,7 @@ EDUCATION_MARKERS: Final[Set[str]] = frozenset(
         "bsc",
         "college",
         "course",
+        "courses",
         "degree",
         "diploma",
         "doctorate",
@@ -550,4 +551,151 @@ SUMMARY_HEADINGS: Final[tuple[str, ...]] = (
     "personal statement",
     "objective",
     "career objective",
+)
+
+# Headings that end a role's text without holding anything extraction reads.
+OTHER_HEADINGS: Final[tuple[str, ...]] = (
+    "projects",
+    "side projects",
+    "personal projects",
+    "certifications",
+    "certificates",
+    "courses",
+    "languages",
+    "interests",
+    "hobbies",
+    "awards",
+    "achievements",
+    "publications",
+    "volunteering",
+    "volunteer experience",
+    "references",
+)
+
+# The half of an entry heading that names the institution rather than the qualification.
+INSTITUTION_MARKERS: Final[Set[str]] = frozenset(
+    {
+        "academy",
+        "college",
+        "escola",
+        "faculdade",
+        "institute",
+        "instituto",
+        "polytechnic",
+        "school",
+        "universidad",
+        "universidade",
+        "universitat",
+        "universite",
+        "university",
+    }
+)
+
+# Words that mark a heading fragment as an employer. Company suffixes, and the nouns
+# employers put in their names.
+ORGANISATION_MARKERS: Final[Set[str]] = INSTITUTION_MARKERS | frozenset(
+    {
+        "ag",
+        "bank",
+        "bv",
+        "co",
+        "company",
+        "corp",
+        "corporation",
+        "gmbh",
+        "group",
+        "inc",
+        "labs",
+        "lda",
+        "llc",
+        "llp",
+        "ltd",
+        "plc",
+        "s.a",
+        "sa",
+        "sarl",
+        "services",
+        "solutions",
+        "technologies",
+    }
+)
+
+# Words that mark a heading fragment as a job title.
+ROLE_MARKERS: Final[Set[str]] = frozenset(
+    {
+        "accountant",
+        "administrator",
+        "advisor",
+        "adviser",
+        "analyst",
+        "apprentice",
+        "architect",
+        "assistant",
+        "associate",
+        "auditor",
+        "ceo",
+        "cfo",
+        "consultant",
+        "contractor",
+        "controller",
+        "coordinator",
+        "cto",
+        "designer",
+        "developer",
+        "director",
+        "editor",
+        "engineer",
+        "executive",
+        "founder",
+        "co-founder",
+        "freelance",
+        "freelancer",
+        "head",
+        "intern",
+        "internship",
+        "lead",
+        "lecturer",
+        "manager",
+        "officer",
+        "operator",
+        "owner",
+        "partner",
+        "president",
+        "professor",
+        "programmer",
+        "representative",
+        "researcher",
+        "scientist",
+        "specialist",
+        "supervisor",
+        "teacher",
+        "technician",
+        "tester",
+        "trainee",
+        "traineeship",
+        "tutor",
+        "vp",
+        "writer",
+    }
+)
+
+
+# Job-title words that on their own make a role a development one, so a generated CV
+# links the applicant's GitHub. "Engineer" is not here: a sales or civil engineer has no
+# use for it, and `tailored_cv` decides those from what the posting asks for instead.
+DEVELOPMENT_ROLE_MARKERS: Final[Set[str]] = frozenset(
+    {
+        "back-end",
+        "backend",
+        "developer",
+        "devops",
+        "front-end",
+        "frontend",
+        "full-stack",
+        "fullstack",
+        "programmer",
+        "sre",
+        "software",
+        "web",
+    }
 )

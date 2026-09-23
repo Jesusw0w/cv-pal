@@ -13,8 +13,7 @@ const EMPTY_GOALS: CareerGoalsResponse = {
   regime_non_negotiable: false,
   work_locations: [],
   location_non_negotiable: false,
-  min_salary: null,
-  salary_currency: null,
+  salary_expectations: [],
   salary_non_negotiable: false,
 };
 

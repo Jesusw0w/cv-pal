@@ -12,7 +12,10 @@ import {
   EducationResponse,
   ExperienceResponse,
   JobBoardConnectionResponse,
+  JobPlatformResponse,
   JobPostingResponse,
+  LanguageLevel,
+  PortfolioItemResponse,
   LinkedInProfileResponse,
   CoverLetterDraftResponse,
   ProfileSummaryResponse,
@@ -34,6 +37,7 @@ import {
   MOCK_LINKEDIN_PROFILE,
   MOCK_LINKEDIN_REVIEW,
   MOCK_PARSEABILITY,
+  MOCK_PLATFORMS,
   MOCK_SCORED_JOBS,
   MOCK_SUGGESTIONS,
   MOCK_TOKEN,
@@ -84,6 +88,10 @@ export class MockBackend {
   private tokenCounter = 0;
   private apiTokens: ApiTokenResponse[] = [];
   private apiTokenCounter = 0;
+  private platforms: JobPlatformResponse[] = [];
+  private nextPlatformId = 100;
+  /** When the profile last changed, which is what a platform's status compares against. */
+  private profileChangedOn = '2026-02-01';
 
   constructor() {
     this.reset();
@@ -102,6 +110,9 @@ export class MockBackend {
     this.nextJobId = 100;
     this.sources = [];
     this.applications = [];
+    this.platforms = structuredClone(MOCK_PLATFORMS);
+    this.nextPlatformId = 100;
+    this.profileChangedOn = '2026-02-01';
     this.letters = new Map();
     this.nextCvId = Math.max(0, ...this.cvs.map((c) => c.id)) + 1;
     this.nextSuggestionId = Math.max(0, ...this.suggestions.map((s) => s.id)) + 1;
@@ -116,6 +127,53 @@ export class MockBackend {
   handle(request: HttpRequest<unknown>): MockResult | null {
     const path = normalisePath(request.url);
     const { method } = request;
+
+    // Any write to the profile moves the date platform statuses are compared against.
+    if (method !== 'GET' && path.startsWith('/profile') && !path.startsWith('/profile/goals')) {
+      this.profileChangedOn = today();
+    }
+
+    if (path === '/platforms' && method === 'GET') {
+      return { status: 200, body: this.platforms.map((p) => this.withStatus(p)) };
+    }
+
+    if (path === '/platforms' && method === 'POST') {
+      const payload = (request.body ?? {}) as Partial<JobPlatformResponse>;
+      const name = (payload.name ?? '').trim();
+      if (this.platforms.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+        throw new MockHttpError(400, 'You already track a platform by that name');
+      }
+      const created: JobPlatformResponse = {
+        id: this.nextPlatformId++,
+        name,
+        state: payload.state ?? 'active',
+        profile_url: payload.profile_url ?? null,
+        profile_updated_on: payload.profile_updated_on ?? null,
+        notes: payload.notes ?? null,
+        status: 'unknown',
+      };
+      this.platforms = [...this.platforms, created].sort((a, b) => a.name.localeCompare(b.name));
+      return { status: 201, body: this.withStatus(created) };
+    }
+
+    const platformId = matchId(path, '/platforms');
+    if (platformId !== null && (method === 'PATCH' || method === 'DELETE')) {
+      const found = this.platforms.find((p) => p.id === platformId);
+      if (!found) {
+        throw new MockHttpError(404, 'Platform not found');
+      }
+      if (method === 'DELETE') {
+        this.platforms = this.platforms.filter((p) => p.id !== platformId);
+        for (const application of this.applications) {
+          if (application.platform_id === platformId) {
+            application.platform_id = null;
+          }
+        }
+        return { status: 204, body: null };
+      }
+      Object.assign(found, request.body ?? {});
+      return { status: 200, body: this.withStatus(found) };
+    }
 
     if (method === 'GET' && (path === '/health' || path === '/health/live')) {
       return { status: 200, body: { status: 'ok' } };
@@ -373,6 +431,37 @@ export class MockBackend {
     if (method === 'POST' && path === '/profile/skills') {
       return { status: 201, body: this.addSkill(request.body) };
     }
+    if (method === 'POST' && path === '/profile/languages') {
+      const payload = (request.body ?? {}) as { name?: string; level?: LanguageLevel };
+      const name = (payload.name ?? '').trim();
+      if (this.profile.languages.some((l) => l.name.toLowerCase() === name.toLowerCase())) {
+        throw new MockHttpError(400, 'That language is already on your profile');
+      }
+      const created = { id: this.nextProfileChildId++, name, level: payload.level ?? 'fluent' };
+      this.profile = { ...this.profile, languages: [...this.profile.languages, created] };
+      return { status: 201, body: created };
+    }
+    if (method === 'POST' && path === '/profile/portfolio') {
+      const payload = (request.body ?? {}) as Partial<PortfolioItemResponse>;
+      const created: PortfolioItemResponse = {
+        id: this.nextProfileChildId++,
+        title: payload.title ?? '',
+        url: payload.url ?? null,
+        description: payload.description ?? null,
+      };
+      this.profile = { ...this.profile, portfolio: [...this.profile.portfolio, created] };
+      return { status: 201, body: created };
+    }
+    for (const key of ['languages', 'portfolio'] as const) {
+      const id = matchId(path, `/profile/${key}`);
+      if (id !== null && method === 'DELETE') {
+        this.profile = {
+          ...this.profile,
+          [key]: (this.profile[key] as { id: number }[]).filter((item) => item.id !== id),
+        };
+        return { status: 204, body: null };
+      }
+    }
 
     for (const key of ['experiences', 'educations', 'skills'] as const) {
       const id = matchId(path, `/profile/${key}`);
@@ -488,7 +577,11 @@ export class MockBackend {
       id: this.apiTokenCounter,
       name: payload.name ?? 'agent',
       display_hint: secret.slice(0, 8),
-      scopes: payload.write ? 'cvpal:read cvpal:write' : 'cvpal:read',
+      scopes: [
+        'cvpal:read',
+        ...(payload.write ? ['cvpal:write'] : []),
+        ...(payload.edit_profile ? ['cvpal:profile'] : []),
+      ].join(' '),
       expires_at: new Date(Date.now() + (payload.expires_in_days ?? 90) * 86_400_000).toISOString(),
       last_used_at: null,
       created_at: new Date().toISOString(),
@@ -751,6 +844,8 @@ export class MockBackend {
       match: {
         score: 61,
         blocked_by: null,
+        // Remote-then-hybrid goals and a posting that does not say: after both.
+        preference_rank: 2,
         reasons: [
           { label: 'Skills 55/100', detail: 'Scored against your profile by the API.' },
           { label: 'Title 80/100', detail: 'Against the roles you are targeting.' },
@@ -795,6 +890,7 @@ export class MockBackend {
       field_of_study: payload.field_of_study ?? null,
       start_date: payload.start_date ?? null,
       end_date: payload.end_date ?? null,
+      date_precision: payload.date_precision ?? 'month',
       grade: payload.grade ?? null,
     };
     this.profile = {
@@ -852,9 +948,44 @@ export class MockBackend {
     return cv;
   }
 
-  /** Record an application against a saved posting. */
+  /** Record an application against a saved posting, or the role alone. */
   private recordApplication(body: unknown): ApplicationResponse {
-    const payload = (body ?? {}) as { job_posting_id?: number; cv_id?: number | null };
+    const payload = (body ?? {}) as {
+      job_posting_id?: number;
+      role?: { title: string; company?: string | null; source_url?: string | null };
+      cv_id?: number | null;
+      platform_id?: number | null;
+      salary?: string | null;
+      next_step?: string | null;
+    };
+    if (payload.role) {
+      // The API stores the role as a posting with no text; so does the demo.
+      const posting: JobPostingResponse = {
+        id: this.nextJobId++,
+        source: 'manual',
+        source_url: payload.role.source_url ?? null,
+        title: payload.role.title,
+        company: payload.role.company ?? null,
+        location: null,
+        description: '',
+        employment_type: null,
+        created_at: new Date().toISOString(),
+      };
+      this.jobs = [
+        ...this.jobs,
+        {
+          posting,
+          match: {
+            score: 0,
+            blocked_by: null,
+            reasons: [],
+            missing_required: [],
+            preference_rank: 2,
+          },
+        },
+      ];
+      payload.job_posting_id = posting.id;
+    }
     const entry = this.jobs.find((e) => e.posting.id === payload.job_posting_id);
     if (!entry) {
       throw new MockHttpError(404, 'Job posting not found');
@@ -868,6 +999,9 @@ export class MockBackend {
       applied_at: today(),
       status_changed_at: today(),
       cv_id: payload.cv_id ?? null,
+      platform_id: payload.platform_id ?? null,
+      salary: payload.salary ?? null,
+      next_step: payload.next_step ?? null,
       notes: null,
       posting: entry.posting,
       days_since_applied: 0,
@@ -875,6 +1009,17 @@ export class MockBackend {
     };
     this.applications = [created, ...this.applications];
     return created;
+  }
+
+  /** The same rule as the API: behind when the profile changed after the platform was. */
+  private withStatus(platform: JobPlatformResponse): JobPlatformResponse {
+    const updated = platform.profile_updated_on;
+    const status = !updated
+      ? 'unknown'
+      : updated >= this.profileChangedOn
+        ? 'up_to_date'
+        : 'outdated';
+    return { ...platform, status };
   }
 
   /** Recompute the two fields the real API derives from today's date. */
@@ -900,19 +1045,50 @@ export class MockBackend {
     for (const application of all) {
       byStatus[application.status] += 1;
     }
-    const replied = all.filter((a) =>
-      ['interviewing', 'offer', 'rejected'].includes(a.status),
-    ).length;
-    const answerable = all.filter(
-      (a) => a.days_since_applied > 14 || ['interviewing', 'offer', 'rejected'].includes(a.status),
-    ).length;
+    const replies = (group: ApplicationResponse[]) => {
+      const replied = group.filter((a) =>
+        ['interviewing', 'offer', 'rejected'].includes(a.status),
+      ).length;
+      const answerable = group.filter(
+        (a) =>
+          a.days_since_applied > 14 || ['interviewing', 'offer', 'rejected'].includes(a.status),
+      ).length;
+      return {
+        replied,
+        answerable,
+        reply_rate: answerable ? Math.round((replied / answerable) * 100) : null,
+      };
+    };
+    const groups = new Map<number | null, ApplicationResponse[]>();
+    for (const application of all) {
+      groups.set(application.platform_id, [
+        ...(groups.get(application.platform_id) ?? []),
+        application,
+      ]);
+    }
+    const byPlatform = [...groups.entries()]
+      .map(([platformId, group]) => ({
+        platform_id: platformId,
+        name:
+          platformId === null
+            ? 'Not recorded'
+            : (this.platforms.find((p) => p.id === platformId)?.name ?? 'Unknown'),
+        total: group.length,
+        ...replies(group),
+        interviews: group.filter((a) => ['interviewing', 'offer'].includes(a.status)).length,
+        offers: group.filter((a) => a.status === 'offer').length,
+      }))
+      .sort(
+        (a, b) =>
+          Number(a.platform_id === null) - Number(b.platform_id === null) ||
+          (b.reply_rate ?? -1) - (a.reply_rate ?? -1),
+      );
     return {
       total: all.length,
       by_status: byStatus,
-      replied,
-      answerable,
-      reply_rate: answerable ? Math.round((replied / answerable) * 100) : null,
+      ...replies(all),
       needs_chasing: all.filter((a) => a.needs_chasing).length,
+      by_platform: byPlatform,
     };
   }
 

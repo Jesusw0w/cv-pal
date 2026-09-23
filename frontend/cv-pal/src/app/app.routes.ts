@@ -72,6 +72,12 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'platforms',
+        data: { title: 'Platforms' },
+        loadComponent: () =>
+          import('./pages/platforms/platforms.component').then((m) => m.PlatformsComponent),
+      },
+      {
         path: 'linkedin',
         data: { title: 'LinkedIn' },
         loadComponent: () =>

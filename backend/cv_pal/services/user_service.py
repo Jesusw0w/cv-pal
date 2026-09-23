@@ -108,12 +108,16 @@ def _account_query(user_id: int) -> Select[tuple[User]]:
             selectinload(User.api_tokens),
             selectinload(User.career_profile).selectinload(CareerProfile.experiences),
             selectinload(User.career_profile).selectinload(CareerProfile.educations),
+            selectinload(User.career_profile).selectinload(CareerProfile.languages),
+            selectinload(User.career_profile).selectinload(CareerProfile.portfolio),
             selectinload(User.career_profile)
             .selectinload(CareerProfile.skills)
             .selectinload(Skill.evidence),
             selectinload(User.career_goals),
             selectinload(User.cover_letters),
             selectinload(User.applications).selectinload(Application.posting),
+            selectinload(User.applications).selectinload(Application.platform),
+            selectinload(User.job_platforms),
             selectinload(User.job_postings),
             selectinload(User.job_board_connections),
             selectinload(User.linkedin_profile),
@@ -168,6 +172,7 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
             "location": profile.location,
             "phone": profile.phone,
             "website_url": profile.website_url,
+            "github_url": profile.github_url,
             "linkedin_url": profile.linkedin_url,
             "experiences": _rows(
                 profile.experiences,
@@ -186,8 +191,11 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
                 "field_of_study",
                 "start_date",
                 "end_date",
+                "date_precision",
                 "grade",
             ),
+            "languages": _rows(profile.languages, "name", "level"),
+            "portfolio": _rows(profile.portfolio, "title", "url", "description"),
             "skills": [
                 {
                     "name": skill.name,
@@ -212,8 +220,7 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
             "regime_non_negotiable": goals.regime_non_negotiable,
             "work_locations": list(goals.work_locations),
             "location_non_negotiable": goals.location_non_negotiable,
-            "min_salary": goals.min_salary,
-            "salary_currency": goals.salary_currency,
+            "salary_expectations": list(goals.salary_expectations),
             "salary_non_negotiable": goals.salary_non_negotiable,
         },
         "documents": [
@@ -254,10 +261,21 @@ async def export_account(db: AsyncSession, *, user: User) -> dict[str, Any]:
                 "status": application.status,
                 "applied_at": application.applied_at,
                 "status_changed_at": application.status_changed_at,
+                "platform": application.platform.name if application.platform else None,
+                "salary": application.salary,
+                "next_step": application.next_step,
                 "notes": application.notes,
             }
             for application in account.applications
         ],
+        "job_platforms": _rows(
+            account.job_platforms,
+            "name",
+            "state",
+            "profile_url",
+            "profile_updated_on",
+            "notes",
+        ),
         "job_board_connections": _rows(
             account.job_board_connections, "source", "identifier", "label"
         ),

@@ -18,18 +18,21 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from cv_pal.constants import (
     DEFAULT_API_TOKEN_DISPLAY_CHARS,
     DEFAULT_API_TOKEN_NAME_MAX_LENGTH,
+    DEFAULT_APPLICATION_SALARY_MAX_LENGTH,
     DEFAULT_COMPANY_MAX_LENGTH,
     DEFAULT_CONTENT_HASH_LENGTH,
-    DEFAULT_CURRENCY_CODE_LENGTH,
     DEFAULT_EMAIL_MAX_LENGTH,
     DEFAULT_FILENAME_MAX_LENGTH,
     DEFAULT_HASHED_PASSWORD_LENGTH,
     DEFAULT_HEADLINE_MAX_LENGTH,
+    DEFAULT_LANGUAGE_NAME_MAX_LENGTH,
+    DEFAULT_LEVEL_MAX_LENGTH,
     DEFAULT_LOCATION_MAX_LENGTH,
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_ORGANISATION_MAX_LENGTH,
     DEFAULT_PATH_MAX_LENGTH,
     DEFAULT_PHONE_MAX_LENGTH,
+    DEFAULT_PLATFORM_NAME_MAX_LENGTH,
     DEFAULT_SKILL_CATEGORY_MAX_LENGTH,
     DEFAULT_SKILL_NAME_MAX_LENGTH,
     DEFAULT_SOURCE_REF_MAX_LENGTH,
@@ -88,6 +91,11 @@ class User(Base):
     )
     applications: Mapped[list[Application]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
+    )
+    job_platforms: Mapped[list[JobPlatform]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="JobPlatform.name",
     )
     job_postings: Mapped[list[JobPosting]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
@@ -225,6 +233,8 @@ class CareerProfile(Base):
     # fails that check every time it is generated.
     phone: Mapped[str | None] = mapped_column(String(DEFAULT_PHONE_MAX_LENGTH))
     website_url: Mapped[str | None] = mapped_column(String(DEFAULT_URL_MAX_LENGTH))
+    # Separate from the website because a CV shows it only for development roles.
+    github_url: Mapped[str | None] = mapped_column(String(DEFAULT_URL_MAX_LENGTH))
     # Stored, never fetched — see docs/linkedin-import.md.
     linkedin_url: Mapped[str | None] = mapped_column(String(DEFAULT_URL_MAX_LENGTH))
     created_at: Mapped[datetime] = mapped_column(
@@ -249,6 +259,16 @@ class CareerProfile(Base):
         back_populates="profile",
         cascade="all, delete-orphan",
         order_by="Skill.name",
+    )
+    languages: Mapped[list[ProfileLanguage]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="ProfileLanguage.id",
+    )
+    portfolio: Mapped[list[PortfolioItem]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="PortfolioItem.id",
     )
 
 
@@ -285,9 +305,12 @@ class CareerGoals(Base):
     work_locations: Mapped[list[str]] = mapped_column(JSON, default=list)
     location_non_negotiable: Mapped[bool] = mapped_column(default=False)
 
-    min_salary: Mapped[int | None] = mapped_column()
-    salary_currency: Mapped[str | None] = mapped_column(
-        String(DEFAULT_CURRENCY_CODE_LENGTH)
+    # One per kind of contract, because they are not comparable: a day rate and an
+    # annual salary for the same person differ by more than the arithmetic, since a
+    # contractor pays for their own holidays, pension and gaps between contracts.
+    # Each is `{employment_type, minimum, target, currency, period}`.
+    salary_expectations: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, default=list
     )
     salary_non_negotiable: Mapped[bool] = mapped_column(default=False)
 
@@ -417,6 +440,17 @@ class Application(Base):
     cv_id: Mapped[int | None] = mapped_column(
         ForeignKey("cvs.id", ondelete="SET NULL"), index=True
     )
+    # Where it was sent through, for reply rates per platform. Optional: plenty of
+    # applications go straight to a company's own careers page.
+    platform_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_platforms.id", ondelete="SET NULL"), index=True
+    )
+    # What was offered, as written ("€3.1-3.3k/month"): bands come in every shape.
+    salary: Mapped[str | None] = mapped_column(
+        String(DEFAULT_APPLICATION_SALARY_MAX_LENGTH)
+    )
+    # What happens next, e.g. "Interview 25 Sep" or "Follow up mid-November".
+    next_step: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[ApplicationStatus] = mapped_column(
         String(DEFAULT_STATUS_MAX_LENGTH), default=ApplicationStatus.APPLIED
@@ -439,6 +473,39 @@ class Application(Base):
 
     user: Mapped[User] = relationship(back_populates="applications")
     posting: Mapped[JobPosting] = relationship()
+    platform: Mapped[JobPlatform | None] = relationship()
+
+
+class JobPlatform(Base):
+    """A job platform the user keeps a profile on — LinkedIn, Indeed, Wellfound.
+
+    Entirely optional. It answers two questions: which platforms still show an older
+    version of the profile, and which ones actually produce replies.
+    """
+
+    __tablename__ = "job_platforms"
+    __table_args__ = (UniqueConstraint("user_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(DEFAULT_PLATFORM_NAME_MAX_LENGTH))
+    # Setting a profile up is work in stages; "later" is a decision, not a gap.
+    state: Mapped[str] = mapped_column(
+        String(DEFAULT_LEVEL_MAX_LENGTH), default="active"
+    )
+    # The user's own profile page there, when they have one.
+    profile_url: Mapped[str | None] = mapped_column(String(DEFAULT_URL_MAX_LENGTH))
+    # When the user last brought the platform's copy of their profile up to date. A
+    # date the user states, not one observed: nothing here logs in anywhere.
+    profile_updated_on: Mapped[date | None]
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    user: Mapped[User] = relationship(back_populates="job_platforms")
 
 
 class CoverLetter(Base):
@@ -548,12 +615,52 @@ class Education(Base):
     field_of_study: Mapped[str | None] = mapped_column(String(DEFAULT_TITLE_MAX_LENGTH))
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
+    # Dates are stored whole either way; this says whether the month in them is real.
+    date_precision: Mapped[str] = mapped_column(
+        String(DEFAULT_LEVEL_MAX_LENGTH), default="month"
+    )
     grade: Mapped[str | None] = mapped_column(String(DEFAULT_SKILL_CATEGORY_MAX_LENGTH))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     profile: Mapped[CareerProfile] = relationship(back_populates="educations")
+
+
+class ProfileLanguage(Base):
+    """A language the user speaks, and how well."""
+
+    __tablename__ = "profile_languages"
+    __table_args__ = (UniqueConstraint("profile_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("career_profiles.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(DEFAULT_LANGUAGE_NAME_MAX_LENGTH))
+    level: Mapped[str] = mapped_column(String(DEFAULT_LEVEL_MAX_LENGTH))
+
+    profile: Mapped[CareerProfile] = relationship(back_populates="languages")
+
+
+class PortfolioItem(Base):
+    """Something the user made that can be shown: a project, a game, a design.
+
+    Deliberately general — a repository and an illustration are both a title, a link
+    and a sentence — so the section serves a developer and an artist alike.
+    """
+
+    __tablename__ = "portfolio_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("career_profiles.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(DEFAULT_TITLE_MAX_LENGTH))
+    url: Mapped[str | None] = mapped_column(String(DEFAULT_URL_MAX_LENGTH))
+    description: Mapped[str | None] = mapped_column(Text)
+
+    profile: Mapped[CareerProfile] = relationship(back_populates="portfolio")
 
 
 class Skill(Base):

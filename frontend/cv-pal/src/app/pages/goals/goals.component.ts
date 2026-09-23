@@ -3,7 +3,12 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { GoalsService } from '../../core/services/goals.service';
-import { WorkRegime } from '../../shared/models/api.model';
+import {
+  EmploymentType,
+  SalaryExpectation,
+  SalaryPeriod,
+  WorkRegime,
+} from '../../shared/models/api.model';
 
 const REGIMES: { value: WorkRegime; label: string }[] = [
   { value: 'remote', label: 'Remote' },
@@ -32,6 +37,35 @@ const COMMON_PLACES = [
   'Oceania',
   'Middle East',
 ] as const;
+
+/** The contract types a salary expectation can be for, in the words the form uses. */
+const CONTRACT_TYPES: { value: EmploymentType; label: string }[] = [
+  { value: 'full_time', label: 'Employee' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'freelance', label: 'Freelance' },
+];
+
+const PERIODS: { value: SalaryPeriod; label: string }[] = [
+  { value: 'year', label: 'per year' },
+  { value: 'month', label: 'per month' },
+  { value: 'day', label: 'per day' },
+  { value: 'hour', label: 'per hour' },
+];
+
+/** One salary row as the form holds it: numbers stay null until typed. */
+interface SalaryRow {
+  employment_type: EmploymentType;
+  minimum: number | null;
+  target: number | null;
+  currency: string;
+  period: SalaryPeriod;
+}
+
+/** A number the user actually typed, or null for an empty or cleared box. */
+function typed(value: number | null): number | null {
+  return value === null || Number.isNaN(value) ? null : value;
+}
 
 /** Non-empty trimmed lines, in order. */
 function linesOf(text: string): string[] {
@@ -165,29 +199,69 @@ function linesOf(text: string): string[] {
         </section>
 
         <section class="field">
-          <h3>Salary floor</h3>
-          <p class="hint">Optional. A number without a currency cannot be compared.</p>
-          <div class="salary">
-            <input
-              type="number"
-              min="0"
-              [(ngModel)]="minSalary"
-              name="minSalary"
-              placeholder="65000"
-              aria-label="Minimum salary"
-            />
-            <input
-              [(ngModel)]="currency"
-              name="currency"
-              maxlength="3"
-              placeholder="EUR"
-              aria-label="Currency"
-              class="currency"
-            />
-          </div>
+          <h3>Salary</h3>
+          <p class="hint">
+            Optional, and one per kind of contract: a contractor's day rate pays for their own
+            holidays and the gaps between contracts, so it is not the employee salary divided by
+            working days. The minimum is your floor; the target is what you aim for.
+          </p>
+          @for (row of salaries; track $index; let i = $index) {
+            <div class="salary">
+              <select
+                [(ngModel)]="row.employment_type"
+                [name]="'type' + i"
+                aria-label="Contract type"
+              >
+                @for (type of contractTypes; track type.value) {
+                  <option [value]="type.value">{{ type.label }}</option>
+                }
+              </select>
+              <input
+                type="number"
+                min="0"
+                [(ngModel)]="row.minimum"
+                [name]="'minimum' + i"
+                placeholder="Minimum"
+                aria-label="Minimum"
+              />
+              <input
+                type="number"
+                min="0"
+                [(ngModel)]="row.target"
+                [name]="'target' + i"
+                placeholder="Target"
+                aria-label="Target (optional)"
+              />
+              <input
+                [(ngModel)]="row.currency"
+                [name]="'currency' + i"
+                maxlength="3"
+                placeholder="EUR"
+                aria-label="Currency"
+                class="currency"
+              />
+              <select [(ngModel)]="row.period" [name]="'period' + i" aria-label="Period">
+                @for (period of periods; track period.value) {
+                  <option [value]="period.value">{{ period.label }}</option>
+                }
+              </select>
+              <button
+                type="button"
+                class="remove"
+                [attr.aria-label]="'Remove this salary row'"
+                (click)="removeSalary(i)"
+              >
+                Remove
+              </button>
+            </div>
+          }
+          <button type="button" class="add-row" (click)="addSalary()">+ Add a contract type</button>
           <label class="strict">
             <input type="checkbox" [(ngModel)]="salaryStrict" name="salaryStrict" />
-            <span><strong>Non-negotiable.</strong> Anything below is hidden.</span>
+            <span
+              ><strong>Non-negotiable.</strong> Anything below the minimum for its contract type is
+              hidden.</span
+            >
           </label>
         </section>
 
@@ -290,14 +364,22 @@ function linesOf(text: string): string[] {
 
       .salary {
         display: flex;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 8px;
+        margin-bottom: 8px;
       }
       .salary input {
-        width: 140px;
+        width: 120px;
       }
-      .currency {
+      .salary input.currency {
         width: 70px;
         text-transform: uppercase;
+      }
+      .add-row {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
       }
 
       .warn {
@@ -381,8 +463,9 @@ export class GoalsComponent {
   regimeStrict = false;
   locationsText = '';
   locationStrict = false;
-  minSalary: number | null = null;
-  currency = '';
+  readonly contractTypes = CONTRACT_TYPES;
+  readonly periods = PERIODS;
+  salaries: SalaryRow[] = [];
   salaryStrict = false;
 
   /** The places currently typed, so the warning and the suggestions agree with the box. */
@@ -410,8 +493,7 @@ export class GoalsComponent {
         this.regimeStrict = loaded.regime_non_negotiable;
         this.locationsText = loaded.work_locations.join('\n');
         this.locationStrict = loaded.location_non_negotiable;
-        this.minSalary = loaded.min_salary;
-        this.currency = loaded.salary_currency ?? '';
+        this.salaries = loaded.salary_expectations.map((expectation) => ({ ...expectation }));
         this.salaryStrict = loaded.salary_non_negotiable;
         this.chosenLocations.set(linesOf(this.locationsText));
       }
@@ -425,6 +507,39 @@ export class GoalsComponent {
 
   addLocation(place: string): void {
     this.setLocations([...linesOf(this.locationsText), place].join('\n'));
+  }
+
+  /** A new row, in the currency the user already uses so it rarely needs changing. */
+  addSalary(): void {
+    const used = new Set(this.salaries.map((row) => row.employment_type));
+    const next = CONTRACT_TYPES.find((type) => !used.has(type.value))?.value ?? 'contract';
+    this.salaries = [
+      ...this.salaries,
+      {
+        employment_type: next,
+        minimum: null,
+        target: null,
+        currency: this.salaries[0]?.currency ?? 'EUR',
+        period: next === 'contract' || next === 'freelance' ? 'day' : 'year',
+      },
+    ];
+  }
+
+  removeSalary(index: number): void {
+    this.salaries = this.salaries.filter((_, i) => i !== index);
+  }
+
+  /** Rows with a minimum; a row left empty is not a request to clear anything. */
+  private expectations(): SalaryExpectation[] {
+    return this.salaries
+      .filter((row) => typed(row.minimum) !== null)
+      .map((row) => ({
+        employment_type: row.employment_type,
+        minimum: typed(row.minimum) as number,
+        target: typed(row.target),
+        currency: row.currency.trim().toUpperCase(),
+        period: row.period,
+      }));
   }
 
   toggleRegime(regime: WorkRegime): void {
@@ -450,8 +565,7 @@ export class GoalsComponent {
         regime_non_negotiable: this.regimeStrict,
         work_locations: linesOf(this.locationsText),
         location_non_negotiable: this.locationStrict,
-        min_salary: this.minSalary === null || Number.isNaN(this.minSalary) ? null : this.minSalary,
-        salary_currency: this.currency.trim().toUpperCase() || null,
+        salary_expectations: this.expectations(),
         salary_non_negotiable: this.salaryStrict,
       })
       .subscribe({

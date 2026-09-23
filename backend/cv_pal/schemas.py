@@ -1,7 +1,8 @@
-from datetime import date, datetime
-from typing import Self
+from datetime import UTC, date, datetime
+from typing import Annotated, Self
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     EmailStr,
@@ -14,17 +15,22 @@ from cv_pal.constants import (
     DEFAULT_API_TOKEN_DEFAULT_DAYS,
     DEFAULT_API_TOKEN_MAX_DAYS,
     DEFAULT_API_TOKEN_NAME_MAX_LENGTH,
+    DEFAULT_APPLICATION_SALARY_MAX_LENGTH,
     DEFAULT_BOARD_IDENTIFIER_PATTERN,
     DEFAULT_COMPANY_MAX_LENGTH,
     DEFAULT_CURRENCY_CODE_LENGTH,
     DEFAULT_ERROR_APPLIED_IN_FUTURE,
+    DEFAULT_ERROR_DUPLICATE_SALARY_EXPECTATION,
     DEFAULT_ERROR_DUPLICATE_WORK_REGIMES,
     DEFAULT_ERROR_END_BEFORE_START,
     DEFAULT_ERROR_PASSWORD_UNCHANGED,
+    DEFAULT_ERROR_POSTING_OR_ROLE,
     DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY,
-    DEFAULT_ERROR_SALARY_NEEDS_CURRENCY,
     DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY,
+    DEFAULT_ERROR_TARGET_BELOW_MINIMUM,
+    DEFAULT_ERROR_UPDATED_IN_FUTURE,
     DEFAULT_HIGHLIGHT_MAX_LENGTH,
+    DEFAULT_LANGUAGE_NAME_MAX_LENGTH,
     DEFAULT_LOCATION_MAX_LENGTH,
     DEFAULT_MAX_COVER_LETTER_LENGTH,
     DEFAULT_MAX_LINKEDIN_PASTE_LENGTH,
@@ -32,6 +38,7 @@ from cv_pal.constants import (
     DEFAULT_MAX_POSTING_LENGTH,
     DEFAULT_MAX_ROLE_HIGHLIGHTS,
     DEFAULT_MAX_SALARY,
+    DEFAULT_MAX_SALARY_EXPECTATIONS,
     DEFAULT_MAX_TARGET_ROLES,
     DEFAULT_MAX_WORK_LOCATIONS,
     DEFAULT_MIN_JOB_DESCRIPTION_LENGTH,
@@ -40,6 +47,7 @@ from cv_pal.constants import (
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_ORGANISATION_MAX_LENGTH,
     DEFAULT_PHONE_MAX_LENGTH,
+    DEFAULT_PLATFORM_NAME_MAX_LENGTH,
     DEFAULT_ROLE_CONTEXT_MAX_LENGTH,
     DEFAULT_SKILL_NAME_MAX_LENGTH,
     DEFAULT_SUMMARY_MAX_LENGTH,
@@ -49,17 +57,43 @@ from cv_pal.constants import (
     DEFAULT_URL_MAX_LENGTH,
     DEFAULT_WORK_LOCATION_MAX_LENGTH,
     ApplicationStatus,
+    DatePrecision,
     EmploymentType,
     JobSource,
+    LanguageLevel,
     LinkedInIssueKind,
     LinkedInSectionStatus,
     LinkedInSource,
     ParseabilitySeverity,
+    PlatformState,
+    PlatformStatus,
     ProficiencyLevel,
+    SalaryPeriod,
     SuggestionType,
     WorkRegime,
 )
 from cv_pal.passwords import validate_password
+
+
+def _assume_utc(value: datetime) -> datetime:
+    """Mark a timestamp without a zone as UTC.
+
+    SQLite stores no zone, so the columns come back naive even though they are
+    declared ``timezone=True`` and written as UTC. Serialised naive, they are not valid
+    RFC 3339: an MCP client validating ``format: date-time`` rejects the whole response,
+    and a browser reads them as local time.
+
+    Args:
+        value: A timestamp from the database.
+
+    Returns:
+        The same instant, with its zone stated.
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+# Every timestamp a response carries.
+UtcDatetime = Annotated[datetime, AfterValidator(_assume_utc)]
 
 
 class UserCreate(BaseModel):
@@ -157,6 +191,8 @@ class ApiTokenCreate(BaseModel):
     password: str
     #: Read-only unless asked for. Write lets an agent record postings and applications.
     write: bool = False
+    #: Lets an agent add, change and delete profile entries and replace the goals.
+    edit_profile: bool = False
     expires_in_days: int = Field(
         default=DEFAULT_API_TOKEN_DEFAULT_DAYS, ge=1, le=DEFAULT_API_TOKEN_MAX_DAYS
     )
@@ -171,9 +207,9 @@ class ApiTokenResponse(BaseModel):
     name: str
     display_hint: str
     scopes: str
-    expires_at: datetime
-    last_used_at: datetime | None
-    created_at: datetime
+    expires_at: UtcDatetime
+    last_used_at: UtcDatetime | None
+    created_at: UtcDatetime
 
 
 class ApiTokenCreatedResponse(ApiTokenResponse):
@@ -198,7 +234,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     full_name: str | None
     is_active: bool
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class Token(BaseModel):
@@ -229,7 +265,7 @@ class CVResponse(BaseModel):
     user_id: int
     filename: str
     version: int
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class SuggestionResponse(BaseModel):
@@ -242,7 +278,7 @@ class SuggestionResponse(BaseModel):
     suggestion_type: str
     content: str
     accepted: bool | None
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class SuggestionUpdate(BaseModel):
@@ -406,6 +442,8 @@ class CareerProfileUpdate(BaseModel):
     location: str | None = None
     phone: str | None = Field(default=None, max_length=DEFAULT_PHONE_MAX_LENGTH)
     website_url: str | None = None
+    #: Shown on a generated CV only for development roles.
+    github_url: str | None = None
     linkedin_url: str | None = None
 
 
@@ -486,6 +524,9 @@ class EducationCreate(_DatedEntry):
     field_of_study: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    #: ``year`` when only the years are known: the CV then prints "2016 - 2018", or
+    #: "2018" for a one-year course or a certification, and never an invented month.
+    date_precision: DatePrecision = DatePrecision.MONTH
     grade: str | None = None
 
 
@@ -500,6 +541,7 @@ class EducationResponse(BaseModel):
     field_of_study: str | None
     start_date: date | None
     end_date: date | None
+    date_precision: DatePrecision
     grade: str | None
 
 
@@ -515,7 +557,63 @@ class EducationUpdate(_DatedEntry):
     field_of_study: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    date_precision: DatePrecision | None = None
     grade: str | None = None
+
+
+class LanguageCreate(BaseModel):
+    """A language the user speaks."""
+
+    name: str = Field(min_length=1, max_length=DEFAULT_LANGUAGE_NAME_MAX_LENGTH)
+    level: LanguageLevel
+
+
+class LanguageUpdate(BaseModel):
+    """Amend a language. Omitted fields are left alone."""
+
+    name: str | None = Field(
+        default=None, min_length=1, max_length=DEFAULT_LANGUAGE_NAME_MAX_LENGTH
+    )
+    level: LanguageLevel | None = None
+
+
+class LanguageResponse(BaseModel):
+    """A language as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    level: LanguageLevel
+
+
+class PortfolioItemCreate(BaseModel):
+    """Something the user made: a project, a game, a design."""
+
+    title: str = Field(min_length=1, max_length=DEFAULT_TITLE_MAX_LENGTH)
+    url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    description: str | None = None
+
+
+class PortfolioItemUpdate(BaseModel):
+    """Amend a portfolio item. Omitted fields are left alone."""
+
+    title: str | None = Field(
+        default=None, min_length=1, max_length=DEFAULT_TITLE_MAX_LENGTH
+    )
+    url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    description: str | None = None
+
+
+class PortfolioItemResponse(BaseModel):
+    """A portfolio item as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    url: str | None
+    description: str | None
 
 
 class SkillCreate(BaseModel):
@@ -572,10 +670,13 @@ class CareerProfileResponse(BaseModel):
     location: str | None
     phone: str | None
     website_url: str | None
+    github_url: str | None
     linkedin_url: str | None
     experiences: list[ExperienceResponse]
     educations: list[EducationResponse]
     skills: list[SkillResponse]
+    languages: list[LanguageResponse]
+    portfolio: list[PortfolioItemResponse]
 
 
 class EvidenceSuggestionResponse(BaseModel):
@@ -590,6 +691,51 @@ class EvidenceSuggestionResponse(BaseModel):
     experience_ids: list[int]
     # Named, not just referenced: a list of ids is not something anyone can confirm.
     experience_labels: list[str]
+
+
+class SalaryExpectation(BaseModel):
+    """What the user wants for one kind of contract.
+
+    Per contract type because the figures are not comparable: a contractor's day rate
+    pays for their own holidays, pension and the gaps between contracts.
+    """
+
+    employment_type: EmploymentType
+    minimum: int = Field(ge=0, le=DEFAULT_MAX_SALARY)
+    #: What they are aiming for, above the floor; optional.
+    target: int | None = Field(default=None, ge=0, le=DEFAULT_MAX_SALARY)
+    currency: str = Field(
+        min_length=DEFAULT_CURRENCY_CODE_LENGTH,
+        max_length=DEFAULT_CURRENCY_CODE_LENGTH,
+    )
+    period: SalaryPeriod = SalaryPeriod.YEAR
+
+    @field_validator("currency")
+    @classmethod
+    def normalise_currency(cls, currency: str) -> str:
+        """Upper-case the currency so "eur" and "EUR" are the same.
+
+        Args:
+            currency: The submitted ISO 4217 code.
+
+        Returns:
+            The upper-cased code.
+        """
+        return currency.upper()
+
+    @model_validator(mode="after")
+    def target_above_minimum(self) -> Self:
+        """Refuse a target below the floor.
+
+        Returns:
+            The validated expectation.
+
+        Raises:
+            ValueError: If the target is below the minimum.
+        """
+        if self.target is not None and self.target < self.minimum:
+            raise ValueError(DEFAULT_ERROR_TARGET_BELOW_MINIMUM)
+        return self
 
 
 class CareerGoalsUpdate(BaseModel):
@@ -609,11 +755,8 @@ class CareerGoalsUpdate(BaseModel):
         default_factory=list, max_length=DEFAULT_MAX_WORK_LOCATIONS
     )
     location_non_negotiable: bool = False
-    min_salary: int | None = Field(default=None, ge=0, le=DEFAULT_MAX_SALARY)
-    salary_currency: str | None = Field(
-        default=None,
-        min_length=DEFAULT_CURRENCY_CODE_LENGTH,
-        max_length=DEFAULT_CURRENCY_CODE_LENGTH,
+    salary_expectations: list[SalaryExpectation] = Field(
+        default_factory=list, max_length=DEFAULT_MAX_SALARY_EXPECTATIONS
     )
     salary_non_negotiable: bool = False
 
@@ -676,19 +819,6 @@ class CareerGoalsUpdate(BaseModel):
                 cleaned.append(place)
         return cleaned
 
-    @field_validator("salary_currency")
-    @classmethod
-    def normalise_currency(cls, currency: str | None) -> str | None:
-        """Upper-case the currency so "eur" and "EUR" are the same floor.
-
-        Args:
-            currency: The submitted ISO 4217 code, or ``None``.
-
-        Returns:
-            The upper-cased code, or ``None``.
-        """
-        return currency.upper() if currency is not None else None
-
     @model_validator(mode="after")
     def validate_goals(self) -> Self:
         """Reject combinations that could never match anything.
@@ -701,17 +831,18 @@ class CareerGoalsUpdate(BaseModel):
             The validated payload.
 
         Raises:
-            ValueError: If a non-negotiable has no value, if a salary floor has no
-                currency, or if a work arrangement is listed twice.
+            ValueError: If a non-negotiable has no value, or if a work arrangement
+                or a contract type's salary is listed twice.
         """
         if len(set(self.work_regimes)) != len(self.work_regimes):
             raise ValueError(DEFAULT_ERROR_DUPLICATE_WORK_REGIMES)
         if self.regime_non_negotiable and not self.work_regimes:
             raise ValueError(DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY)
-        if self.salary_non_negotiable and self.min_salary is None:
+        if self.salary_non_negotiable and not self.salary_expectations:
             raise ValueError(DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY)
-        if self.min_salary is not None and self.salary_currency is None:
-            raise ValueError(DEFAULT_ERROR_SALARY_NEEDS_CURRENCY)
+        kinds = [(e.employment_type, e.period) for e in self.salary_expectations]
+        if len(set(kinds)) != len(kinds):
+            raise ValueError(DEFAULT_ERROR_DUPLICATE_SALARY_EXPECTATION)
         return self
 
 
@@ -726,8 +857,8 @@ class CareerGoalsResponse(BaseModel):
     regime_non_negotiable: bool
     work_locations: list[str]
     location_non_negotiable: bool
-    min_salary: int | None
-    salary_currency: str | None
+    #: One per contract type (and period), e.g. employee per year, contract per day.
+    salary_expectations: list[SalaryExpectation]
     salary_non_negotiable: bool
 
 
@@ -740,6 +871,7 @@ class ExtractedContactResponse(BaseModel):
     phone: str | None
     linkedin_url: str | None
     website_url: str | None
+    github_url: str | None
 
 
 class ExtractedEntryResponse(BaseModel):
@@ -753,6 +885,15 @@ class ExtractedEntryResponse(BaseModel):
     start_date: date | None
     end_date: date | None
     description: str | None
+
+
+class ExtractedLanguageResponse(BaseModel):
+    """A language read from a CV, with the level it stated."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    level: LanguageLevel
 
 
 class CvExtractionResponse(BaseModel):
@@ -774,6 +915,7 @@ class CvExtractionResponse(BaseModel):
     experiences: list[ExtractedEntryResponse]
     educations: list[ExtractedEntryResponse]
     skills: list[str]
+    languages: list[ExtractedLanguageResponse]
 
 
 class JobPostingCreate(BaseModel):
@@ -808,7 +950,7 @@ class JobPostingResponse(BaseModel):
     description: str
     # None means the source did not say; the interface shows nothing, not "full time".
     employment_type: EmploymentType | None
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class MatchReasonResponse(BaseModel):
@@ -834,6 +976,9 @@ class MatchScoreResponse(BaseModel):
     blocked_by: str | None
     reasons: list[MatchReasonResponse]
     missing_required: list[str]
+    #: Sorts before the score: 0 offers the user's first-choice arrangement. See
+    #: `analysis.matching.MatchScore`.
+    preference_rank: int = Field(ge=0)
 
 
 class ScoredPostingResponse(BaseModel):
@@ -865,7 +1010,7 @@ class JobBoardConnectionResponse(BaseModel):
     identifier: str
     label: str
     filter_by_goals: bool
-    last_synced_at: datetime | None
+    last_synced_at: UtcDatetime | None
     last_error: str | None
 
 
@@ -881,10 +1026,117 @@ class SyncResultResponse(BaseModel):
     error: str | None
 
 
+def _not_in_the_future(value: date | None) -> date | None:
+    """Reject a date that has not happened.
+
+    Args:
+        value: The submitted date.
+
+    Returns:
+        The date, unchanged.
+
+    Raises:
+        ValueError: If the date is after today.
+    """
+    if value is not None and value > date.today():
+        raise ValueError(DEFAULT_ERROR_UPDATED_IN_FUTURE)
+    return value
+
+
+class JobPlatformCreate(BaseModel):
+    """Start tracking a job platform the user keeps a profile on."""
+
+    name: str = Field(min_length=1, max_length=DEFAULT_PLATFORM_NAME_MAX_LENGTH)
+    state: PlatformState = PlatformState.ACTIVE
+    profile_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    profile_updated_on: Annotated[date | None, AfterValidator(_not_in_the_future)] = (
+        None
+    )
+    notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, name: str) -> str:
+        """Collapse whitespace so "Wellfound " and "Wellfound" are one platform.
+
+        Args:
+            name: The submitted name.
+
+        Returns:
+            The trimmed name.
+
+        Raises:
+            ValueError: If nothing is left.
+        """
+        cleaned = " ".join(name.split())
+        if not cleaned:
+            raise ValueError("A platform needs a name")
+        return cleaned
+
+
+class JobPlatformUpdate(BaseModel):
+    """Amend a tracked platform — most often, to say it was just updated."""
+
+    name: str | None = Field(
+        default=None, min_length=1, max_length=DEFAULT_PLATFORM_NAME_MAX_LENGTH
+    )
+    state: PlatformState | None = None
+    profile_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    profile_updated_on: Annotated[date | None, AfterValidator(_not_in_the_future)] = (
+        None
+    )
+    notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
+
+
+class JobPlatformResponse(BaseModel):
+    """A tracked platform, and whether its copy of the profile is behind."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    state: PlatformState
+    profile_url: str | None
+    profile_updated_on: date | None
+    notes: str | None
+    #: Compared against the last change to the career profile in CV Pal.
+    status: PlatformStatus
+
+
+class PlatformStatsResponse(BaseModel):
+    """How applications sent through one platform are going."""
+
+    #: None for applications recorded without a platform.
+    platform_id: int | None
+    name: str
+    total: int
+    replied: int
+    answerable: int
+    reply_rate: int | None
+    interviews: int
+    offers: int
+
+
+class AppliedRole(BaseModel):
+    """The role applied for, when there is no saved posting to point at.
+
+    Recruiters call and interviews get booked without a posting anyone kept; refusing
+    to record those would leave the funnel and the reply rates short. The posting is
+    stored with no text, so it is scored on its title alone and says so.
+    """
+
+    title: str = Field(min_length=1, max_length=DEFAULT_TITLE_MAX_LENGTH)
+    company: str | None = Field(default=None, max_length=DEFAULT_COMPANY_MAX_LENGTH)
+    source_url: str | None = Field(default=None, max_length=DEFAULT_URL_MAX_LENGTH)
+    location: str | None = Field(default=None, max_length=DEFAULT_LOCATION_MAX_LENGTH)
+
+
 class ApplicationCreate(BaseModel):
     """Record that an application went out."""
 
-    job_posting_id: int
+    #: A saved posting — or `role` instead, when none was kept.
+    job_posting_id: int | None = None
+    role: AppliedRole | None = None
     # The CV that was sent, when one was. Optional because plenty of applications go
     # through a form that never took a file, and refusing those would bias the reply
     # rate this table exists to compute.
@@ -892,7 +1144,26 @@ class ApplicationCreate(BaseModel):
     # Defaults to today rather than being required: the overwhelmingly common case is
     # recording an application as it is sent.
     applied_at: date | None = None
+    platform_id: int | None = None
+    salary: str | None = Field(
+        default=None, max_length=DEFAULT_APPLICATION_SALARY_MAX_LENGTH
+    )
+    next_step: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
     notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
+
+    @model_validator(mode="after")
+    def posting_or_role(self) -> Self:
+        """Require exactly one of a saved posting and a named role.
+
+        Returns:
+            The validated payload.
+
+        Raises:
+            ValueError: If both or neither are given.
+        """
+        if (self.job_posting_id is None) == (self.role is None):
+            raise ValueError(DEFAULT_ERROR_POSTING_OR_ROLE)
+        return self
 
     @field_validator("applied_at")
     @classmethod
@@ -919,7 +1190,12 @@ class ApplicationUpdate(BaseModel):
 
     status: ApplicationStatus | None = None
     cv_id: int | None = None
+    platform_id: int | None = None
     applied_at: date | None = None
+    salary: str | None = Field(
+        default=None, max_length=DEFAULT_APPLICATION_SALARY_MAX_LENGTH
+    )
+    next_step: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
     notes: str | None = Field(default=None, max_length=DEFAULT_MAX_NOTES_LENGTH)
 
 
@@ -933,6 +1209,9 @@ class ApplicationResponse(BaseModel):
     applied_at: date
     status_changed_at: date
     cv_id: int | None
+    platform_id: int | None
+    salary: str | None
+    next_step: str | None
     notes: str | None
     posting: JobPostingResponse
     #: Days since it went out. Computed rather than stored — it changes without anything
@@ -958,6 +1237,8 @@ class ApplicationStatsResponse(BaseModel):
     answerable: int
     reply_rate: int | None
     needs_chasing: int
+    #: The same figures per platform, best reply rate first; "Not recorded" last.
+    by_platform: list[PlatformStatsResponse]
 
 
 class SurfacedFactResponse(BaseModel):
@@ -1074,7 +1355,7 @@ class LinkedInProfileResponse(BaseModel):
     sections_found: list[str]
     # So the screen can show what a further import would actually add.
     field_sources: dict[str, str]
-    imported_at: datetime
+    imported_at: UtcDatetime
 
 
 class LinkedInSectionResponse(BaseModel):

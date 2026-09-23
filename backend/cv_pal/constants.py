@@ -40,6 +40,9 @@ DEFAULT_API_TOKEN_MAX_PER_USER: Final[int] = 10
 DEFAULT_API_TOKEN_TOUCH_SECONDS: Final[int] = 60
 SCOPE_READ: Final[str] = "cvpal:read"
 SCOPE_WRITE: Final[str] = "cvpal:write"
+# Edits the career profile and goals. Its own grant, never implied by write: the
+# profile is what every generated CV is built from.
+SCOPE_PROFILE: Final[str] = "cvpal:profile"
 # Messages, not secrets.
 DEFAULT_ERROR_API_TOKEN_NOT_FOUND: Final[str] = "Access token not found."  # noqa: S105
 DEFAULT_ERROR_API_TOKEN_LIMIT: Final[str] = (
@@ -120,6 +123,11 @@ DEFAULT_ERROR_PROFILE_NOT_FOUND: Final[str] = "Career profile not found"
 DEFAULT_ERROR_EXPERIENCE_NOT_FOUND: Final[str] = "Experience not found"
 DEFAULT_ERROR_SKILL_NOT_FOUND: Final[str] = "Skill not found"
 DEFAULT_ERROR_EDUCATION_NOT_FOUND: Final[str] = "Education entry not found"
+DEFAULT_ERROR_LANGUAGE_NOT_FOUND: Final[str] = "Language not found"
+DEFAULT_ERROR_LANGUAGE_DUPLICATE: Final[str] = (
+    "That language is already on your profile"
+)
+DEFAULT_ERROR_PORTFOLIO_NOT_FOUND: Final[str] = "Portfolio item not found"
 DEFAULT_ERROR_SKILL_DUPLICATE: Final[str] = "That skill is already on your profile"
 DEFAULT_ERROR_END_BEFORE_START: Final[str] = (
     "The end date cannot precede the start date"
@@ -196,9 +204,14 @@ DEFAULT_ERROR_REGIME_NON_NEGOTIABLE_EMPTY: Final[str] = (
 DEFAULT_ERROR_SALARY_NON_NEGOTIABLE_EMPTY: Final[str] = (
     "Set a salary floor before making it a non-negotiable"
 )
-DEFAULT_ERROR_SALARY_NEEDS_CURRENCY: Final[str] = (
-    "A salary floor needs a currency, or the number cannot be compared to a posting"
+DEFAULT_ERROR_DUPLICATE_SALARY_EXPECTATION: Final[str] = (
+    "Each contract type can have one expectation per period"
 )
+DEFAULT_ERROR_TARGET_BELOW_MINIMUM: Final[str] = (
+    "The target cannot be below the minimum"
+)
+# Employee, part-time, contract, freelance — times a period or two.
+DEFAULT_MAX_SALARY_EXPECTATIONS: Final[int] = 8
 DEFAULT_ERROR_DUPLICATE_WORK_REGIMES: Final[str] = (
     "Each work arrangement can appear only once"
 )
@@ -251,6 +264,35 @@ class ParseabilitySeverity(StrEnum):
         return {"error": 25, "warning": 10, "info": 3}[self.value]
 
 
+class DatePrecision(StrEnum):
+    """How much of an education entry's dates the user actually knows."""
+
+    #: "Sep 2016 - Jul 2018".
+    MONTH = "month"
+    #: "2016 - 2018": a CV that gives years only must not gain invented months.
+    YEAR = "year"
+
+
+class LanguageLevel(StrEnum):
+    """How well the user speaks a language, in the words CVs use."""
+
+    NATIVE = "native"
+    FLUENT = "fluent"
+    ADVANCED = "advanced"
+    INTERMEDIATE = "intermediate"
+    BASIC = "basic"
+
+
+class PlatformState(StrEnum):
+    """Where the user's profile on a job platform stands."""
+
+    NOT_STARTED = "not_started"
+    SETTING_UP = "setting_up"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    LATER = "later"
+
+
 class ProficiencyLevel(StrEnum):
     """Self-assessed command of a skill."""
 
@@ -278,6 +320,17 @@ DEFAULT_MAX_NOTES_LENGTH: Final[int] = 4_000
 DEFAULT_ERROR_APPLICATION_DUPLICATE: Final[str] = (
     "You have already recorded an application for that posting"
 )
+DEFAULT_ERROR_PLATFORM_NOT_FOUND: Final[str] = "Platform not found"
+DEFAULT_ERROR_POSTING_OR_ROLE: Final[str] = (
+    "Name either a saved posting or the role applied for, not both"
+)
+# How the per-platform stats name applications recorded without one.
+DEFAULT_NO_PLATFORM_LABEL: Final[str] = "Not recorded"
+DEFAULT_ERROR_PLATFORM_DUPLICATE: Final[str] = (
+    "You already track a platform by that name"
+)
+DEFAULT_ERROR_PLATFORM_LIMIT: Final[str] = "You can track at most {limit} platforms"
+DEFAULT_ERROR_UPDATED_IN_FUTURE: Final[str] = "That date has not happened yet"
 DEFAULT_ERROR_APPLIED_IN_FUTURE: Final[str] = (
     "An application cannot have been sent in the future"
 )
@@ -364,6 +417,38 @@ REPLIED_APPLICATION_STATUSES: Final[frozenset[ApplicationStatus]] = frozenset(
 
 #: Days after which an application with no reply is worth chasing.
 DEFAULT_APPLICATION_STALE_DAYS: Final[int] = 14
+
+# How many technology terms a posting titled only "Engineer" must ask for before a
+# generated CV links the applicant's GitHub.
+DEFAULT_MIN_TECH_TERMS_FOR_CODE_LINKS: Final[int] = 3
+
+# Job platforms the user keeps a profile on: LinkedIn, Indeed, Wellfound...
+DEFAULT_PLATFORM_NAME_MAX_LENGTH: Final[int] = 64
+DEFAULT_LANGUAGE_NAME_MAX_LENGTH: Final[int] = 64
+DEFAULT_LEVEL_MAX_LENGTH: Final[int] = 16
+# "€3.1-3.3k/month", "$53k-216k band": what was offered, as the user wrote it.
+DEFAULT_APPLICATION_SALARY_MAX_LENGTH: Final[int] = 128
+DEFAULT_MAX_PLATFORMS: Final[int] = 50
+
+
+class SalaryPeriod(StrEnum):
+    """What a salary figure is per. Contract work is quoted by the day or the hour."""
+
+    YEAR = "year"
+    MONTH = "month"
+    DAY = "day"
+    HOUR = "hour"
+
+
+class PlatformStatus(StrEnum):
+    """Whether a platform's copy of the profile is behind the profile in CV Pal."""
+
+    #: Updated on or after the profile's last change.
+    UP_TO_DATE = "up_to_date"
+    #: The profile has changed since the platform was last updated.
+    OUTDATED = "outdated"
+    #: The user has not said when they last updated it.
+    UNKNOWN = "unknown"
 
 
 class EmploymentType(StrEnum):
