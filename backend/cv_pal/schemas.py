@@ -1,7 +1,8 @@
-from datetime import date, datetime
-from typing import Self
+from datetime import UTC, date, datetime
+from typing import Annotated, Self
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     EmailStr,
@@ -60,6 +61,27 @@ from cv_pal.constants import (
     WorkRegime,
 )
 from cv_pal.passwords import validate_password
+
+
+def _assume_utc(value: datetime) -> datetime:
+    """Mark a timestamp without a zone as UTC.
+
+    SQLite stores no zone, so the columns come back naive even though they are
+    declared ``timezone=True`` and written as UTC. Serialised naive, they are not valid
+    RFC 3339: an MCP client validating ``format: date-time`` rejects the whole response,
+    and a browser reads them as local time.
+
+    Args:
+        value: A timestamp from the database.
+
+    Returns:
+        The same instant, with its zone stated.
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+# Every timestamp a response carries.
+UtcDatetime = Annotated[datetime, AfterValidator(_assume_utc)]
 
 
 class UserCreate(BaseModel):
@@ -171,9 +193,9 @@ class ApiTokenResponse(BaseModel):
     name: str
     display_hint: str
     scopes: str
-    expires_at: datetime
-    last_used_at: datetime | None
-    created_at: datetime
+    expires_at: UtcDatetime
+    last_used_at: UtcDatetime | None
+    created_at: UtcDatetime
 
 
 class ApiTokenCreatedResponse(ApiTokenResponse):
@@ -198,7 +220,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     full_name: str | None
     is_active: bool
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class Token(BaseModel):
@@ -229,7 +251,7 @@ class CVResponse(BaseModel):
     user_id: int
     filename: str
     version: int
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class SuggestionResponse(BaseModel):
@@ -242,7 +264,7 @@ class SuggestionResponse(BaseModel):
     suggestion_type: str
     content: str
     accepted: bool | None
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class SuggestionUpdate(BaseModel):
@@ -808,7 +830,7 @@ class JobPostingResponse(BaseModel):
     description: str
     # None means the source did not say; the interface shows nothing, not "full time".
     employment_type: EmploymentType | None
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class MatchReasonResponse(BaseModel):
@@ -865,7 +887,7 @@ class JobBoardConnectionResponse(BaseModel):
     identifier: str
     label: str
     filter_by_goals: bool
-    last_synced_at: datetime | None
+    last_synced_at: UtcDatetime | None
     last_error: str | None
 
 
@@ -1074,7 +1096,7 @@ class LinkedInProfileResponse(BaseModel):
     sections_found: list[str]
     # So the screen can show what a further import would actually add.
     field_sources: dict[str, str]
-    imported_at: datetime
+    imported_at: UtcDatetime
 
 
 class LinkedInSectionResponse(BaseModel):

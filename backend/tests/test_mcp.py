@@ -451,6 +451,26 @@ async def test_cv_tools_read_an_uploaded_cv(
     assert fake_llm.calls == []
 
 
+async def test_timestamps_carry_their_zone(
+    client: AsyncClient, mcp_client: ClientFor
+) -> None:
+    """Tools declare RFC 3339 `date-time`, which needs an offset.
+
+    SQLite hands timestamps back naive; sent as they were, Claude Code rejected the
+    whole `list_cvs` answer, which left the agent without a CV id for any other tool.
+    """
+    headers = await register_and_login(client)
+    await upload_cv(client, headers)
+    token = await issue_token(client, headers)
+
+    async with mcp_client(token) as agent:
+        listed = await agent.call_tool("list_cvs", {})
+
+    assert listed.structured_content is not None
+    created = listed.structured_content["result"][0]["created_at"]
+    assert datetime.fromisoformat(created).tzinfo is not None
+
+
 async def test_another_users_posting_does_not_exist(
     client: AsyncClient, mcp_client: ClientFor
 ) -> None:

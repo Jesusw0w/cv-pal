@@ -1,10 +1,17 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { Observable, forkJoin } from 'rxjs';
 
 import { AnalysisService } from '../../core/services/analysis.service';
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import { CvExtractionResponse, ExtractedEntryResponse } from '../../shared/models/api.model';
+
+/**
+ * How long a read may take before the panel says why. The deterministic pass is under
+ * a second; past this, a language model is going over the result, and on a local model
+ * that can take a minute.
+ */
+const SLOW_READ_MS = 6000;
 
 /** A value read from the CV that the profile does not have yet. */
 interface ProposedField {
@@ -23,7 +30,7 @@ interface ProposedField {
 @Component({
   selector: 'app-import-panel',
   template: `
-    <section class="card">
+    <section class="card" [attr.aria-busy]="reading()">
       <div class="card-header">
         <h3>Import from a CV</h3>
         <span class="card-note">Reads a CV you uploaded. Nothing is saved until you add it.</span>
@@ -49,8 +56,18 @@ interface ProposedField {
             <span class="muted">Upload one on the Documents screen first.</span>
           }
         </div>
-      } @else if (reading()) {
-        <p class="muted body">Reading the file…</p>
+      }
+
+      @if (reading()) {
+        <div class="reading" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          @if (slow()) {
+            Still reading. A language model is going over what was found, which can take a minute on
+            a local model.
+          } @else {
+            Reading your CV. This usually takes a few seconds.
+          }
+        </div>
       }
 
       @if (error(); as message) {
@@ -69,6 +86,9 @@ interface ProposedField {
             Read from the file, not yet saved. Add what is right; edit anything that is close but
             wrong after adding.
           </p>
+          @if (readIssues(found); as issues) {
+            <p class="notice" role="note">{{ issues }}</p>
+          }
         }
 
         <!-- Read from the CV and previously discarded. No email row: the account's
@@ -122,9 +142,19 @@ interface ProposedField {
             @for (entry of found.experiences; track entry.organisation + entry.title) {
               <div class="row">
                 <div class="row-info">
-                  <span class="row-title">{{ entry.title }}</span>
+                  <span class="row-title">
+                    @if (entry.title) {
+                      {{ entry.title }}
+                    } @else {
+                      <span class="warn">no job title found</span>
+                    }
+                  </span>
                   <span class="row-meta">
-                    {{ entry.organisation }}
+                    @if (entry.organisation) {
+                      {{ entry.organisation }}
+                    } @else {
+                      <span class="warn">no employer found</span>
+                    }
                     @if (entry.location) {
                       &middot; {{ entry.location }}
                     }
@@ -161,8 +191,27 @@ interface ProposedField {
             @for (entry of found.educations; track entry.organisation + entry.title) {
               <div class="row">
                 <div class="row-info">
-                  <span class="row-title">{{ entry.title }}</span>
-                  <span class="row-meta">{{ entry.organisation }}</span>
+                  <span class="row-title">
+                    @if (entry.title) {
+                      {{ entry.title }}
+                    } @else {
+                      <span class="warn">no qualification found</span>
+                    }
+                  </span>
+                  <span class="row-meta">
+                    @if (entry.organisation) {
+                      {{ entry.organisation }}
+                    } @else {
+                      <span class="warn">no institution found</span>
+                    }
+                    @if (entry.location) {
+                      &middot; {{ entry.location }}
+                    }
+                    @if (entry.start_date || entry.end_date) {
+                      &middot; {{ entry.start_date ?? '?' }} &ndash;
+                      {{ entry.end_date ?? 'present' }}
+                    }
+                  </span>
                 </div>
                 <button type="button" class="add" [disabled]="busy()" (click)="addCourse(entry)">
                   Add
@@ -224,6 +273,21 @@ interface ProposedField {
 
       .body {
         padding: 6px 18px 0;
+      }
+      .reading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 18px 4px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .notice {
+        margin: 8px 18px 0;
+        padding: 8px 10px;
+        border-left: 3px solid #d97706;
+        font-size: 13px;
+        color: var(--text-secondary);
       }
       .muted {
         font-size: 13px;
@@ -340,11 +404,16 @@ export class ImportPanelComponent {
 
   readonly selectedId = signal<number | null>(null);
   readonly reading = signal(false);
+  /** The read has taken long enough that the panel should say why. */
+  readonly slow = signal(false);
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   readonly proposal = signal<CvExtractionResponse | null>(null);
 
+  private slowTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.slowTimer));
     effect(() => {
       const given = this.cvId();
       if (given !== null && given !== this.selectedId()) {
@@ -375,17 +444,55 @@ export class ImportPanelComponent {
       return;
     }
     this.reading.set(true);
+    this.slow.set(false);
     this.error.set(null);
+    clearTimeout(this.slowTimer);
+    this.slowTimer = setTimeout(() => this.slow.set(true), SLOW_READ_MS);
+    const done = () => {
+      clearTimeout(this.slowTimer);
+      this.reading.set(false);
+      this.slow.set(false);
+    };
     this.career.importFromCv(cvId).subscribe({
       next: (found) => {
         this.proposal.set(found);
-        this.reading.set(false);
+        done();
       },
       error: (error: unknown) => {
-        this.reading.set(false);
+        done();
         this.error.set(detailOf(error, 'Could not read that CV.'));
       },
     });
+  }
+
+  /**
+   * One line on what the read could not do, above the rows.
+   *
+   * The per-row warnings are easy to miss on a long list, and a CV whose dates did not
+   * survive is worth knowing about before pressing "Add all" — which skips those rows.
+   */
+  readIssues(found: CvExtractionResponse): string | null {
+    const roles = found.experiences;
+    const undated = roles.filter((entry) => !entry.start_date).length;
+    const incomplete = [...roles, ...found.educations].filter((entry) => !isComplete(entry)).length;
+    const problems: string[] = [];
+    if (undated > 0) {
+      problems.push(`dates could not be read for ${undated} of ${roles.length} roles`);
+    }
+    if (incomplete > 0) {
+      problems.push(
+        `${incomplete} ${incomplete === 1 ? 'entry is' : 'entries are'} missing a name or a title`,
+      );
+    }
+    if (problems.length === 0) {
+      return null;
+    }
+    const sentence = problems.join(', and ');
+    return (
+      `${sentence[0].toUpperCase()}${sentence.slice(1)}. ` +
+      'Those rows cannot be added as they are — add them by hand on your profile, and ' +
+      'check the rest against your CV.'
+    );
   }
 
   /**
@@ -424,10 +531,12 @@ export class ImportPanelComponent {
   addRole(entry: ExtractedEntryResponse): void {
     const request = this.roleRequest(entry);
     if (request === null) {
-      // The API requires a start date; proposing the row is still useful, but it has to
-      // be added by hand rather than silently given a made-up date.
+      // The API requires a start date, an employer and a title; proposing the row is
+      // still useful, but it has to be added by hand rather than given made-up values.
+      const missing = entry.start_date ? 'an employer or a title' : 'dates';
       this.error.set(
-        `No dates were found for "${entry.title}". Add that role manually with its dates.`,
+        `No ${missing} could be read for "${entry.title || entry.organisation}". ` +
+          'Add that role by hand on your profile.',
       );
       return;
     }
@@ -442,19 +551,20 @@ export class ImportPanelComponent {
    * abandoned. Undated roles are still refused, and counted rather than silently lost.
    */
   addAllRoles(entries: ExtractedEntryResponse[]): void {
-    const datable = entries.filter((entry) => entry.start_date !== null);
-    const undated = entries.length - datable.length;
+    const addable = entries.filter((entry) => entry.start_date !== null && isComplete(entry));
+    const skipped = entries.length - addable.length;
     this.runAll(
-      datable.map((entry) => this.roleRequest(entry)).filter((request) => request !== null),
+      addable.map((entry) => this.roleRequest(entry)).filter((request) => request !== null),
       () => {
         this.proposal.update((found) =>
           found
-            ? { ...found, experiences: found.experiences.filter((e) => !datable.includes(e)) }
+            ? { ...found, experiences: found.experiences.filter((e) => !addable.includes(e)) }
             : found,
         );
-        if (undated > 0) {
+        if (skipped > 0) {
           this.error.set(
-            `${undated} role(s) had no readable dates and were left for you to add by hand.`,
+            `${skipped} role(s) were missing dates, an employer or a title, and were left ` +
+              'for you to add by hand.',
           );
         }
       },
@@ -462,13 +572,34 @@ export class ImportPanelComponent {
   }
 
   addCourse(entry: ExtractedEntryResponse): void {
+    if (!isComplete(entry)) {
+      this.error.set(
+        `No institution or qualification could be read for "${entry.title || entry.organisation}". ` +
+          'Add it by hand on your profile.',
+      );
+      return;
+    }
     this.run(this.courseRequest(entry), () => this.drop('educations', entry));
   }
 
   addAllCourses(entries: ExtractedEntryResponse[]): void {
+    const addable = entries.filter(isComplete);
+    const skipped = entries.length - addable.length;
     this.runAll(
-      entries.map((entry) => this.courseRequest(entry)),
-      () => this.proposal.update((found) => (found ? { ...found, educations: [] } : found)),
+      addable.map((entry) => this.courseRequest(entry)),
+      () => {
+        this.proposal.update((found) =>
+          found
+            ? { ...found, educations: found.educations.filter((e) => !addable.includes(e)) }
+            : found,
+        );
+        if (skipped > 0) {
+          this.error.set(
+            `${skipped} course(s) were missing a name or a qualification, and were left ` +
+              'for you to add by hand.',
+          );
+        }
+      },
     );
   }
 
@@ -488,7 +619,7 @@ export class ImportPanelComponent {
   }
 
   private roleRequest(entry: ExtractedEntryResponse): Observable<unknown> | null {
-    if (!entry.start_date) {
+    if (!entry.start_date || !isComplete(entry)) {
       return null;
     }
     return this.career.addExperience({
@@ -548,6 +679,11 @@ export class ImportPanelComponent {
       this.proposal.set({ ...found, [key]: found[key].filter((e) => e !== entry) });
     }
   }
+}
+
+/** Both names are required by the API; extraction can find one without the other. */
+function isComplete(entry: ExtractedEntryResponse): boolean {
+  return Boolean(entry.organisation.trim() && entry.title.trim());
 }
 
 function detailOf(error: unknown, fallback: string): string {

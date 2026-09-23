@@ -126,7 +126,16 @@ const ROLE_SUGGESTIONS = 2;
 
             <div class="actions">
               <button type="button" class="ghost" (click)="step.set(1)">Back</button>
-              <button type="button" class="primary" (click)="toAboutYou()">Next</button>
+              <!-- Held while the CV is read: moving on early carries an empty read into
+                   the next step, and the user never sees what was found. -->
+              <button
+                type="button"
+                class="primary"
+                [disabled]="importPanel()?.reading()"
+                (click)="toAboutYou()"
+              >
+                {{ importPanel()?.reading() ? 'Reading…' : 'Next' }}
+              </button>
             </div>
           </section>
         }
@@ -508,7 +517,7 @@ export class WelcomeComponent {
   readonly profile = inject(CareerProfileService);
 
   /** Step 2's panel, read on the way out so step 3 starts from what the CV said. */
-  private readonly importPanel = viewChild(ImportPanelComponent);
+  protected readonly importPanel = viewChild(ImportPanelComponent);
 
   readonly steps = [0, 1, 2, 3, 4];
   readonly regimes = REGIMES;

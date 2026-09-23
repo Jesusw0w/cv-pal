@@ -89,6 +89,54 @@ Roughly in priority order.
 
 ## Log
 
+### 2026-09-23 — MCP setup on a fresh machine
+
+- **Turning MCP on crashed the backend for anyone starting from the example `.env`.**
+  `.env.docker.example` ships `CV_PAL_LOCAL_ONLY=true`, and `mcp_enabled` with
+  `local_only` is refused at start-up — the container restart-loops and the frontend
+  waits on it. The example now has a commented `--- Agents (MCP) ---` block that names
+  the endpoint, where to create a token, and the local-only conflict.
+- **The MCP is not in the published images** (ghcr is 0.1.0). Until the next release,
+  using it means the build overlay:
+  `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
+- **CV import rewritten for single-column layouts.** The parser anchored on
+  `Employer, City — Title`, and on a CV with dates at the end of the heading line the
+  only dash was the date range's own: every role came back as title "Present", no
+  dates, and a later course's dates leaked into the last role. `_entries` now finds
+  headings first (`_find_headings`), in four layouts — dates at either end of the
+  heading line, on the line after it, under a stacked `Title` / `Employer`, or above
+  it — plus a heading that wrapped onto the dates line. `_resolve` then tells employer
+  from title by marker words (`ROLE_MARKERS`, `ORGANISATION_MARKERS`,
+  `INSTITUTION_MARKERS` in vocabulary) and falls back on position only when the words
+  say nothing. An employer-only heading above title-only headings is a group and
+  lends them its name. New section headings (`OTHER_HEADINGS`: projects, languages…)
+  end a role's text.
+- **Reflow now merges only one-word lines** (was ≤ 2 words). Two-word lines such as a
+  job title on its own line were being glued to the employer below. The two-column
+  CV the reflow exists for still reads the same.
+- **English only, deliberately.** Month names, "present" words and separators are
+  English. Institution markers keep the non-English names that were already there
+  ("universidade"…), because English CVs name foreign institutions.
+- **Extraction probes the model before enriching.** An unreachable model used to be
+  retried (3 attempts, each allowed the full completion timeout) before the
+  deterministic answer came back; now one 5 s probe decides.
+- **Import UI:** spinner and `aria-busy` while reading, "still reading" after 6 s;
+  the wizard's Next is disabled while the read runs; a one-line summary when dates or
+  names are missing; rows missing an employer/title are refused like undated ones
+  (the API would 422); education rows show dates.
+- **Test fixtures must be fictional.** No names, places, employers, degrees or date
+  patterns taken from the maintainer's own CV. Older fixtures still use Lisbon /
+  Porto / Portugal; replacing them is an open decision.
+
+Verified: `uv run nox` green; frontend lint, format check, 66 tests, `ng build` green
+(the profile and job-search style-budget warnings are pre-existing). Run against the
+real CVs this was reported on, locally, both layouts correct. Containers rebuilt;
+not yet re-imported through the UI.
+
+- Next: `docs/self-hosting.md` and the README do not mention the MCP at all; a
+  dogfooding session through the MCP (profile/goals are read-only there by design);
+  let a row be edited before it is added (today: add, then fix on the profile).
+
 ### 2026-09-22 — Audit, session hardening, doc clean-up
 
 - **Sessions moved to HttpOnly cookies.** The container build is same-origin, so the

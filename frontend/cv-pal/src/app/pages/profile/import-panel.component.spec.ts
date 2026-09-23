@@ -51,4 +51,42 @@ describe('ImportPanelComponent', () => {
     expect(panel.isEmpty(nothing)).toBe(true);
     expect(panel.isEmpty(FOUND)).toBe(false);
   });
+
+  it('says up front when the read missed dates or names', () => {
+    // The per-row warnings are easy to miss on a long list; "Add all" skips those rows.
+    const panel = TestBed.createComponent(ImportPanelComponent).componentInstance;
+    const role = {
+      organisation: 'Globex Corporation',
+      title: 'Staff Engineer',
+      location: null,
+      start_date: '2020-01-01',
+      end_date: null,
+      description: null,
+    };
+
+    const issues = panel.readIssues({
+      ...FOUND,
+      experiences: [role, { ...role, start_date: null }, { ...role, organisation: '' }],
+    });
+
+    expect(issues).toContain('Dates could not be read for 1 of 3 roles');
+    expect(issues).toContain('1 entry is missing a name or a title');
+    expect(panel.readIssues({ ...FOUND, experiences: [role] })).toBeNull();
+  });
+
+  it('refuses to add a role with no employer rather than sending a blank one', () => {
+    const panel = TestBed.createComponent(ImportPanelComponent).componentInstance;
+
+    panel.addRole({
+      organisation: '',
+      title: 'Staff Engineer',
+      location: null,
+      start_date: '2020-01-01',
+      end_date: null,
+      description: null,
+    });
+
+    expect(panel.error()).toContain('Add that role by hand');
+    expect(panel.busy()).toBe(false);
+  });
 });

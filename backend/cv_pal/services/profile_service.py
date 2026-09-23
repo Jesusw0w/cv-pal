@@ -595,8 +595,12 @@ async def extract_from_cv(
     found = extract_profile(text)
     if client is None:
         return found
-    # No provider, an unreachable one or unusable output all land here as None: the
-    # deterministic proposal is already a usable answer, so none of them is an error.
+    # Probed first: the call itself retries, each attempt with the full completion
+    # timeout, so an unreachable model held the user on "Reading…" for the sum of them
+    # before the answer below — which needs no model — came back.
+    if await client.check() is not None:
+        return found
+    # A failed call or unusable output lands here as None.
     return await enrich(client, cv_text=text, base=found) or found
 
 
