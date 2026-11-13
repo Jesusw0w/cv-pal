@@ -9,6 +9,39 @@ This file is the summary. Current state and what is left are in
 
 ## [Unreleased]
 
+### Changed
+
+- **The sidebar is five steps instead of eleven screens.** Profile now holds Goals and
+  the LinkedIn review as tabs; Applications holds Platforms; Documents, CV Analysis and
+  AI Tools are one **CVs** screen, because all three began with "choose a CV". The
+  newest CV is checked as soon as the screen opens.
+- **Jobs first on the Jobs screen.** Adding a posting — link, paste or a watched board —
+  is one panel behind *Add jobs* rather than two cards above the list. Postings can be
+  filtered by title, company or place, and applied ones hidden.
+- **Keyword coverage can be run against a saved posting**, not only a pasted one.
+- The dashboard shows the next action, the pipeline and the best matches. The "profile
+  health" figure is gone: it measured the age of uploaded files, not the profile.
+- Each screen is named once, in the top bar and the browser tab ("Jobs · CV Pal").
+  Explanatory text is shorter throughout.
+- The theme follows the system until you choose one. It used to be pinned on first load.
+
+### Added
+
+- **Deleting asks first.** Removing a CV, role, qualification, posting, application,
+  platform or watched board takes a second press; moving away cancels it.
+- The dashboard points out platforms still showing an older version of your profile.
+
+### Fixed
+
+- **The LinkedIn screen was blank until a profile had been imported** — which is the
+  state every new account is in. More generally, a failed request took the whole screen
+  down instead of showing its "could not load, try again" notice.
+- A strong match stayed "waiting" on the dashboard after it had been applied for.
+- Status, warning and secondary text colours now meet WCAG AA contrast in both themes.
+- `uv run nox` installs from `uv.lock`, like CI. Resolving afresh let a new SQLAlchemy
+  release fail the type check locally while CI stayed green.
+
+
 ### Security
 
 - **Browser sessions use HttpOnly cookies.** Tokens are no longer kept in

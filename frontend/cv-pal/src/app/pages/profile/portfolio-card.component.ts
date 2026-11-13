@@ -108,7 +108,7 @@ import { detailOf } from '../../shared/http-error';
       .error {
         margin: 0 18px 12px;
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
     `,
   ],

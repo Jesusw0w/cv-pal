@@ -1,9 +1,9 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import { ExperienceResponse } from '../../shared/models/api.model';
+import { detailOf } from '../../shared/http-error';
 
 /**
  * Write the bullet points for one role from what the user remembers about it.
@@ -130,7 +130,7 @@ import { ExperienceResponse } from '../../shared/models/api.model';
         padding: 6px 14px;
         border-radius: var(--radius);
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-text);
         font-size: 13px;
         font-weight: 600;
       }
@@ -143,7 +143,7 @@ import { ExperienceResponse } from '../../shared/models/api.model';
       .error {
         margin: 8px 0 0;
         font-size: 12px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
     `,
   ],
@@ -227,14 +227,4 @@ export class RoleHighlightsComponent {
       .filter((line) => line.length > 0)
       .join('\n');
   }
-}
-
-function detailOf(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-  }
-  return fallback;
 }

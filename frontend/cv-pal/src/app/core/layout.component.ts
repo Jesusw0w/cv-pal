@@ -21,8 +21,10 @@ import { hasSeenWelcome } from './first-run';
     ></button>
     <app-sidebar [open]="sidebarOpen()" (closed)="sidebarOpen.set(false)" />
     <div class="main-area">
-      <app-topbar (menuToggle)="sidebarOpen.set(!sidebarOpen())" />
-      <router-outlet />
+      <app-topbar (menu)="sidebarOpen.set(true)" />
+      <main>
+        <router-outlet />
+      </main>
     </div>
   `,
   styles: [
@@ -35,9 +37,7 @@ import { hasSeenWelcome } from './first-run';
       .main-area {
         margin-left: var(--sidebar-width);
         flex: 1;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
+        min-width: 0;
       }
 
       .sidebar-overlay {
@@ -79,7 +79,7 @@ export class LayoutComponent {
   private readonly career = inject(CareerProfileService);
   private readonly router = inject(Router);
 
-  sidebarOpen = signal(false);
+  protected readonly sidebarOpen = signal(false);
 
   constructor() {
     /**

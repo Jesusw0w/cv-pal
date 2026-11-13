@@ -1,9 +1,9 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
+import { detailOf } from '../../shared/http-error';
 
 /**
  * What brought the user back to this screen, when it was not simply signing out.
@@ -116,7 +116,7 @@ const NOTICES: Record<string, string> = {
       .error {
         margin: 0;
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
       .notice {
         margin: 0;
@@ -130,7 +130,7 @@ const NOTICES: Record<string, string> = {
         padding: 10px;
         border-radius: var(--radius);
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-text);
         font-size: 14px;
         font-weight: 600;
       }
@@ -203,32 +203,6 @@ export class LoginComponent {
 
   private fail(error: unknown): void {
     this.busy.set(false);
-    this.error.set(detailOf(error) ?? 'Something went wrong. Is the API running?');
+    this.error.set(detailOf(error, 'Something went wrong. Is the API running?'));
   }
-}
-
-/**
- * The message to show for a failed request.
- *
- * The API answers in two shapes: a flat `detail` string for domain errors like bad
- * credentials, and FastAPI's list of validation objects for a 422 — which is what every
- * password-policy rejection arrives as. Reading `detail` blindly would show the user a
- * stringified array instead of the rule they broke, on the one screen where the reason
- * is the whole point.
- */
-export function detailOf(error: unknown): string | null {
-  if (!(error instanceof HttpErrorResponse)) {
-    return null;
-  }
-
-  const detail = (error.error as { detail?: unknown } | null)?.detail;
-  if (typeof detail === 'string') {
-    return detail;
-  }
-  if (Array.isArray(detail)) {
-    const message = (detail[0] as { msg?: unknown } | undefined)?.msg;
-    // Pydantic prefixes its own validators' messages.
-    return typeof message === 'string' ? message.replace(/^Value error, /, '') : null;
-  }
-  return null;
 }

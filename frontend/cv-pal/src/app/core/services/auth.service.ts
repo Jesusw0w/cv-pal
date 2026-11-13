@@ -4,6 +4,7 @@ import { Observable, finalize, shareReplay, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { TokenResponse, UserResponse } from '../../shared/models/api.model';
+import { valueOr } from '../../shared/resource';
 
 /** Whether this browser holds a session. Not a secret: the tokens are HttpOnly cookies. */
 const SIGNED_IN_KEY = 'cv-pal.signed-in';
@@ -48,9 +49,10 @@ export class AuthService {
   readonly isAuthenticated = this.signedIn.asReadonly();
 
   /** The signed-in account. Idle while signed out, so it never fires a doomed request. */
-  private readonly account = httpResource<UserResponse>(() =>
+  private readonly accountResource = httpResource<UserResponse>(() =>
     this.isAuthenticated() ? `${environment.apiUrl}/users/me` : undefined,
   );
+  private readonly account = valueOr(this.accountResource, undefined);
 
   /**
    * What to call the user in the interface.
@@ -58,15 +60,13 @@ export class AuthService {
    * Falls back to the email when no name was given at registration — `full_name` is
    * optional on the API, and a blank sidebar is worse than an email address.
    */
-  readonly displayName = computed(
-    () => this.account.value()?.full_name || this.account.value()?.email || '',
-  );
+  readonly displayName = computed(() => this.account()?.full_name || this.account()?.email || '');
 
   /** The stored name, unfallen-back: what an edit field has to start from. */
-  readonly fullName = computed(() => this.account.value()?.full_name ?? null);
+  readonly fullName = computed(() => this.account()?.full_name ?? null);
 
   /** Identifies the account for anything kept per user in this browser. */
-  readonly userId = computed(() => this.account.value()?.id ?? null);
+  readonly userId = computed(() => this.account()?.id ?? null);
 
   readonly initials = computed(() => {
     const name = this.displayName();
@@ -121,7 +121,7 @@ export class AuthService {
   updateName(fullName: string | null): Observable<UserResponse> {
     return this.http
       .patch<UserResponse>(`${environment.apiUrl}/users/me`, { full_name: fullName })
-      .pipe(tap(() => this.account.reload()));
+      .pipe(tap(() => this.accountResource.reload()));
   }
 
   /**

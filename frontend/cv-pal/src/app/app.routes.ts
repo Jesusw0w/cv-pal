@@ -1,10 +1,24 @@
 import { Routes } from '@angular/router';
+
 import { authGuard } from './core/auth';
+import { SectionComponent, SectionTab } from './core/components/section/section.component';
 import { LayoutComponent } from './core/layout.component';
+
+const PROFILE_TABS: SectionTab[] = [
+  { path: './', label: 'Career profile' },
+  { path: 'goals', label: 'Goals' },
+  { path: 'linkedin', label: 'LinkedIn' },
+];
+
+const APPLICATION_TABS: SectionTab[] = [
+  { path: './', label: 'Applications' },
+  { path: 'platforms', label: 'Platforms' },
+];
 
 export const routes: Routes = [
   {
     path: 'login',
+    title: 'Sign in',
     loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent),
   },
   {
@@ -12,80 +26,80 @@ export const routes: Routes = [
     component: LayoutComponent,
     canActivate: [authGuard],
     children: [
-      // `data.title`, not the router's `title`: the tab should keep saying CV Pal.
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        data: { title: 'Dashboard' },
+        title: 'Dashboard',
         loadComponent: () =>
           import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       // Not in the sidebar: a first run, not a destination. Reached by the redirect in
-      // LayoutComponent and the dashboard's next-action card.
+      // LayoutComponent, the dashboard's next-action card and Settings.
       {
         path: 'welcome',
-        data: { title: 'Getting started' },
+        title: 'Getting started',
         loadComponent: () =>
           import('./pages/welcome/welcome.component').then((m) => m.WelcomeComponent),
       },
       {
         path: 'profile',
-        data: { title: 'Career Profile' },
-        loadComponent: () =>
-          import('./pages/profile/profile.component').then((m) => m.ProfileComponent),
+        component: SectionComponent,
+        data: { tabs: PROFILE_TABS },
+        children: [
+          {
+            path: '',
+            title: 'Career profile',
+            loadComponent: () =>
+              import('./pages/profile/profile.component').then((m) => m.ProfileComponent),
+          },
+          {
+            path: 'goals',
+            title: 'Goals',
+            loadComponent: () =>
+              import('./pages/goals/goals.component').then((m) => m.GoalsComponent),
+          },
+          {
+            path: 'linkedin',
+            title: 'LinkedIn review',
+            loadComponent: () =>
+              import('./pages/linkedin/linkedin.component').then((m) => m.LinkedInComponent),
+          },
+        ],
       },
       {
-        path: 'goals',
-        data: { title: 'Goals' },
-        loadComponent: () => import('./pages/goals/goals.component').then((m) => m.GoalsComponent),
+        path: 'cvs',
+        title: 'CVs',
+        loadComponent: () => import('./pages/cvs/cvs.component').then((m) => m.CvsComponent),
       },
       {
-        path: 'documents',
-        data: { title: 'Documents' },
-        loadComponent: () =>
-          import('./pages/documents/documents.component').then((m) => m.DocumentsComponent),
-      },
-      {
-        path: 'ai-tools',
-        data: { title: 'AI Tools' },
-        loadComponent: () =>
-          import('./pages/ai-tools/ai-tools.component').then((m) => m.AiToolsComponent),
-      },
-      {
-        path: 'analysis',
-        data: { title: 'CV Analysis' },
-        loadComponent: () =>
-          import('./pages/analysis/analysis.component').then((m) => m.AnalysisComponent),
-      },
-      {
-        path: 'job-search',
-        data: { title: 'Job Search' },
-        loadComponent: () =>
-          import('./pages/job-search/job-search.component').then((m) => m.JobSearchComponent),
+        path: 'jobs',
+        title: 'Jobs',
+        loadComponent: () => import('./pages/jobs/jobs.component').then((m) => m.JobsComponent),
       },
       {
         path: 'applications',
-        data: { title: 'Applications' },
-        loadComponent: () =>
-          import('./pages/applications/applications.component').then(
-            (m) => m.ApplicationsComponent,
-          ),
-      },
-      {
-        path: 'platforms',
-        data: { title: 'Platforms' },
-        loadComponent: () =>
-          import('./pages/platforms/platforms.component').then((m) => m.PlatformsComponent),
-      },
-      {
-        path: 'linkedin',
-        data: { title: 'LinkedIn' },
-        loadComponent: () =>
-          import('./pages/linkedin/linkedin.component').then((m) => m.LinkedInComponent),
+        component: SectionComponent,
+        data: { tabs: APPLICATION_TABS },
+        children: [
+          {
+            path: '',
+            title: 'Applications',
+            loadComponent: () =>
+              import('./pages/applications/applications.component').then(
+                (m) => m.ApplicationsComponent,
+              ),
+          },
+          {
+            path: 'platforms',
+            title: 'Platforms',
+            loadComponent: () =>
+              import('./pages/platforms/platforms.component').then((m) => m.PlatformsComponent),
+          },
+        ],
       },
       {
         path: 'settings',
-        data: { title: 'Settings' },
+        title: 'Settings',
         loadComponent: () =>
           import('./pages/settings/settings.component').then((m) => m.SettingsComponent),
       },

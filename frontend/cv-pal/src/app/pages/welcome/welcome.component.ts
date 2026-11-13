@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, forkJoin, of } from 'rxjs';
@@ -9,6 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import { GoalsService } from '../../core/services/goals.service';
 import { CareerProfileUpdate, SalaryExpectation, WorkRegime } from '../../shared/models/api.model';
+import { detailOf } from '../../shared/http-error';
 import { ImportPanelComponent } from '../profile/import-panel.component';
 
 const REGIMES: { value: WorkRegime; label: string }[] = [
@@ -179,7 +179,7 @@ const ROLE_SUGGESTIONS = 2;
                 type="text"
                 [value]="location()"
                 (input)="location.set(value($event))"
-                placeholder="Lisbon, Portugal"
+                placeholder="City, Country"
               />
             </label>
 
@@ -468,7 +468,7 @@ const ROLE_SUGGESTIONS = 2;
       }
       .error {
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
 
       .actions {
@@ -482,7 +482,7 @@ const ROLE_SUGGESTIONS = 2;
         padding: 9px 18px;
         border-radius: var(--radius);
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-text);
         font-size: 13px;
         font-weight: 600;
       }
@@ -833,16 +833,6 @@ export class WelcomeComponent {
     }
     void this.router.navigate(['/dashboard']);
   }
-}
-
-function detailOf(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-  }
-  return fallback;
 }
 
 /** The employee annual salary: the one figure the wizard asks for. */

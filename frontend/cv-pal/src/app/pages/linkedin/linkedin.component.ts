@@ -1,9 +1,10 @@
 import { DatePipe } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { detailOf } from '../../shared/http-error';
 
+import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import {
   LinkedInService,
   MIN_LINKEDIN_PASTE_LENGTH,
@@ -20,17 +21,13 @@ import {
  */
 @Component({
   selector: 'app-linkedin',
-  imports: [DatePipe, FormsModule, RouterLink],
+  imports: [DatePipe, FormsModule, RouterLink, ConfirmButtonComponent],
   template: `
     <div class="page">
-      <header class="intro">
-        <h1>LinkedIn</h1>
-        <p>
-          A section-by-section review of your profile, and a check that it agrees with your
-          <a routerLink="/profile">career profile</a>. Runs without a language model, like the CV
-          analysis.
-        </p>
-      </header>
+      <p class="intro">
+        A section-by-section review of your LinkedIn profile, and a check that it agrees with your
+        <a routerLink="/profile">career profile</a>.
+      </p>
 
       @if (error(); as message) {
         <p class="error" role="alert">{{ message }}</p>
@@ -49,10 +46,9 @@ import {
         </div>
 
         <p class="body muted">
-          <strong>Print your profile to PDF</strong> (open your profile, expand every "see more",
-          then Ctrl+P → Save as PDF). That works on every account and takes about a minute.
-          LinkedIn's own <em>Save to PDF</em> works too where it is offered, and so does the ZIP
-          from a full data export.
+          <strong>Print your profile to PDF</strong>: open it, expand every "see more", then Ctrl+P
+          → Save as PDF. LinkedIn's own <em>Save to PDF</em> and the ZIP from a data export work
+          too.
         </p>
 
         <div class="actions">
@@ -166,8 +162,8 @@ import {
           } @else {
             <section class="card">
               <p class="body muted">
-                Set your <a routerLink="/goals">target roles</a> and this screen will also score how
-                findable the profile is in recruiter search.
+                Set your <a routerLink="/profile/goals">target roles</a> and this screen will also
+                score how findable the profile is in recruiter search.
               </p>
             </section>
           }
@@ -211,7 +207,12 @@ import {
               <dt>Skills</dt>
               <dd>{{ profile.skills.length }}</dd>
             </dl>
-            <button type="button" class="remove" (click)="remove()">Delete imported profile</button>
+            <app-confirm-button
+              class="body"
+              label="Delete the imported profile"
+              (confirmed)="remove()"
+              >Delete imported profile</app-confirm-button
+            >
           </section>
         }
       }
@@ -219,46 +220,27 @@ import {
   `,
   styles: [
     `
-      .page {
-        padding: 28px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        max-width: 820px;
-      }
-      .intro a,
-      .link,
-      .body a {
-        color: var(--accent);
-        font-weight: 600;
+      /* Cards here are padded as a whole, so their headers and bodies are not. */
+      .card {
+        padding: 18px 20px;
       }
       .card-header {
-        display: flex;
-        justify-content: space-between;
+        padding: 0 0 12px;
+        margin-bottom: 12px;
         align-items: baseline;
         gap: 12px;
-        margin-bottom: 10px;
-      }
-      .card-header h3 {
-        font-size: 15px;
-        margin: 0;
       }
       .body {
+        padding: 0;
+        margin-bottom: 10px;
         font-size: 13px;
-        margin: 0 0 10px;
         max-width: 72ch;
-        line-height: 1.5;
       }
       .muted {
         color: var(--text-secondary);
       }
       .small {
         font-size: 12px;
-      }
-      .error {
-        color: var(--danger, #c0392b);
-        font-size: 13px;
-        margin: 0;
       }
 
       .actions {
@@ -267,29 +249,12 @@ import {
         gap: 16px;
         flex-wrap: wrap;
       }
-      button.link {
-        background: none;
-        border: 0;
-        padding: 0;
-        font-size: 13px;
-        cursor: pointer;
-      }
 
       .paste {
         display: flex;
         flex-direction: column;
         gap: 8px;
         margin-top: 12px;
-      }
-      .paste textarea {
-        width: 100%;
-        font: inherit;
-        font-size: 13px;
-        padding: 8px;
-        border-radius: 6px;
-        border: 1px solid var(--border, #ddd);
-        background: transparent;
-        color: inherit;
       }
 
       .score-head {
@@ -320,7 +285,7 @@ import {
       .score-bar {
         height: 6px;
         border-radius: 3px;
-        background: var(--border, #eee);
+        background: var(--border);
         overflow: hidden;
         margin: 8px 0;
       }
@@ -348,16 +313,16 @@ import {
         gap: 12px;
         font-size: 13px;
         padding-left: 10px;
-        border-left: 3px solid var(--border, #ddd);
+        border-left: 3px solid var(--border);
       }
       .section.missing {
-        border-left-color: var(--danger, #c0392b);
+        border-left-color: var(--danger);
       }
       .section.thin {
-        border-left-color: var(--warning, #d68910);
+        border-left-color: var(--warning);
       }
       .section.ok {
-        border-left-color: var(--success, #27ae60);
+        border-left-color: var(--success);
       }
       .section-name {
         font-weight: 600;
@@ -372,24 +337,6 @@ import {
         margin: 0 0 8px;
       }
 
-      .terms {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      .term {
-        font-size: 12px;
-        padding: 3px 8px;
-        border-radius: 999px;
-        background: var(--border, #eee);
-      }
-      .term.required {
-        font-weight: 700;
-      }
-
       .issues {
         list-style: none;
         margin: 0;
@@ -402,7 +349,7 @@ import {
         font-size: 13px;
         color: var(--text-secondary);
         padding-left: 10px;
-        border-left: 3px solid var(--warning, #d68910);
+        border-left: 3px solid var(--warning);
       }
 
       .facts {
@@ -417,14 +364,6 @@ import {
       }
       .facts dd {
         margin: 0;
-      }
-      .remove {
-        background: none;
-        border: 0;
-        padding: 0;
-        font-size: 12px;
-        color: var(--danger, #c0392b);
-        cursor: pointer;
       }
     `,
   ],
@@ -502,18 +441,8 @@ export class LinkedInComponent {
       },
       error: (error: unknown) => {
         this.busy.set(false);
-        this.error.set(messageFor(error, fallback));
+        this.error.set(detailOf(error, fallback));
       },
     });
   }
-}
-
-function messageFor(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-  }
-  return fallback;
 }

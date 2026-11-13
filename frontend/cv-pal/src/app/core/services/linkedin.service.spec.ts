@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { AuthService } from './auth.service';
@@ -31,6 +32,23 @@ describe('LinkedInService', () => {
         created_at: '2026-01-15T10:00:00Z',
       });
     }
+  });
+
+  it('has no profile, rather than an error, before anything was imported', async () => {
+    // Every new account is in this state: the API answers 404, and reading a failed
+    // resource throws — which blanked the screen that explains how to import one.
+    TestBed.tick();
+    for (const request of http.match((r) => r.url.includes('/linkedin'))) {
+      request.flush(
+        { detail: 'No LinkedIn profile imported yet.' },
+        { status: 404, statusText: '' },
+      );
+    }
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(service.profile()).toBeUndefined();
+    expect(service.hasProfile()).toBe(false);
+    expect(service.wouldBenefitFromExport()).toBe(false);
   });
 
   it('sends an import as multipart, not JSON', () => {

@@ -14,6 +14,7 @@ import {
   TailoredCvResponse,
 } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 /**
  * Saved job postings, each with its match score.
@@ -32,7 +33,7 @@ export class JobService {
     { defaultValue: [] },
   );
 
-  readonly all = this.resource.value;
+  readonly all = valueOr(this.resource, []);
   readonly isLoading = this.resource.isLoading;
   readonly error = this.resource.error;
 
@@ -52,7 +53,7 @@ export class JobService {
     { defaultValue: [] },
   );
 
-  readonly sources = this.sourcesResource.value;
+  readonly sources = valueOr(this.sourcesResource, []);
 
   reload(): void {
     this.resource.reload();
@@ -105,26 +106,11 @@ export class JobService {
   }
 
   /**
-   * Download the tailored CV as a `.docx` — the format an ATS actually ingests.
-   *
-   * A blob rather than JSON, and the filename comes from the server's
-   * `Content-Disposition` so the browser and the API cannot disagree about it.
+   * The tailored CV as a file. A blob rather than JSON, with the filename left to the
+   * server's `Content-Disposition`. Where a portal takes either, prefer `.docx`: it is
+   * structured data a parser reads directly, where a PDF is a page it has to reconstruct.
    */
-  tailorDocx(postingId: number): Observable<HttpResponse<Blob>> {
-    return this.tailorFile(postingId, 'docx');
-  }
-
-  /**
-   * The same document as a PDF.
-   *
-   * Prefer the `.docx` where a portal takes either: it is structured data a parser
-   * reads directly, where a PDF is a page description it has to reconstruct.
-   */
-  tailorPdf(postingId: number): Observable<HttpResponse<Blob>> {
-    return this.tailorFile(postingId, 'pdf');
-  }
-
-  private tailorFile(postingId: number, format: 'docx' | 'pdf'): Observable<HttpResponse<Blob>> {
+  tailorFile(postingId: number, format: 'docx' | 'pdf'): Observable<HttpResponse<Blob>> {
     return this.http.post(`${environment.apiUrl}/jobs/${postingId}/tailor/${format}`, null, {
       observe: 'response',
       responseType: 'blob',

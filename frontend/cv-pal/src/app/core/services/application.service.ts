@@ -12,6 +12,7 @@ import {
   JobPostingResponse,
 } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 /** Statuses in the order an application passes through them, for the funnel. */
 export const PIPELINE: ApplicationStatus[] = ['applied', 'interviewing', 'offer'];
@@ -55,9 +56,9 @@ export class ApplicationService {
     { defaultValue: [] },
   );
 
-  readonly applications = this.resource.value;
-  readonly stats = this.statsResource.value;
-  readonly unapplied = this.unappliedResource.value;
+  readonly applications = valueOr(this.resource, []);
+  readonly stats = valueOr(this.statsResource, EMPTY_STATS);
+  readonly unapplied = valueOr(this.unappliedResource, []);
   readonly isLoading = this.resource.isLoading;
   readonly error = this.resource.error;
 
