@@ -1,25 +1,34 @@
-import { Injectable, signal, effect, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable, signal } from '@angular/core';
 
+const STORAGE_KEY = 'theme';
+
+/**
+ * Light or dark. Follows the system until the user chooses, then remembers the choice.
+ */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private platformId = inject(PLATFORM_ID);
-  readonly dark = signal(false);
+  readonly dark = signal(
+    (localStorage.getItem(STORAGE_KEY) ??
+      (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark',
+  );
 
   constructor() {
-    if (isPlatformBrowser(this.platformId)) {
-      const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      this.dark.set(saved ? saved === 'dark' : prefersDark);
-      effect(() => {
-        const isDark = this.dark();
-        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      });
-    }
+    this.apply();
   }
 
-  toggle() {
-    this.dark.update((v) => !v);
+  toggle(): void {
+    this.dark.update((dark) => !dark);
+    // Only a choice is stored: writing the system default back on load would pin it,
+    // and the app would stop following the system the first time it was opened.
+    localStorage.setItem(STORAGE_KEY, this.theme());
+    this.apply();
+  }
+
+  private theme(): 'dark' | 'light' {
+    return this.dark() ? 'dark' : 'light';
+  }
+
+  private apply(): void {
+    document.documentElement.dataset['theme'] = this.theme();
   }
 }

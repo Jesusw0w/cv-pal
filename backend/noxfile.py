@@ -11,10 +11,26 @@ PYTHON_VERSION = "3.14"
 SOURCES = ("cv_pal", "tests", "noxfile.py")
 
 
+def install_locked(session: nox.Session) -> None:
+    """Install exactly what ``uv.lock`` pins, into the session's virtualenv.
+
+    The same versions CI installs. Resolving afresh instead let a new release of a
+    dependency fail the gate here while CI stayed green, and the other way round.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--locked",
+        "--extra",
+        "dev",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+
+
 @nox.session(python=PYTHON_VERSION)
 def lint(session: nox.Session) -> None:
     """Run ruff linter and formatter checks."""
-    session.install("ruff")
+    install_locked(session)
     session.run("ruff", "check", *SOURCES)
     session.run("ruff", "format", "--check", *SOURCES)
 
@@ -22,7 +38,7 @@ def lint(session: nox.Session) -> None:
 @nox.session(python=PYTHON_VERSION)
 def format(session: nox.Session) -> None:  # noqa: A001  # nox exposes the session name
     """Apply ruff formatting and safe autofixes."""
-    session.install("ruff")
+    install_locked(session)
     session.run("ruff", "check", "--fix", *SOURCES)
     session.run("ruff", "format", *SOURCES)
 
@@ -30,14 +46,14 @@ def format(session: nox.Session) -> None:  # noqa: A001  # nox exposes the sessi
 @nox.session(python=PYTHON_VERSION)
 def typecheck(session: nox.Session) -> None:
     """Run mypy strict type checking."""
-    session.install("-e", ".[dev]")
+    install_locked(session)
     session.run("mypy", "--strict", "cv_pal", "tests")
 
 
 @nox.session(python=PYTHON_VERSION)
 def tests(session: nox.Session) -> None:
     """Run the pytest suite."""
-    session.install("-e", ".[dev]")
+    install_locked(session)
     session.run("pytest", *session.posargs)
 
 
@@ -52,7 +68,7 @@ def migrations(session: nox.Session) -> None:
 
     Runs against a throwaway SQLite file so it leaves nothing behind.
     """
-    session.install("-e", ".[dev]")
+    install_locked(session)
     database = Path(session.create_tmp()) / "migrations.db"
     env = {
         "CV_PAL_SECRET_KEY": "nox-migration-check-not-a-real-secret",

@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ApiTokenService } from '../../core/services/api-token.service';
 import { ApiTokenCreatedResponse, ApiTokenResponse } from '../../shared/models/api.model';
 import { detailOf } from '../../shared/http-error';
+import { valueOr } from '../../shared/resource';
 
 /** The lifetimes offered. The API caps a token at a year; there is no "never". */
 const LIFETIMES = [30, 90, 365] as const;
@@ -266,7 +267,7 @@ const SCOPE_LABELS: Record<string, string> = {
       .error {
         margin: 0;
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
       .right {
         display: flex;
@@ -277,7 +278,7 @@ const SCOPE_LABELS: Record<string, string> = {
         flex: none;
         font-size: 13px;
         font-weight: 600;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
       .ghost-btn {
         padding: 6px 12px;
@@ -293,7 +294,7 @@ export class AgentAccessComponent {
   readonly tokens = inject(ApiTokenService);
   readonly lifetimes = LIFETIMES;
 
-  readonly list = computed(() => this.tokens.tokens.value());
+  readonly list = valueOr(this.tokens.tokens, undefined);
   readonly name = signal('');
   readonly write = signal(false);
   readonly editProfile = signal(false);

@@ -1,5 +1,5 @@
 import { HttpClient, httpResource } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -17,7 +17,15 @@ export class ReviewService {
   private readonly http = inject(HttpClient);
 
   /** Asked up front, so a missing model is a notice rather than a failed review. */
-  readonly modelStatus = httpResource<LlmStatusResponse>(() => `${environment.apiUrl}/health/llm`);
+  private readonly modelStatus = httpResource<LlmStatusResponse>(
+    () => `${environment.apiUrl}/health/llm`,
+  );
+
+  /** The status when the model cannot be used, otherwise null — including while unknown. */
+  readonly modelProblem = computed(() => {
+    const status = this.modelStatus.hasValue() ? this.modelStatus.value() : undefined;
+    return status?.status === 'unavailable' ? status : null;
+  });
 
   suggestionsFor(cvId: number): Observable<SuggestionResponse[]> {
     return this.http.get<SuggestionResponse[]>(

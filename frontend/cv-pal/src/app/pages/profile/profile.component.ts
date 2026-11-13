@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +11,8 @@ import {
   ExperienceResponse,
   SkillResponse,
 } from '../../shared/models/api.model';
+import { detailOf } from '../../shared/http-error';
+import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import { ImportPanelComponent } from './import-panel.component';
 import { LanguagesCardComponent } from './languages-card.component';
 import { PortfolioCardComponent } from './portfolio-card.component';
@@ -22,6 +23,7 @@ import { RoleHighlightsComponent } from './role-highlights.component';
   imports: [
     DatePipe,
     FormsModule,
+    ConfirmButtonComponent,
     ImportPanelComponent,
     LanguagesCardComponent,
     PortfolioCardComponent,
@@ -34,7 +36,7 @@ import { RoleHighlightsComponent } from './role-highlights.component';
       @if (career.error()) {
         <p class="card notice" role="alert">
           Could not load your profile.
-          <button type="button" class="retry" (click)="career.reload()">Try again</button>
+          <button type="button" class="link" (click)="career.reload()">Try again</button>
         </p>
       } @else if (career.isLoading()) {
         <p class="card notice">Loading your profile…</p>
@@ -53,7 +55,7 @@ import { RoleHighlightsComponent } from './role-highlights.component';
             </label>
             <label
               >Location
-              <input name="location" [(ngModel)]="draft.location" placeholder="Porto, Portugal" />
+              <input name="location" [(ngModel)]="draft.location" placeholder="City, Country" />
             </label>
             <label
               >Phone
@@ -61,7 +63,7 @@ import { RoleHighlightsComponent } from './role-highlights.component';
                 name="phone"
                 type="tel"
                 [(ngModel)]="draft.phone"
-                placeholder="+351 912 345 678"
+                placeholder="With the country code"
               />
             </label>
             <label
@@ -97,7 +99,7 @@ import { RoleHighlightsComponent } from './role-highlights.component';
           </form>
         } @else {
           <div class="identity-main">
-            <h1>{{ career.profile().headline ?? 'Add a headline' }}</h1>
+            <h2>{{ career.profile().headline ?? 'Add a headline' }}</h2>
             <p class="identity-meta">
               {{ career.profile().location ?? 'Location not set' }}
               &middot; {{ career.experiences().length }} roles &middot;
@@ -233,14 +235,11 @@ import { RoleHighlightsComponent } from './role-highlights.component';
                   >
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    class="remove"
-                    [attr.aria-label]="'Remove ' + role.title"
-                    (click)="removeRole(role.id)"
+                  <app-confirm-button
+                    [label]="'Remove ' + role.title"
+                    (confirmed)="removeRole(role.id)"
+                    >Remove</app-confirm-button
                   >
-                    Remove
-                  </button>
                 </div>
                 <span class="entry-org">{{ role.organisation }}</span>
                 <span class="entry-dates">
@@ -515,14 +514,11 @@ import { RoleHighlightsComponent } from './role-highlights.component';
                   >
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    class="remove"
-                    [attr.aria-label]="'Remove ' + course.qualification"
-                    (click)="removeCourse(course.id)"
+                  <app-confirm-button
+                    [label]="'Remove ' + course.qualification"
+                    (confirmed)="removeCourse(course.id)"
+                    >Remove</app-confirm-button
                   >
-                    Remove
-                  </button>
                 </div>
                 <span class="entry-org">{{ course.institution }}</span>
                 <span class="entry-dates">
@@ -545,20 +541,13 @@ import { RoleHighlightsComponent } from './role-highlights.component';
   styles: [
     `
       /* .card, .card-header and .badge come from styles.css. Only layout here. */
-      .page {
-        padding: 28px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-
       .identity {
         display: flex;
         gap: 24px;
         justify-content: space-between;
         padding: 24px;
       }
-      .identity h1 {
+      .identity h2 {
         font-size: 22px;
         line-height: 1.25;
         margin: 0 0 4px;
@@ -635,19 +624,6 @@ import { RoleHighlightsComponent } from './role-highlights.component';
         font-size: 12px;
         color: var(--text-tertiary);
       }
-      .edit-form input,
-      .edit-form textarea,
-      .add-form input,
-      .add-form textarea,
-      .inline-add input {
-        padding: 8px 10px;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius);
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-size: 13px;
-        font-family: inherit;
-      }
       .add-note {
         margin: 0;
         font-size: 12px;
@@ -660,28 +636,11 @@ import { RoleHighlightsComponent } from './role-highlights.component';
       }
       .primary {
         align-self: flex-start;
-        padding: 8px 16px;
-        border-radius: var(--radius);
-        background: var(--accent);
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .link {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
       }
       .edit-link {
         align-self: flex-start;
         margin-top: 10px;
       }
-      .error {
-        margin: 0;
-        font-size: 13px;
-        color: var(--danger, #dc2626);
-      }
-
       .inline-add {
         display: flex;
         gap: 6px;
@@ -693,23 +652,8 @@ import { RoleHighlightsComponent } from './role-highlights.component';
         width: 130px;
       }
 
-      .remove {
+      app-confirm-button {
         margin-left: auto;
-        font-size: 12px;
-        color: var(--text-tertiary);
-        padding: 2px 6px;
-      }
-
-      .notice {
-        margin: 0;
-        padding: 14px 18px;
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-      .retry {
-        margin-left: 8px;
-        color: var(--accent);
-        font-weight: 600;
       }
 
       .gap-list {
@@ -780,11 +724,6 @@ import { RoleHighlightsComponent } from './role-highlights.component';
         font-size: 12px;
         color: var(--text-tertiary);
       }
-      .empty {
-        color: var(--text-tertiary);
-        font-size: 13px;
-      }
-
       .suggested {
         margin: 0 18px 4px;
         padding: 10px 12px;
@@ -1233,15 +1172,4 @@ function coursePayload(draft: ReturnType<typeof emptyCourse>): EducationCreate {
     start_date: asDate(draft.start_date, draft.date_precision),
     end_date: asDate(draft.end_date, draft.date_precision),
   };
-}
-
-/** The API's own message where there is one, so a validation error explains itself. */
-function detailOf(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-  }
-  return fallback;
 }

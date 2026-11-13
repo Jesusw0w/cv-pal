@@ -8,15 +8,19 @@ entry under **Log** for anything non-obvious. The session-by-session history up 
 
 ---
 
-## Current state — 2026-09-22
+## Current state — 2026-11-13
 
 **Released** as 0.1.0. Self-hosted via `docker compose up` (pulls images from ghcr.io),
 or `start-cv-pal.cmd` on Windows. CI runs on GitHub Actions; tagging `v*` publishes
 images.
 
-**Quality gate:** backend `uv run nox` → ruff, `mypy --strict`, pytest (377), `alembic
-check`. Frontend `npm run lint`, `npm run format:check`, `npm test -- --watch=false`
-(59), `npm run build`. Migration head `d7e8f9a0b1c2`.
+**Quality gate:** backend `uv run nox` → ruff, `mypy --strict`, pytest (451), `alembic
+check`, all installed from `uv.lock`. Frontend `npm run lint`, `npm run format:check`,
+`npm test -- --watch=false` (83), `npm run build`. Migration head `a0b1c2d3e4f5`.
+
+**Navigation:** Dashboard · Profile (Career profile / Goals / LinkedIn) · CVs · Jobs ·
+Applications (Applications / Platforms) · Settings. A section with tabs is
+`SectionComponent` plus child routes; its tabs come from route data.
 
 ### Built
 
@@ -28,9 +32,7 @@ check`. Frontend `npm run lint`, `npm run format:check`, `npm test -- --watch=fa
 | First run | `/welcome`: explain → upload CV → keep what it read → goals. Shown once, on an empty profile. |
 | Career profile | Roles, education, skills — add, amend, delete. Skills cite the roles that evidence them, with suggestions drawn from role descriptions. Import from an uploaded CV (deterministic, proposes only). Summary drafted by the model from profile facts (proposes only; refuses an empty profile). |
 | Goals | Target roles, work regime, salary floor, work locations — each a non-negotiable or a preference. |
-| Documents | Upload (PDF/DOCX, magic-byte checked), list, delete with file cleanup. |
-| CV analysis | ATS parseability and keyword coverage against a pasted posting. No model needed. |
-| AI review | Model-backed suggestions, accept or dismiss. Warns up front when the model is unavailable (`GET /health/llm`). |
+| CVs | One screen: upload (PDF/DOCX, magic-byte checked), delete with file cleanup, ATS parseability (runs on selection), keyword coverage against a saved or pasted posting, and the model-backed review (accept or dismiss; warns up front when the model is unavailable, `GET /health/llm`). |
 | Job search | Paste a posting, import a Greenhouse / Lever / Remotive link, watch boards and sync them (one call syncs all — cron-friendly). Scored against goals, with the reason stated. |
 | Tailoring | Tailored CV (surface, and substitute within the alias map) as Markdown / DOCX / PDF. Cover-letter draft with a self-similarity warning. |
 | Applications | Five statuses, reply rate over applications old enough to have been answered, chase list, "saved but not applied". |
@@ -48,10 +50,14 @@ Roughly in priority order.
 3. **Per-account LLM config** — encrypted keys, per-task model, token and cost
    accounting. Currently per deployment, in `.env`.
 4. Rules, queue and assisted submission (Phase 7) — only once the gate exists.
-5. **Split `job-search` and `profile` into child components.** Their styles are still
-   over the 4 kB budget warning (4.85 kB and 4.62 kB) after shared rules moved to
-   `styles.css`; what remains is genuinely page-specific.
-6. Smaller: transform 3 (rephrase, needs a model), per-change diff and approval, JSON
+5. **Split `profile.component` into child components.** It is 1,200 lines; the role,
+   education and skills cards each want their own file, as languages and portfolio
+   have. (`jobs` is split; both are under the style budget now.) The forms there and
+   in `goals`/`welcome` are template-driven over plain properties — move them to
+   signal forms when they are next touched, not as a sweep.
+6. **Replace the Portuguese place names in fixtures and tests** (mock fixtures, and
+   backend tests where the matching logic uses them). UI placeholders are done.
+7. Smaller: transform 3 (rephrase, needs a model), per-change diff and approval, JSON
    Resume import/export, projects and certifications, structured logging with request
    IDs, storage behind an interface, `docs/architecture.md`, PWA (Tier 2).
 
@@ -68,9 +74,16 @@ Roughly in priority order.
 ### Gotchas
 
 - The Angular CLI needs Node ≥ 24.15 (or 22.22.3+, or 26+).
-- `uv run nox` installs unpinned dependencies, CI installs the lockfile. Newer `openai`
-  / `anthropic` releases type against their own `httpx` fork, so test fakes built from
-  plain `httpx` objects need a `cast(Any, …)` to pass under both.
+- `uv run nox` and CI both install `uv.lock`. Upgrading is deliberate: `uv lock
+  --upgrade`, then fix what the gate finds. SQLAlchemy 2.1 is the known one — it types
+  `select(User)` as `Select[User]`, not `Select[tuple[User]]` (`user_service.py`).
+- **Reading `.value()` on a failed resource throws** (Angular ≥ 20), default value or
+  not, and takes the template down. Services expose `valueOr(resource, fallback)`
+  (`shared/resource.ts`); in a component, guard with `hasValue()`.
+- Shared UI pieces live in `shared/`: `Action` (busy + error around one request),
+  `detailOf` (the API's message), `ConfirmButtonComponent`, `saveBlob`. Shared classes
+  (`.page`, `.rows`/`.row`, `.link`, `.remove`, `.hint`, `.error`, `.score`, `.term`,
+  `.tabs`) are in `styles.css` — a page that redeclares one is overriding it.
 - Importing anything from a lazy component into eager code (e.g. a constant from
   `WelcomeComponent` into `LayoutComponent`) silently un-lazies the route. Shared
   constants live in `core/`.
@@ -88,6 +101,49 @@ Roughly in priority order.
 ---
 
 ## Log
+
+### 2026-11-13 — Review: fewer screens, shared helpers, resource errors
+
+Asked for: less noise, features integrated rather than listed, current practices.
+
+- **Sidebar 11 → 5 (+ settings).** Documents / CV Analysis / AI Tools were three
+  screens that each began with their own "choose a CV" list; they are one `CvsComponent`
+  with `CvCheckComponent` and `CvReviewComponent` as children keyed on the chosen CV
+  (`rxResource`, so switching CV refetches and a stale result cannot be shown against
+  another file). Goals and LinkedIn are tabs of Profile; Platforms a tab of
+  Applications. Old paths are not redirected one by one — the wildcard sends them to
+  the dashboard.
+- **Removed from the dashboard:** "profile health" (it was 100 minus a penalty for
+  uploaded files older than 90 days — nothing to do with the profile), the stale-CV
+  next action that went with it, and "recent documents" (rows styled as clickable that
+  did nothing). Added: a next action for platforms behind the profile, which
+  `PlatformService.outdated` existed for and nothing used.
+- **Removed from Applications:** the "By platform" table — the Platforms tab shows the
+  same numbers per row. The per-row platform select moved into Edit.
+- **Removed from Settings:** the dark-mode switch and sign-out, both already in the
+  top bar.
+- **Titles:** routes use the router's `title` with `PageTitleStrategy`, which also
+  feeds the top bar. Pages no longer carry their own `<h1>` (there were two per page).
+- **`strict` and `strictTemplates` are on** in `tsconfig.json`. They were absent, not
+  disabled; the code already passed.
+- **Found by driving the mock build in headless Chromium, not by the tests:** the
+  LinkedIn screen threw on every account without an import (404 → failed resource →
+  `value()` throws). The same applied to every service on any failed request. See
+  Gotchas.
+- **Contrast:** `--text-tertiary`, `--success`, `--warning`, `--danger` were below
+  4.5:1 as text in light mode, and white on the dark-mode accent below 3:1. Hard-coded
+  `#16a34a` / `#d97706` / `#dc2626` replaced by the tokens.
+- **Not done, deliberately:** a rewrite of the remaining forms to signal forms (large,
+  and no behaviour to gain today); splitting `profile.component`; the backend beyond
+  running its gate and fixing what failed — it was not read line by line.
+- Angular 22.1 → 22.2 and other in-range updates (`npm update`); lockfile only.
+
+Verified: `uv run nox` green (451). Frontend lint, format check, 83 tests, `ng build`
+and the mock build green, no budget warnings. Every screen opened in headless Chromium
+against the mock build, light, dark and at 390 px, with no console errors; tailoring,
+the cover letter draft, the add-jobs panel, coverage against a saved posting and the
+confirm-to-delete button exercised there. Not run against a real backend or in the
+containers. README screenshots regenerated from the mock build.
 
 ### 2026-09-23 — Languages, portfolio, year-only education, application details
 

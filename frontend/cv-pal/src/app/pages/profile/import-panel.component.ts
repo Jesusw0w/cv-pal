@@ -1,10 +1,11 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 
 import { AnalysisService } from '../../core/services/analysis.service';
 import { CareerProfileService } from '../../core/services/career-profile.service';
 import { CvExtractionResponse, ExtractedEntryResponse } from '../../shared/models/api.model';
+import { detailOf } from '../../shared/http-error';
 
 /**
  * How long a read may take before the panel says why. The deterministic pass is under
@@ -30,6 +31,7 @@ interface ProposedField {
  */
 @Component({
   selector: 'app-import-panel',
+  imports: [RouterLink],
   template: `
     <section class="card" [attr.aria-busy]="reading()">
       <div class="card-header">
@@ -54,7 +56,7 @@ interface ProposedField {
             {{ reading() ? 'Reading…' : 'Read it' }}
           </button>
           @if (analysis.documents().length === 0 && !analysis.isLoading()) {
-            <span class="muted">Upload one on the Documents screen first.</span>
+            <span class="muted">Upload one under <a routerLink="/cvs">CVs</a> first.</span>
           }
         </div>
       }
@@ -79,8 +81,8 @@ interface ProposedField {
         @if (isEmpty(found)) {
           <p class="muted body">
             Nothing could be read from that file. That usually means a scanned image, or a layout
-            that does not survive text extraction — the analysis screen's parseability check will
-            say which.
+            that does not survive text extraction — the ATS check under
+            <a routerLink="/cvs">CVs</a> says which.
           </p>
         } @else {
           <p class="muted body">
@@ -319,7 +321,7 @@ interface ProposedField {
       .notice {
         margin: 8px 18px 0;
         padding: 8px 10px;
-        border-left: 3px solid #d97706;
+        border-left: 3px solid var(--warning);
         font-size: 13px;
         color: var(--text-secondary);
       }
@@ -332,7 +334,7 @@ interface ProposedField {
         margin: 0;
         padding: 6px 18px;
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
 
       .group {
@@ -392,7 +394,7 @@ interface ProposedField {
         color: var(--text-tertiary);
       }
       .warn {
-        color: #d97706;
+        color: var(--warning);
       }
 
       .add {
@@ -736,14 +738,4 @@ export class ImportPanelComponent {
 /** Both names are required by the API; extraction can find one without the other. */
 function isComplete(entry: ExtractedEntryResponse): boolean {
   return Boolean(entry.organisation.trim() && entry.title.trim());
-}
-
-function detailOf(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-  }
-  return fallback;
 }

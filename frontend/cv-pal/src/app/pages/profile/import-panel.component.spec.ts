@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { CvExtractionResponse } from '../../shared/models/api.model';
 import { ImportPanelComponent } from './import-panel.component';
@@ -25,7 +26,7 @@ const FOUND: CvExtractionResponse = {
 describe('ImportPanelComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
   });
 

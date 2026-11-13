@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { CareerGoalsResponse, CareerGoalsUpdate } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 const EMPTY_GOALS: CareerGoalsResponse = {
   id: 0,
@@ -33,7 +34,7 @@ export class GoalsService {
     { defaultValue: EMPTY_GOALS },
   );
 
-  readonly goals = this.resource.value;
+  readonly goals = valueOr(this.resource, EMPTY_GOALS);
   readonly isLoading = this.resource.isLoading;
   readonly error = this.resource.error;
 

@@ -1,11 +1,13 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { Observable } from 'rxjs';
 
-import { ApplicationService } from '../../core/services/application.service';
+import { ApplicationService, PIPELINE } from '../../core/services/application.service';
 import { AnalysisService } from '../../core/services/analysis.service';
+import { Action } from '../../shared/action';
+import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import { PlatformService } from '../../core/services/platform.service';
 import { ApplicationResponse, ApplicationStatus } from '../../shared/models/api.model';
 
@@ -21,506 +23,309 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
 const STATUSES: ApplicationStatus[] = ['applied', 'interviewing', 'offer', 'rejected', 'withdrawn'];
 
 /**
- * What was sent, and what came back.
- *
- * The screen the product was missing. Everything before it prepares an application;
- * nothing recorded whether one was made, which is why the dashboard's "funnel" was
- * three counts that only ever grew.
+ * What was sent, and what came back. Nothing here is submitted for the user: it is the
+ * record of applications they made themselves.
  */
 @Component({
   selector: 'app-applications',
-  imports: [DatePipe, FormsModule, RouterLink],
+  imports: [DatePipe, FormsModule, RouterLink, ConfirmButtonComponent],
   template: `
     <div class="page">
-      <header class="intro">
-        <h1>Applications</h1>
-        <p>
-          What you sent and what came back. Nothing here is submitted for you — this is the record
-          of applications you made yourself.
-        </p>
-      </header>
-
       @if (applications.error()) {
         <p class="card notice" role="alert">
           Could not load your applications.
-          <button type="button" class="retry" (click)="applications.reload()">Try again</button>
+          <button type="button" class="link" (click)="applications.reload()">Try again</button>
         </p>
       }
 
       <!-- A real funnel: every application passes between these, and the numbers can
            go down as well as up. -->
-      <section class="card funnel" aria-label="Application pipeline">
-        @for (status of pipeline; track status; let last = $last) {
-          <div class="funnel-stage">
-            <span class="funnel-count">{{ applications.stats().by_status[status] }}</span>
-            <span class="funnel-label">{{ label(status) }}</span>
+      @let stats = applications.stats();
+      <section class="card stats" aria-label="Application pipeline">
+        @for (status of pipeline; track status) {
+          <div class="stat">
+            <span class="stat-value">{{ stats.by_status[status] }}</span>
+            <span class="muted">{{ label(status) }}</span>
           </div>
-          @if (!last) {
-            <span class="funnel-arrow" aria-hidden="true">&rsaquo;</span>
-          }
+          <span class="muted arrow" aria-hidden="true">&rsaquo;</span>
         }
-        <div class="funnel-stage muted">
-          <span class="funnel-count">{{ applications.stats().by_status['rejected'] }}</span>
-          <span class="funnel-label">Rejected</span>
+        <div class="stat">
+          <span class="stat-value quiet">{{ stats.by_status['rejected'] }}</span>
+          <span class="muted">Rejected</span>
         </div>
-      </section>
-
-      <section class="card rate">
-        <div class="rate-figure">
-          <span class="rate-value">
-            @if (applications.stats().reply_rate; as rate) {
-              {{ rate }}<small>%</small>
+        <div class="stat rate">
+          <!-- A dash, not 0%: "no rate yet" and "nobody replied" are different claims. -->
+          <span class="stat-value rate-value">
+            @if (stats.reply_rate !== null) {
+              {{ stats.reply_rate }}%
             } @else {
               &mdash;
             }
           </span>
-          <span class="rate-label">reply rate</span>
+          <span class="muted">
+            @if (stats.answerable === 0) {
+              reply rate &middot; nothing has been out long enough yet
+            } @else {
+              reply rate &middot; {{ stats.replied }} of {{ stats.answerable }} old enough to answer
+            }
+          </span>
         </div>
-        <p class="rate-note">
-          @if (applications.stats().answerable === 0) {
-            Nothing has been out long enough to expect an answer yet. A rate before then would only
-            be measuring how recently you applied.
-          } @else {
-            {{ applications.stats().replied }} of {{ applications.stats().answerable }} applications
-            old enough to have been answered got a reply.
-          }
-        </p>
       </section>
 
-      <!-- Only once something was sent through a named platform: a table of one
-           "Not recorded" row would say nothing. -->
-      @if (hasPlatformStats()) {
-        <section class="card">
-          <div class="card-header">
-            <h3>By platform</h3>
-            <span class="card-note">Which platforms get replies</span>
-          </div>
-          <div class="rows">
-            @for (row of applications.stats().by_platform; track row.name) {
-              <div class="chase-row">
-                <span class="chase-title">{{ row.name }}</span>
-                <span class="chase-org">
-                  {{ row.total }} sent &middot; {{ row.interviews }} interviewing
-                  @if (row.offers > 0) {
-                    &middot; {{ row.offers }} offer(s)
-                  }
-                </span>
-                <span class="chase-age">
-                  @if (row.reply_rate === null) {
-                    too early
-                  } @else {
-                    {{ row.reply_rate }}% replied
-                  }
-                </span>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
       @if (applications.needsChasing().length > 0) {
-        <section class="card chase">
+        <section class="card">
           <div class="card-header">
             <h3>Worth chasing</h3>
             <span class="card-note">Quiet for over two weeks</span>
           </div>
-          <div class="rows">
+          <ul class="rows">
             @for (application of applications.needsChasing(); track application.id) {
-              <div class="chase-row">
-                <span class="chase-title">{{ application.posting.title }}</span>
-                <span class="chase-org">{{
-                  application.posting.company ?? 'Unknown company'
-                }}</span>
-                <span class="chase-age">{{ application.days_since_applied }} days</span>
-              </div>
+              <li class="row">
+                <div class="row-main">
+                  <span class="row-title">{{ application.posting.title }}</span>
+                  <span class="row-meta">{{
+                    application.posting.company ?? 'Unknown company'
+                  }}</span>
+                </div>
+                <span class="warn">{{ application.days_since_applied }} days</span>
+              </li>
             }
-          </div>
+          </ul>
         </section>
       }
 
-      <!-- Recording an application is the whole point, so it is one click from a saved
-           posting rather than a form asking you to retype the role. -->
       <section class="card">
         <div class="card-header">
           <h3>Record an application</h3>
-          <span class="card-note"
-            >{{ applications.unapplied().length }} saved posting(s) not applied for</span
-          >
+          @if (platforms.platforms().length > 0) {
+            <!-- Kept for the next click: several in a row usually go through one place. -->
+            <label class="card-note through">
+              Applied through
+              <select [(ngModel)]="through" aria-label="Platform the application went through">
+                <option [ngValue]="null">Not recorded</option>
+                @for (platform of platforms.platforms(); track platform.id) {
+                  <option [ngValue]="platform.id">{{ platform.name }}</option>
+                }
+              </select>
+            </label>
+          }
         </div>
-        @if (applications.unapplied().length === 0) {
-          <p class="body muted">
-            Nothing left to record. <a routerLink="/job-search">Save a posting</a> first —
-            applications are recorded against one.
-          </p>
-        } @else {
-          <!-- Optional, and kept for the next click: several applications in a row
-               usually go through the same place. -->
-          <label class="body through">
-            Applied through
-            <select [(ngModel)]="through" aria-label="Platform the application went through">
-              <option [ngValue]="null">Not recorded</option>
-              @for (platform of platforms.platforms(); track platform.id) {
-                <option [ngValue]="platform.id">{{ platform.name }}</option>
-              }
-            </select>
-            @if (platforms.platforms().length === 0) {
-              <a routerLink="/platforms">Add the platforms you use</a>
-            }
-          </label>
-          <div class="rows">
-            @for (posting of applications.unapplied(); track posting.id) {
-              <div class="chase-row">
-                <span class="chase-title">{{ posting.title }}</span>
-                <span class="chase-org">{{ posting.company ?? 'Unknown company' }}</span>
-                <button type="button" class="link" [disabled]="busy()" (click)="record(posting.id)">
-                  I applied
-                </button>
+        <ul class="rows">
+          @for (posting of applications.unapplied(); track posting.id) {
+            <li class="row">
+              <div class="row-main">
+                <span class="row-title">{{ posting.title }}</span>
+                <span class="row-meta">{{ posting.company ?? 'Unknown company' }}</span>
               </div>
-            }
-          </div>
-        }
-        <!-- A recruiter's call or a referral often leaves no posting to save; the
-             role, company and what was offered are still worth recording. -->
-        <details class="body manual">
+              <button
+                type="button"
+                class="link"
+                [disabled]="action.busy()"
+                (click)="record(posting.id)"
+              >
+                I applied
+              </button>
+            </li>
+          } @empty {
+            <li class="empty">
+              Every <a routerLink="/jobs">saved posting</a> has been applied for.
+            </li>
+          }
+        </ul>
+        <!-- A recruiter's call or a referral often leaves no posting to save. -->
+        <details class="body">
           <summary>Applied without a saved posting?</summary>
-          <form class="manual-form" (ngSubmit)="recordRole()">
-            <input name="title" placeholder="Role" maxlength="255" [(ngModel)]="manual.title" />
-            <input name="company" placeholder="Company" [(ngModel)]="manual.company" />
-            <input name="url" placeholder="Link (optional)" [(ngModel)]="manual.url" />
+          <form class="inline-form" (ngSubmit)="recordRole()">
+            <input
+              name="title"
+              placeholder="Role"
+              aria-label="Role"
+              maxlength="255"
+              [(ngModel)]="manual.title"
+            />
+            <input
+              name="company"
+              placeholder="Company"
+              aria-label="Company"
+              [(ngModel)]="manual.company"
+            />
+            <input name="url" placeholder="Link" aria-label="Link" [(ngModel)]="manual.url" />
             <input
               name="salary"
-              placeholder="Salary offered (optional)"
+              placeholder="Salary offered"
+              aria-label="Salary offered"
               [(ngModel)]="manual.salary"
             />
-            <input name="next" placeholder="Next step (optional)" [(ngModel)]="manual.next" />
-            <select name="through" [(ngModel)]="through" aria-label="Applied through">
-              <option [ngValue]="null">No platform</option>
-              @for (platform of platforms.platforms(); track platform.id) {
-                <option [ngValue]="platform.id">{{ platform.name }}</option>
-              }
-            </select>
-            <button type="submit" class="link" [disabled]="busy() || !manual.title.trim()">
+            <input
+              name="next"
+              placeholder="Next step"
+              aria-label="Next step"
+              [(ngModel)]="manual.next"
+            />
+            <button
+              type="submit"
+              class="primary"
+              [disabled]="action.busy() || !manual.title.trim()"
+            >
               Record it
             </button>
           </form>
         </details>
-        @if (error(); as message) {
-          <p class="error" role="alert">{{ message }}</p>
+        @if (action.error(); as message) {
+          <p class="error body" role="alert">{{ message }}</p>
         }
       </section>
 
       <section class="card">
-        <div class="card-header">
-          <h3>All applications</h3>
-        </div>
-        @if (applications.applications().length === 0) {
-          <p class="body muted">
-            Nothing recorded yet. Every number above is computed from this list, so it stays empty
-            until you record the first one.
-          </p>
-        }
-        <div class="rows">
+        <div class="card-header"><h3>All applications</h3></div>
+        <ul class="rows">
           @for (application of applications.applications(); track application.id) {
-            <div class="entry" [class.closed]="isClosed(application)">
-              <div class="entry-main">
-                <span class="entry-title">{{ application.posting.title }}</span>
-                <span class="entry-meta">
+            <li class="row" [class.closed]="isClosed(application)">
+              <div class="row-main">
+                <span class="row-title">{{ application.posting.title }}</span>
+                <span class="row-meta">
                   {{ application.posting.company ?? 'Unknown company' }}
                   &middot; sent {{ application.applied_at | date: 'd MMM y' }}
                   @if (application.cv_id) {
                     &middot; {{ cvName(application.cv_id) }}
-                  } @else {
-                    &middot; <span class="muted">no CV recorded</span>
+                  }
+                  @if (application.salary) {
+                    &middot; {{ application.salary }}
                   }
                   @if (application.needs_chasing) {
                     &middot;
                     <span class="warn">quiet {{ application.days_since_applied }} days</span>
                   }
-                  @if (application.salary) {
-                    &middot; {{ application.salary }}
-                  }
                 </span>
                 @if (application.next_step) {
-                  <span class="entry-meta">Next: {{ application.next_step }}</span>
+                  <span class="row-meta">Next: {{ application.next_step }}</span>
+                }
+                @if (application.notes) {
+                  <span class="row-meta">{{ application.notes }}</span>
                 }
                 @if (editing() === application.id) {
-                  <form class="manual-form" (ngSubmit)="saveDetails(application)">
+                  <form class="inline-form" (ngSubmit)="saveDetails(application)">
                     <input
                       name="salary"
                       placeholder="Salary offered"
+                      aria-label="Salary offered"
                       [(ngModel)]="details.salary"
                     />
-                    <input name="next" placeholder="Next step" [(ngModel)]="details.next" />
-                    <input name="notes" placeholder="Notes" [(ngModel)]="details.notes" />
-                    <button type="submit" class="link" [disabled]="busy()">Save</button>
-                    <button type="button" class="remove" (click)="editing.set(null)">Cancel</button>
+                    <input
+                      name="next"
+                      placeholder="Next step"
+                      aria-label="Next step"
+                      [(ngModel)]="details.next"
+                    />
+                    <input
+                      name="notes"
+                      placeholder="Notes"
+                      aria-label="Notes"
+                      [(ngModel)]="details.notes"
+                    />
+                    @if (platforms.platforms().length > 0) {
+                      <select name="platform" aria-label="Platform" [(ngModel)]="details.platform">
+                        <option [ngValue]="null">No platform</option>
+                        @for (platform of platforms.platforms(); track platform.id) {
+                          <option [ngValue]="platform.id">{{ platform.name }}</option>
+                        }
+                      </select>
+                    }
+                    <button type="submit" class="primary" [disabled]="action.busy()">Save</button>
+                    <button type="button" class="link" (click)="editing.set(null)">Cancel</button>
                   </form>
                 }
               </div>
-              <button type="button" class="remove" (click)="editDetails(application)">Edit</button>
-              @if (platforms.platforms().length > 0) {
-                <select
-                  [ngModel]="application.platform_id"
-                  (ngModelChange)="setPlatform(application, $event)"
-                  [disabled]="busy()"
-                  [attr.aria-label]="'Platform for ' + application.posting.title"
-                >
-                  <option [ngValue]="null">No platform</option>
-                  @for (platform of platforms.platforms(); track platform.id) {
-                    <option [ngValue]="platform.id">{{ platform.name }}</option>
-                  }
-                </select>
-              }
               <select
                 [ngModel]="application.status"
                 (ngModelChange)="setStatus(application, $event)"
-                [disabled]="busy()"
+                [disabled]="action.busy()"
                 [attr.aria-label]="'Status for ' + application.posting.title"
               >
                 @for (status of statuses; track status) {
                   <option [value]="status">{{ label(status) }}</option>
                 }
               </select>
-              <button
-                type="button"
-                class="remove"
-                [disabled]="busy()"
-                [attr.aria-label]="'Remove the record of applying to ' + application.posting.title"
-                (click)="remove(application.id)"
+              <button type="button" class="link" (click)="editDetails(application)">Edit</button>
+              <app-confirm-button
+                [label]="'Remove the record of applying to ' + application.posting.title"
+                [disabled]="action.busy()"
+                (confirmed)="remove(application.id)"
+                >Remove</app-confirm-button
               >
-                Remove
-              </button>
-            </div>
+            </li>
+          } @empty {
+            <li class="empty">
+              Nothing recorded yet. The numbers above are computed from this list.
+            </li>
           }
-        </div>
+        </ul>
       </section>
     </div>
   `,
-  styles: [
-    `
-      /* .card, .card-header and .badge come from styles.css. */
-      .page {
-        padding: 28px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-      .intro h1 {
-        margin: 0 0 4px;
-        font-size: 22px;
-      }
-      .intro p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--text-tertiary);
-        max-width: 70ch;
-      }
+  styles: `
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+      padding: 16px 20px;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 72px;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .quiet {
+      color: var(--text-tertiary);
+    }
+    .arrow {
+      font-size: 18px;
+    }
+    .rate {
+      align-items: flex-start;
+      margin-left: auto;
+      padding-left: 20px;
+      border-left: 1px solid var(--border-light);
+    }
 
-      .funnel {
-        display: flex;
-        gap: 4px;
-        padding: 12px 8px;
-        overflow-x: auto;
-      }
-      .funnel-stage {
-        flex: 1 1 0;
-        min-width: 88px;
-        padding: 10px 8px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-      }
-      .funnel-stage.muted .funnel-count {
-        color: var(--text-tertiary);
-      }
-      .funnel-count {
-        font-size: 22px;
-        font-weight: 700;
-        line-height: 1;
-      }
-      .funnel-label {
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-      .funnel-arrow {
-        align-self: center;
-        font-size: 18px;
-        color: var(--text-tertiary);
-      }
-
-      .rate {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        padding: 16px 20px;
-      }
-      .rate-figure {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-width: 90px;
-      }
-      .rate-value {
-        font-size: 28px;
-        font-weight: 700;
-        line-height: 1;
-      }
-      .rate-value small {
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--text-tertiary);
-      }
-      .rate-label {
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-      .rate-note {
-        margin: 0;
-        font-size: 13px;
-        color: var(--text-secondary);
-        max-width: 62ch;
-      }
-
-      .rows {
-        padding: 4px 18px 16px;
-        display: flex;
-        flex-direction: column;
-      }
-      .body {
-        padding: 4px 18px 16px;
-        font-size: 13px;
-      }
-      .muted {
-        color: var(--text-tertiary);
-      }
-      .warn {
-        color: #d97706;
-      }
-      .error {
-        margin: 0;
-        padding: 0 18px 14px;
-        font-size: 13px;
-        color: var(--danger, #dc2626);
-      }
-
-      .chase-row,
-      .entry {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 9px 0;
-        border-top: 1px solid var(--border-light);
-      }
-      .chase-row:first-child,
-      .entry:first-child {
-        border-top: 0;
-      }
-      .chase-title,
-      .entry-title {
-        font-size: 14px;
-        font-weight: 600;
-      }
-      .chase-org {
-        flex: 1;
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-      .chase-age {
-        font-size: 12px;
-        color: #d97706;
-      }
-
-      .entry-main {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .entry-meta {
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-      .entry.closed .entry-title {
-        color: var(--text-tertiary);
-      }
-      .entry select {
-        flex: none;
-        padding: 6px 8px;
-        font-size: 13px;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius);
-        background: var(--bg-primary);
-        color: var(--text-primary);
-      }
-      .remove {
-        flex: none;
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-      .remove:hover:not(:disabled) {
-        color: var(--danger, #dc2626);
-      }
-      .link {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-      }
-      .link:disabled,
-      .remove:disabled {
-        opacity: 0.5;
-      }
-      .manual summary {
-        cursor: pointer;
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-      .manual-form {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-        padding-top: 8px;
-      }
-      .manual-form input,
-      .manual-form select {
-        padding: 6px 8px;
-        font-size: 13px;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius);
-        background: var(--bg-primary);
-        color: var(--text-primary);
-      }
-      .through {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px;
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-      .through select {
-        padding: 6px 8px;
-        font-size: 13px;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius);
-        background: var(--bg-primary);
-        color: var(--text-primary);
-      }
-      .retry {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-      }
-
-      @media (max-width: 768px) {
-        .entry {
-          flex-wrap: wrap;
-        }
-      }
-    `,
-  ],
+    .warn {
+      font-size: 12px;
+      color: var(--warning);
+    }
+    .through {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .closed .row-title {
+      color: var(--text-tertiary);
+    }
+    summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .inline-form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding-top: 10px;
+    }
+    select,
+    .inline-form input {
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+  `,
 })
 export class ApplicationsComponent {
   readonly applications = inject(ApplicationService);
@@ -535,17 +340,17 @@ export class ApplicationsComponent {
 
   /** The application whose salary, next step and notes are open for editing. */
   readonly editing = signal<number | null>(null);
-  details = { salary: '', next: '', notes: '' };
-
-  readonly hasPlatformStats = computed(() =>
-    this.applications.stats().by_platform.some((row) => row.platform_id !== null),
-  );
+  details: { salary: string; next: string; notes: string; platform: number | null } = {
+    salary: '',
+    next: '',
+    notes: '',
+    platform: null,
+  };
 
   readonly statuses = STATUSES;
-  readonly pipeline: ApplicationStatus[] = ['applied', 'interviewing', 'offer'];
+  readonly pipeline = PIPELINE;
 
-  readonly busy = signal(false);
-  readonly error = signal<string | null>(null);
+  protected readonly action = new Action();
 
   private readonly cvNames = computed(
     () => new Map(this.documents.documents().map((cv) => [cv.id, cv.filename])),
@@ -590,6 +395,7 @@ export class ApplicationsComponent {
       salary: application.salary ?? '',
       next: application.next_step ?? '',
       notes: application.notes ?? '',
+      platform: application.platform_id,
     };
     this.editing.set(application.id);
   }
@@ -600,16 +406,10 @@ export class ApplicationsComponent {
         salary: this.details.salary.trim() || null,
         next_step: this.details.next.trim() || null,
         notes: this.details.notes.trim() || null,
+        platform_id: this.details.platform,
       }),
       () => this.editing.set(null),
     );
-  }
-
-  setPlatform(application: ApplicationResponse, platformId: number | null): void {
-    if (platformId === application.platform_id) {
-      return;
-    }
-    this.run(this.applications.update(application.id, { platform_id: platformId }));
   }
 
   setStatus(application: ApplicationResponse, status: ApplicationStatus): void {
@@ -623,28 +423,7 @@ export class ApplicationsComponent {
     this.run(this.applications.remove(id));
   }
 
-  private run(request: { subscribe: (o: object) => void }, onDone?: () => void): void {
-    this.busy.set(true);
-    this.error.set(null);
-    request.subscribe({
-      next: () => {
-        this.busy.set(false);
-        onDone?.();
-      },
-      error: (error: unknown) => {
-        this.busy.set(false);
-        this.error.set(detailOf(error, 'That could not be saved.'));
-      },
-    });
+  private run<T>(request: Observable<T>, onDone?: () => void): void {
+    this.action.run(request, 'That could not be saved.', onDone);
   }
-}
-
-function detailOf(error: unknown, fallback: string): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-  }
-  return fallback;
 }

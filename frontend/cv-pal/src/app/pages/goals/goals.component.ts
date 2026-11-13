@@ -1,8 +1,8 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { GoalsService } from '../../core/services/goals.service';
+import { detailOf } from '../../shared/http-error';
 import {
   EmploymentType,
   SalaryExpectation,
@@ -88,13 +88,9 @@ function linesOf(text: string): string[] {
   imports: [FormsModule],
   template: `
     <div class="page">
-      <header class="intro">
-        <h1>What you are looking for</h1>
-        <p>
-          Job matches are scored against this, not against whatever a job board happened to return.
-          Leave anything blank that you genuinely do not mind about.
-        </p>
-      </header>
+      <p class="intro">
+        Jobs are scored against what you say here. Leave blank anything you do not mind about.
+      </p>
 
       @if (goals.error()) {
         <p class="card notice" role="alert">
@@ -152,9 +148,7 @@ function linesOf(text: string): string[] {
         <section class="field">
           <h3>Where you can work</h3>
           <p class="hint">
-            One per line. Remote does not mean unrestricted &mdash; most remote postings name a
-            country or region you have to be in, and without this they are ranked as if you could
-            take them.
+            One per line. Most remote postings still name a country or region you have to be in.
           </p>
           <!-- Explicit write side: the suggestion chips and the warning read a signal,
                and a plain [(ngModel)] property would not notify them as you type. -->
@@ -164,16 +158,15 @@ function linesOf(text: string): string[] {
             (ngModelChange)="setLocations($event)"
             name="locations"
             aria-label="Places you can work from, one per line"
-            placeholder="Portugal&#10;Europe&#10;EU&#10;EMEA"
+            placeholder="Ireland&#10;Europe&#10;EU&#10;EMEA"
           ></textarea>
-          <!-- The app deliberately does not know that Portugal is in Europe. It has no
+          <!-- The app deliberately does not know that Ireland is in Europe. It has no
                authoritative containment data, and guessing would hide jobs silently —
                the same reasoning that limits the skills alias map. So list every term a
                posting might use for somewhere you can work. -->
           <p class="hint">
-            List every wording that applies to you, including the wider regions: a posting saying
-            <em>Europe</em> is only matched if you listed Europe. Postings open
-            <em>worldwide</em> always match.
+            List every wording that applies, wider regions included: a posting saying
+            <em>Europe</em> only matches if you listed Europe. <em>Worldwide</em> always matches.
           </p>
           @if (suggestions().length > 0) {
             <p class="suggest">
@@ -201,8 +194,7 @@ function linesOf(text: string): string[] {
         <section class="field">
           <h3>Salary</h3>
           <p class="hint">
-            Optional, and one per kind of contract: a contractor's day rate pays for their own
-            holidays and the gaps between contracts, so it is not the employee salary divided by
+            Optional, one row per kind of contract &mdash; a day rate is not a salary divided by
             working days. The minimum is your floor; the target is what you aim for.
           </p>
           @for (row of salaries; track $index; let i = $index) {
@@ -248,7 +240,7 @@ function linesOf(text: string): string[] {
               <button
                 type="button"
                 class="remove"
-                [attr.aria-label]="'Remove this salary row'"
+                aria-label="Remove this salary row"
                 (click)="removeSalary(i)"
               >
                 Remove
@@ -276,12 +268,6 @@ function linesOf(text: string): string[] {
           {{ saving() ? 'Saving…' : 'Save' }}
         </button>
       </form>
-
-      <p class="footnote">
-        Deferred on purpose until something reads them: direction (step up, sideways, pivot),
-        commute limits, contract types, company size, and the parts of a job you want more and less
-        of.
-      </p>
     </div>
   `,
   styles: [
@@ -385,17 +371,17 @@ function linesOf(text: string): string[] {
       .warn {
         margin: 0;
         font-size: 12px;
-        color: #d97706;
+        color: var(--warning);
       }
       .error {
         margin: 0;
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
       .ok {
         margin: 0;
         font-size: 13px;
-        color: #16a34a;
+        color: var(--success);
       }
       .link {
         color: var(--accent);
@@ -412,7 +398,7 @@ function linesOf(text: string): string[] {
         padding: 9px 18px;
         border-radius: var(--radius);
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-text);
         font-size: 14px;
         font-weight: 600;
       }
@@ -444,9 +430,6 @@ function linesOf(text: string): string[] {
         border-color: var(--accent);
         color: var(--accent);
       }
-
-      @media (max-width: 768px) {
-      }
     `,
   ],
 })
@@ -474,7 +457,7 @@ export class GoalsComponent {
   /**
    * Common wordings the user has not listed yet.
    *
-   * A prompt, not an inference: the app still does not claim Portugal is in Europe, it
+   * A prompt, not an inference: the app still does not claim Ireland is in Europe, it
    * only offers the terms feeds actually use so the user does not have to remember
    * that "EMEA" is a thing postings say.
    */
@@ -557,10 +540,7 @@ export class GoalsComponent {
 
     this.goals
       .save({
-        target_roles: this.rolesText
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean),
+        target_roles: linesOf(this.rolesText),
         work_regimes: this.chosenRegimes(),
         regime_non_negotiable: this.regimeStrict,
         work_locations: linesOf(this.locationsText),
@@ -576,31 +556,8 @@ export class GoalsComponent {
         },
         error: (error: unknown) => {
           this.saving.set(false);
-          this.error.set(messageFor(error));
+          this.error.set(detailOf(error, 'Could not save your goals.'));
         },
       });
   }
-}
-
-/**
- * The API's own message.
- *
- * These validations are the useful ones — "choose an arrangement before making it a
- * non-negotiable" is guidance, not a failure — so showing the server's wording matters
- * more here than on most screens.
- */
-function messageFor(error: unknown): string {
-  if (error instanceof HttpErrorResponse) {
-    const detail = (error.error as { detail?: unknown } | null)?.detail;
-    if (typeof detail === 'string') {
-      return detail;
-    }
-    if (Array.isArray(detail)) {
-      const first = (detail[0] as { msg?: unknown } | undefined)?.msg;
-      if (typeof first === 'string') {
-        return first.replace(/^Value error, /, '');
-      }
-    }
-  }
-  return 'Could not save your goals.';
 }

@@ -10,6 +10,7 @@ import {
 } from '../../shared/models/api.model';
 import { ApplicationService } from './application.service';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 /**
  * Job platforms the user keeps a profile on — entirely optional.
@@ -29,7 +30,7 @@ export class PlatformService {
     { defaultValue: [] },
   );
 
-  readonly platforms = this.resource.value;
+  readonly platforms = valueOr(this.resource, []);
   readonly isLoading = this.resource.isLoading;
   readonly error = this.resource.error;
 

@@ -19,18 +19,18 @@
   --border-light: #eef0f6;
   --text-primary: #0f1729;
   --text-secondary: #5b6178;
-  --text-tertiary: #8b91a5;
+  --text-tertiary: #666c82;
   --accent: #6366f1;
   --accent-hover: #4f46e5;
   --accent-light: #eef2ff;
   --accent-text: #ffffff;
-  --success: #10b981;
+  --success: #15803d;
   --success-light: #ecfdf5;
-  --warning: #f59e0b;
+  --warning: #b45309;
   --warning-light: #fffbeb;
-  --danger: #ef4444;
+  --danger: #dc2626;
   --danger-light: #fef2f2;
-  --info: #3b82f6;
+  --info: #2563eb;
   --info-light: #eff6ff;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -61,11 +61,12 @@
   --border-light: #1f2233;
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-tertiary: #8290a6;
   --accent: #818cf8;
   --accent-hover: #6366f1;
   --accent-light: #1e1b4b;
-  --accent-text: #ffffff;
+  /* Dark on the lighter dark-mode accent: white on it is under 3:1. */
+  --accent-text: #0f1117;
   --success: #34d399;
   --success-light: #064e3b;
   --warning: #fbbf24;
@@ -124,7 +125,6 @@ select {
   padding: 8px 12px;
   background: var(--bg-primary);
   color: var(--text-primary);
-  outline: none;
   transition: border-color 0.15s;
 }
 
@@ -133,6 +133,11 @@ textarea:focus,
 select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-light);
+  outline: none;
+}
+textarea {
+  width: 100%;
+  resize: vertical;
 }
 
 ::-webkit-scrollbar {
@@ -208,35 +213,85 @@ select:focus {
   color: var(--text-tertiary);
 }
 
-/* Shared page building blocks: identical in most screens, so defined once here. */
-.primary {
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-}
-.primary:disabled {
-  opacity: 0.5;
-}
+/* Shared page building blocks. A rule lives here when every screen wants it the same;
+   components keep only the layout that is genuinely theirs. */
 .page {
-  padding: 16px;
+  padding: 24px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
 }
-.intro h1 {
-  font-size: 22px;
-  margin: 0 0 6px;
-}
-.intro p {
-  margin: 0;
+.intro {
   font-size: 14px;
   color: var(--text-secondary);
   max-width: 72ch;
 }
-.card-note {
+.body {
+  padding: 14px 20px 18px;
+}
+
+.primary {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.remove {
   font-size: 12px;
   color: var(--text-tertiary);
 }
+.remove:hover:not(:disabled) {
+  color: var(--danger);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.card-note,
+.hint,
+.muted {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.hint {
+  max-width: 70ch;
+}
+.error {
+  font-size: 13px;
+  color: var(--danger);
+}
+.ok {
+  font-size: 13px;
+  color: var(--success);
+}
+.notice {
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.empty {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  list-style: none;
+}
+
 .upload {
   font-size: 13px;
   font-weight: 600;
@@ -246,8 +301,104 @@ select:focus {
 .upload input {
   display: none;
 }
-.remove:hover {
-  color: var(--danger, #dc2626);
+
+/* A score out of 100, coloured by how much attention it needs. */
+.score {
+  flex: none;
+  font-size: 24px;
+  font-weight: 700;
+}
+.score small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.score.good {
+  color: var(--success);
+}
+.score.fair {
+  color: var(--warning);
+}
+.score.poor {
+  color: var(--danger);
+}
+
+/* A keyword chip: what a posting asks for, and whether the CV or profile says it. */
+.terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+.term {
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.term.required {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+.term.matched {
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  color: var(--success);
+}
+
+/* Pill tabs: section navigation and the small switches inside a card. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tabs > * {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+.tabs > *:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.tabs > .active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* Rows inside a card: a title, a quieter line under it, actions on the right. */
+.rows {
+  list-style: none;
+  padding: 4px 20px 10px;
+}
+.rows > .empty {
+  padding: 10px 0;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.row + .row {
+  border-top: 1px solid var(--border-light);
+}
+.row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.row-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.row-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 /* Something is happening that the user is waiting on. */
@@ -268,5 +419,14 @@ select:focus {
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation-duration: 2.4s;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px 16px 32px;
+  }
+  .row {
+    flex-wrap: wrap;
   }
 }

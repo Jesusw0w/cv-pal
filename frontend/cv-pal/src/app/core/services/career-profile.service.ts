@@ -25,6 +25,7 @@ import {
   SkillUpdate,
 } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 /**
  * What the page shows before `GET /profile` has answered.
@@ -90,7 +91,7 @@ export class CareerProfileService {
     { defaultValue: EMPTY_PROFILE },
   );
 
-  readonly profile = this.resource.value;
+  readonly profile = valueOr(this.resource, EMPTY_PROFILE);
   readonly isLoading = this.resource.isLoading;
   readonly error = this.resource.error;
 

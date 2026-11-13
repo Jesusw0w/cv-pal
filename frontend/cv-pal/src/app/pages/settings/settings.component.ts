@@ -4,9 +4,9 @@ import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
-import { ThemeService } from '../../core/services/theme.service';
 import { forgetWelcome } from '../../core/first-run';
 import { detailOf } from '../../shared/http-error';
+import { saveBlob } from '../../shared/save-file';
 import { AgentAccessComponent } from './agent-access.component';
 
 /**
@@ -23,15 +23,6 @@ import { AgentAccessComponent } from './agent-access.component';
     <div class="page">
       <section class="card">
         <div class="card-header"><h3>Account</h3></div>
-        <div class="rows">
-          <div class="row">
-            <div class="row-info">
-              <span class="row-label">Signed in as</span>
-              <span class="row-desc">{{ auth.displayName() || 'Loading…' }}</span>
-            </div>
-            <button type="button" class="danger" (click)="signOut()">Sign out</button>
-          </div>
-        </div>
         <div class="rows form">
           <label class="field">
             <span>Your name</span>
@@ -68,29 +59,6 @@ import { AgentAccessComponent } from './agent-access.component';
               </span>
             </div>
             <button type="button" class="ghost-btn" (click)="rerunSetup()">Run again</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-header"><h3>Appearance</h3></div>
-        <div class="rows">
-          <div class="row">
-            <div class="row-info">
-              <span class="row-label">Dark mode</span>
-              <span class="row-desc">Switch between light and dark themes</span>
-            </div>
-            <button
-              type="button"
-              class="toggle"
-              role="switch"
-              [attr.aria-checked]="theme.dark()"
-              aria-label="Dark mode"
-              [class.active]="theme.dark()"
-              (click)="theme.toggle()"
-            >
-              <span class="toggle-knob"></span>
-            </button>
           </div>
         </div>
       </section>
@@ -146,10 +114,9 @@ import { AgentAccessComponent } from './agent-access.component';
             </button>
           </div>
           <p class="hint">
-            Changing it signs out every device, this one included. Locked out with no way in? There
-            is no reset email — a self-hosted instance usually has no mail server, and a reset link
-            that cannot be delivered would be worse than none. Recover from a terminal on the
-            machine running CV Pal:
+            Changing it signs out every device, this one included. There is no reset email — a
+            self-hosted instance usually has no mail server. Locked out? Recover from a terminal on
+            the machine running CV Pal:
             <code
               >docker compose exec backend python -m cv_pal.admin reset-password your@email</code
             >
@@ -164,8 +131,8 @@ import { AgentAccessComponent } from './agent-access.component';
             <div class="row-info">
               <span class="row-label">Download everything</span>
               <span class="row-desc">
-                Your profile, goals, saved postings and the list of your documents, as one JSON
-                file. Uploaded files are downloaded from Documents.
+                Your profile, goals, saved postings, applications and the list of your CVs, as one
+                JSON file. The uploaded files themselves are not included.
               </span>
             </div>
             <button type="button" class="ghost-btn" [disabled]="exporting()" (click)="exportData()">
@@ -222,9 +189,9 @@ import { AgentAccessComponent } from './agent-access.component';
         </div>
       </section>
 
-      <p class="note">
-        The language model, storage and privacy settings live in the server's
-        <code>.env</code> file — this build has no per-account provider configuration yet.
+      <p class="hint">
+        The language model, storage and privacy settings live in the server's <code>.env</code>
+        file.
       </p>
     </div>
   `,
@@ -264,44 +231,6 @@ import { AgentAccessComponent } from './agent-access.component';
       .row-desc {
         font-size: 12px;
         color: var(--text-tertiary);
-      }
-
-      .toggle {
-        width: 44px;
-        height: 24px;
-        border-radius: 999px;
-        flex: none;
-        background: var(--border-light);
-        transition: background 0.15s;
-      }
-      .toggle.active {
-        background: var(--accent);
-      }
-      .toggle-knob {
-        display: block;
-        width: 18px;
-        height: 18px;
-        margin-left: 3px;
-        border-radius: 50%;
-        background: #fff;
-        transition: transform 0.15s;
-      }
-      .toggle.active .toggle-knob {
-        transform: translateX(20px);
-      }
-
-      .danger {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--danger, #dc2626);
-      }
-      .note {
-        margin: 0;
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-      .note code {
-        font-family: ui-monospace, monospace;
       }
 
       .form {
@@ -344,7 +273,7 @@ import { AgentAccessComponent } from './agent-access.component';
       .error {
         margin: 0;
         font-size: 13px;
-        color: var(--danger, #dc2626);
+        color: var(--danger);
       }
       .ok {
         margin: 0;
@@ -381,7 +310,7 @@ import { AgentAccessComponent } from './agent-access.component';
         opacity: 0.5;
       }
       .danger-card {
-        border-color: var(--danger, #dc2626);
+        border-color: var(--danger);
       }
       .danger-btn {
         padding: 8px 16px;
@@ -389,13 +318,10 @@ import { AgentAccessComponent } from './agent-access.component';
         font-size: 13px;
         font-weight: 600;
         color: #fff;
-        background: var(--danger, #dc2626);
+        background: var(--danger);
       }
       .danger-btn:disabled {
         opacity: 0.5;
-      }
-
-      @media (max-width: 768px) {
       }
     `,
   ],
@@ -405,7 +331,6 @@ export class SettingsComponent {
   private readonly router = inject(Router);
 
   readonly auth = inject(AuthService);
-  readonly theme = inject(ThemeService);
 
   readonly busy = signal(false);
   readonly currentPassword = signal('');
@@ -464,7 +389,7 @@ export class SettingsComponent {
     this.http.get<unknown>(`${environment.apiUrl}/users/me/export`).subscribe({
       next: (data) => {
         this.exporting.set(false);
-        download(
+        saveBlob(
           new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
           `cv-pal-export-${new Date().toISOString().slice(0, 10)}.json`,
         );
@@ -499,11 +424,6 @@ export class SettingsComponent {
         this.nameError.set(detailOf(error, 'That name could not be saved.'));
       },
     });
-  }
-
-  signOut(): void {
-    this.auth.logout();
-    void this.router.navigate(['/login']);
   }
 
   changePassword(): void {
@@ -555,14 +475,4 @@ export class SettingsComponent {
       },
     });
   }
-}
-
-/** Save a blob under a filename. The anchor is the only way a browser offers. */
-function download(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }

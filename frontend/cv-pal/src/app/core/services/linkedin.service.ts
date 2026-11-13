@@ -9,6 +9,7 @@ import {
   LinkedInSource,
 } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 /** What the API accepts. A ZIP is the official data export; a PDF is either profile print. */
 export const ALLOWED_LINKEDIN_EXTENSIONS = ['.pdf', '.zip'] as const;
@@ -32,7 +33,7 @@ export class LinkedInService {
    * `GET /linkedin`, idle while signed out.
    *
    * 404 is the ordinary state before a first import rather than an error worth showing,
-   * so `hasProfile` reads the value instead of the status.
+   * so `profile` is simply undefined until there is one.
    */
   private readonly snapshot = httpResource<LinkedInProfileResponse>(() =>
     this.auth.isAuthenticated() ? `${environment.apiUrl}/linkedin` : undefined,
@@ -42,8 +43,8 @@ export class LinkedInService {
     this.auth.isAuthenticated() ? `${environment.apiUrl}/linkedin/review` : undefined,
   );
 
-  readonly profile = this.snapshot.value;
-  readonly review = this.reviewResource.value;
+  readonly profile = valueOr(this.snapshot, undefined);
+  readonly review = valueOr(this.reviewResource, undefined);
   readonly isLoading = computed(() => this.snapshot.isLoading() || this.reviewResource.isLoading());
 
   readonly hasProfile = computed(() => this.profile() !== undefined);

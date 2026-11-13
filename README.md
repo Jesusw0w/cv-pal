@@ -5,7 +5,7 @@ Hold a structured record of your career, check any CV against a real posting for
 parseability and keyword coverage, and generate versions tailored to the postings worth
 applying for. Runs entirely on your own machine if you want it to.
 
-![The CV Pal dashboard: next action, application pipeline, profile health, recent documents and job matches](docs/images/dashboard.png)
+![The CV Pal dashboard: the next action, the application pipeline and the best job matches](docs/images/dashboard.png)
 
 ## Two guarantees
 

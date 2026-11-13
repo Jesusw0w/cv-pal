@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { CoverageResponse, CvResponse, ParseabilityResponse } from '../../shared/models/api.model';
 import { AuthService } from './auth.service';
+import { valueOr } from '../../shared/resource';
 
 /** Matches the API's own upload rules, so a doomed upload is refused before it is sent. */
 export const ALLOWED_CV_EXTENSIONS = ['.pdf', '.docx'] as const;
@@ -31,7 +32,7 @@ export class AnalysisService {
     { defaultValue: [] },
   );
 
-  readonly documents = this.cvs.value;
+  readonly documents = valueOr(this.cvs, []);
   readonly isLoading = this.cvs.isLoading;
   readonly error = this.cvs.error;
 

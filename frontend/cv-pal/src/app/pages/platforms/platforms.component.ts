@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 
 import { ApplicationService } from '../../core/services/application.service';
 import { PlatformService } from '../../core/services/platform.service';
+import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import { detailOf } from '../../shared/http-error';
 import {
   JobPlatformResponse,
@@ -70,17 +71,14 @@ const STATES: { value: PlatformState; label: string }[] = [
  */
 @Component({
   selector: 'app-platforms',
-  imports: [DatePipe, FormsModule, NgTemplateOutlet, RouterLink],
+  imports: [DatePipe, FormsModule, NgTemplateOutlet, RouterLink, ConfirmButtonComponent],
   template: `
     <div class="page">
-      <header class="intro">
-        <h1>Platforms</h1>
-        <p>
-          Optional. List the job platforms where you keep a profile to see which ones still show an
-          older version of it, and — once you record which platform each
-          <a routerLink="/applications">application</a> went through — which ones get replies.
-        </p>
-      </header>
+      <p class="intro">
+        Optional. List the job platforms where you keep a profile to see which still show an older
+        version of it and, once <a routerLink="/applications">applications</a> record where they
+        went, which ones get replies.
+      </p>
 
       @if (platforms.error()) {
         <p class="card notice" role="alert">Could not load your platforms.</p>
@@ -168,15 +166,12 @@ const STATES: { value: PlatformState; label: string }[] = [
                     </button>
                   }
                   <button type="button" class="link quiet" (click)="edit(platform)">Edit</button>
-                  <button
-                    type="button"
-                    class="link quiet remove"
+                  <app-confirm-button
+                    [label]="'Stop tracking ' + platform.name"
                     [disabled]="busy()"
-                    [attr.aria-label]="'Stop tracking ' + platform.name"
-                    (click)="remove(platform)"
+                    (confirmed)="remove(platform)"
+                    >Remove</app-confirm-button
                   >
-                    Remove
-                  </button>
                 }
               </li>
             }
@@ -250,35 +245,6 @@ const STATES: { value: PlatformState; label: string }[] = [
   `,
   styles: [
     `
-      .rows {
-        list-style: none;
-        margin: 0;
-        padding: 0 18px 8px;
-      }
-      .row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 0;
-      }
-      .row + .row {
-        border-top: 1px solid var(--border-light);
-      }
-      .row-main {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-      }
-      .row-title {
-        font-size: 14px;
-        font-weight: 600;
-      }
-      .row-meta {
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
       .status {
         margin-left: 8px;
         padding: 1px 8px;
@@ -289,10 +255,10 @@ const STATES: { value: PlatformState; label: string }[] = [
         color: var(--text-secondary);
       }
       .status.up_to_date {
-        color: var(--success, #16a34a);
+        color: var(--success);
       }
       .status.outdated {
-        color: #d97706;
+        color: var(--warning);
       }
       .form {
         flex: 1;
@@ -326,28 +292,11 @@ const STATES: { value: PlatformState; label: string }[] = [
         justify-content: flex-end;
         gap: 10px;
       }
-      .link {
-        flex: none;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-      }
       .link.quiet {
         color: var(--text-tertiary);
       }
-      .link:disabled {
-        opacity: 0.5;
-      }
       .error {
         grid-column: 1 / -1;
-        margin: 0;
-        font-size: 13px;
-        color: var(--danger, #dc2626);
-      }
-      @media (max-width: 768px) {
-        .row {
-          flex-wrap: wrap;
-        }
       }
     `,
   ],
